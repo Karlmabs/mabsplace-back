@@ -30,7 +30,7 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.VPS_SSH_PORT }}
           source: "target/mabsplace-back-0.0.1.jar"  # Adjust the path according to your project structure
-          target: "/root/mabsplace/backend/mabsplace-back-0.0.1.jar"  # Change to the directory where you want to place the JAR on your VPS
+          target: "/root/mabsplace/backend"  # Change to the directory where you want to place the JAR on your VPS
 
       - name: Deploy on VPS
         uses: appleboy/ssh-action@master
