@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.mabsplace</groupId>
 	<artifactId>mabsplace-back</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<name>mabsplace-back</name>
 	<description>mabsplace-back</description>
 	<properties>
