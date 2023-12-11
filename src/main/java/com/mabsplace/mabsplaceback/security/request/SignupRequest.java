@@ -1,0 +1,34 @@
+package com.mabsplace.mabsplaceback.security.request;
+
+import lombok.*;
+
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Set;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class SignupRequest implements Serializable {
+
+  private String username;
+
+  private String email;
+
+  private Set<String> role;
+
+  private String password;
+
+  private String phonenumber;
+
+  private String firstname;
+
+  private String lastname;
+
+  private Map<String, String> additionalFields;
+
+
+
+}
