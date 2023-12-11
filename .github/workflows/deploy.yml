@@ -22,17 +22,39 @@ jobs:
       - name: Build with Maven
         run: mvn clean install -DskipTests
 
-      - name: Deploy to VPS
+      - name: Copy JAR to VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          source: "target/mabsplace-back-0.0.1.jar"  # Adjust the path according to your project structure
+          target: "/root/mabsplace/backend"  # Change to the directory where you want to place the JAR on your VPS
+
+      - name: Deploy on VPS
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           password: ${{ secrets.VPS_PASSWORD }}
+          port: ${{ secrets.VPS_SSH_PORT }}
           script: |
-            # Replace the following with your deployment commands
-            echo "Copying JAR to VPS..."
-            scp target/mabsplace-back-0.0.1.jar ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/root/mabsplace/backend
-            echo "Deploying to VPS..."
             cd /root/mabsplace/backend
-            docker compose down
-            docker compose up -d --build
+            docker-compose down
+            docker-compose up -d --build
+
+#      - name: Deploy to VPS
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.VPS_HOST }}
+#          username: ${{ secrets.VPS_USERNAME }}
+#          password: ${{ secrets.VPS_PASSWORD }}
+#          script: |
+#            # Replace the following with your deployment commands
+#            echo "Copying JAR to VPS..."
+#            scp target/mabsplace-back-0.0.1.jar ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/root/mabsplace/backend
+#            echo "Deploying to VPS..."
+#            cd /root/mabsplace/backend
+#            docker compose down
+#            docker compose up -d --build
