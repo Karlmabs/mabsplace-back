@@ -12,7 +12,6 @@ import java.io.Serializable;
 @Getter
 @Setter
 public class WalletRequestDto implements Serializable {
-  private Long id;
 
   private long userId;
 
