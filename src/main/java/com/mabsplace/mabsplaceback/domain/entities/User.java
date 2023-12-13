@@ -42,25 +42,25 @@ public class User {
   @OneToOne(mappedBy = "user")
   private Wallet wallet;
 
-  @OneToMany(mappedBy = "user")
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Subscription> subscriptions;
 
-  @OneToMany(mappedBy = "user")
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Payment> payments;
 
-  @OneToMany(mappedBy = "user")
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Post> posts;
 
-  @OneToMany(mappedBy = "user")
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Comment> comments;
 
-  @OneToMany(mappedBy = "user")
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Like> likes;
 
-  @OneToMany(mappedBy = "sender")
+  @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Message> sentMessages;
 
-  @OneToMany(mappedBy = "receiver")
+  @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Message> receivedMessages;
 
 }

@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Entity
@@ -24,12 +25,11 @@ public class Payment {
   @JoinColumn(name = "user_id", referencedColumnName = "id")
   private User user;
 
-  private Double amount;
+  private BigDecimal amount;
   private Date paymentDate;
 
   @ManyToOne
   @JoinColumn(name = "currency_id", referencedColumnName = "id")
   private Currency currency;
 
-  // Getters and Setters
 }

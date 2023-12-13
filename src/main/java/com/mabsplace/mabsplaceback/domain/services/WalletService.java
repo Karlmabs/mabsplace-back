@@ -1,28 +1,36 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.wallet.WalletRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.Wallet;
+import com.mabsplace.mabsplaceback.domain.mappers.WalletMapper;
+import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.WalletRepository;
+import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class WalletService {
 
   private final WalletRepository walletRepository;
+  private final WalletMapper mapper;
+  private final UserRepository userRepository;
+  private final CurrencyRepository currencyRepository;
 
-  public WalletService(WalletRepository walletRepository) {
+  public WalletService(WalletRepository walletRepository, WalletMapper mapper, UserRepository userRepository, CurrencyRepository currencyRepository) {
     this.walletRepository = walletRepository;
+    this.mapper = mapper;
+    this.userRepository = userRepository;
+    this.currencyRepository = currencyRepository;
   }
 
-  public Wallet createWallet(Wallet wallet) {
-    return walletRepository.save(wallet);
-  }
-
-  public Wallet getWallet(Long id) {
-    return walletRepository.findById(id).orElse(null);
-  }
-
-  public Wallet updateWallet(Wallet wallet) {
-    return walletRepository.save(wallet);
+  public Wallet createWallet(WalletRequestDto wallet) throws ResourceNotFoundException{
+    Wallet newWallet = mapper.toEntity(wallet);
+    newWallet.setUser(userRepository.findById(wallet.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", wallet.getUserId())));
+    newWallet.setCurrency(currencyRepository.findById(wallet.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", wallet.getCurrencyId())));
+    return walletRepository.save(newWallet);
   }
 
   public void deleteWallet(Long id) {
@@ -34,4 +42,19 @@ public class WalletService {
   }
 
 
+  public Wallet getWalletById(Long id) {
+    return walletRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", id));
+  }
+
+  public List<Wallet> getAllWallets() {
+    return walletRepository.findAll();
+  }
+
+  public Wallet updateWallet(Long id, WalletRequestDto updatedWallet) throws ResourceNotFoundException{
+    Wallet target = walletRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", id));
+    Wallet updated = mapper.partialUpdate(updatedWallet, target);
+    updated.setUser(userRepository.findById(updatedWallet.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedWallet.getUserId())));
+    updated.setCurrency(currencyRepository.findById(updatedWallet.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", updatedWallet.getCurrencyId())));
+    return walletRepository.save(updated);
+  }
 }

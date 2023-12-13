@@ -27,6 +27,4 @@ public class Profile {
 
   private String profileName;
 
-
-  // Getters and Setters
 }

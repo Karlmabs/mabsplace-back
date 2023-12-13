@@ -22,7 +22,7 @@ public class MyService {
   private String name;
   private String description;
 
-  @OneToMany(mappedBy = "myService")
+  @OneToMany(mappedBy = "myService", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ServiceAccount> serviceAccounts;
 
   // Getters and Setters
