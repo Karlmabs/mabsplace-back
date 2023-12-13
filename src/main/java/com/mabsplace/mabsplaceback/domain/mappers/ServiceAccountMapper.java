@@ -7,7 +7,7 @@ import org.mapstruct.*;
 
 import java.util.List;
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING, uses = {ProfileMapper.class, MyServiceMapper.class} )
+@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING, uses = {ProfileMapper.class} )
 public interface ServiceAccountMapper {
 
   ServiceAccount toEntity(ServiceAccountRequestDto serviceAccountRequestDto);

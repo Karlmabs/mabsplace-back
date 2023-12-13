@@ -1,6 +1,32 @@
+#spring:
+#  datasource:
+#    url: jdbc:postgresql://localhost:5432/mabsplace?createDatabaseIfNotExist=true
+#    username: postgres
+#    password: password
+#  jpa:
+#    hibernate:
+#      ddl-auto: update
+#    database-platform: org.hibernate.dialect.PostgreSQLDialect
+#
+#mabsplace:
+#  app:
+#    jwtCookieName: mabsplace
+#    jwtSecret: ======================mabsplace=Spring===========================
+#    jwtExpirationMs: 86400000
+#  openapi:
+#    dev-url: http://localhost:8080
+#    prod-url: https://seedtrack.herokuapp.com
+#
+#
+#minio:
+#  url: http://localhost:9000
+#  access-key: minio
+#  secret-key: minio123
+#  bucket-name: mabsplace
+
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/mabsplace?createDatabaseIfNotExist=true
+    url: jdbc:postgresql://5.250.177.235:5432/mabsplace?createDatabaseIfNotExist=true
     username: postgres
     password: password
   jpa:
@@ -14,12 +40,11 @@ mabsplace:
     jwtSecret: ======================mabsplace=Spring===========================
     jwtExpirationMs: 86400000
   openapi:
-    dev-url: http://localhost:8080
-    prod-url: https://seedtrack.herokuapp.com
-
+    dev-url: http://5.250.177.235:8080
+    prod-url: http://mabsplace.com:8080
 
 minio:
-  url: http://localhost:9000
+  url: http://minio:9000
   access-key: minio
   secret-key: minio123
   bucket-name: mabsplace
