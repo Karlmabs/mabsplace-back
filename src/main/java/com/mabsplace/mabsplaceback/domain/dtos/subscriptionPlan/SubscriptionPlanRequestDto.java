@@ -21,4 +21,6 @@ public class SubscriptionPlanRequestDto implements Serializable {
   private String description;
 
   private long myServiceId;
+
+  private long currencyId;
 }

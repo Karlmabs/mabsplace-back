@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -15,6 +16,6 @@ import java.io.Serializable;
 @Setter
 public class WalletResponseDto implements Serializable {
   private UserResponseDto user;
-
+  private BigDecimal balance;
   private CurrencyResponseDto currency;
 }

@@ -13,4 +13,5 @@ public class CurrencyResponseDto {
   private Long id;
   private String name;
   private Double exchangeRate;
+  private String symbol;
 }

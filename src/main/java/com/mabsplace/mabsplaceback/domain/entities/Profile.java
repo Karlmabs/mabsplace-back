@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.entities;
 
+import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,5 +27,8 @@ public class Profile {
   private Subscription subscription;
 
   private String profileName;
+
+  @Enumerated
+  private ProfileStatus status = ProfileStatus.INACTIVE;
 
 }

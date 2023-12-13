@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Entity
@@ -28,7 +29,7 @@ public class Transaction {
   @JoinColumn(name = "receiver_wallet_id", referencedColumnName = "id")
   private Wallet receiverWallet;
 
-  private Double amount;
+  private BigDecimal amount;
   private Date transactionDate;
 
   @ManyToOne

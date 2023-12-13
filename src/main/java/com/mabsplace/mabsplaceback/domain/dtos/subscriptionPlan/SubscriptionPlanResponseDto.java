@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan;
 
+import com.mabsplace.mabsplaceback.domain.dtos.currency.CurrencyResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,4 +23,6 @@ public class SubscriptionPlanResponseDto implements Serializable {
   private String description;
 
   private MyServiceResponseDto myService;
+
+  private CurrencyResponseDto currency;
 }

@@ -12,4 +12,5 @@ import lombok.Setter;
 public class CurrencyRequestDto {
   private String name;
   private Double exchangeRate;
+  private String symbol;
 }

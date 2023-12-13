@@ -17,6 +17,7 @@ public class PaymentRequestDto {
 
   private BigDecimal amount;
   private Date paymentDate;
-
   private long currencyId;
+  private long serviceId;
+  private long subscriptionPlanId;
 }

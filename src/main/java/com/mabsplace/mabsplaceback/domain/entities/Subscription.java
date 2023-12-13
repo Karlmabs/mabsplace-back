@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.entities;
 
+import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -35,5 +36,8 @@ public class Subscription {
   private Date startDate;
 
   private Date endDate;
+
+  @Enumerated
+  private SubscriptionStatus status = SubscriptionStatus.ACTIVE;
 
 }

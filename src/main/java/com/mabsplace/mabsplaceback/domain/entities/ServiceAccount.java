@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.entities;
 
+import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -32,4 +33,15 @@ public class ServiceAccount {
 
   @OneToMany(mappedBy = "serviceAccount", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Profile> profiles;
+
+  // return the number of available profiles, not assigned to a user
+  public int getAvailableProfiles() {
+    int availableProfiles = 0;
+    for (Profile profile : profiles) {
+      if (profile.getStatus() == ProfileStatus.INACTIVE) {
+        availableProfiles++;
+      }
+    }
+    return availableProfiles;
+  }
 }

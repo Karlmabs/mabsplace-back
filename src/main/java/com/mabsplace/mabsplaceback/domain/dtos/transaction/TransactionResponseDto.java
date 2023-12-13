@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Date;
 
 @AllArgsConstructor
@@ -20,7 +21,7 @@ public class TransactionResponseDto implements Serializable {
 
   private WalletResponseDto receiverWallet;
 
-  private Double amount;
+  private BigDecimal amount;
   private Date transactionDate;
   private CurrencyResponseDto currency;
 }

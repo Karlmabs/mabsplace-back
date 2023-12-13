@@ -2,10 +2,9 @@ package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.mappers.PaymentMapper;
-import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
-import com.mabsplace.mabsplaceback.domain.repositories.PaymentRepository;
-import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -20,17 +19,35 @@ public class PaymentService {
   private final UserRepository userRepository;
   private final CurrencyRepository currencyRepository;
 
-  public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository) {
+  private final MyServiceRepository myServiceRepository;
+
+  private final SubscriptionPlanRepository subscriptionPlanRepository;
+
+  private final WalletService walletService;
+
+  public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService) {
     this.paymentRepository = paymentRepository;
     this.paymentMapper = paymentMapper;
     this.userRepository = userRepository;
     this.currencyRepository = currencyRepository;
+    this.myServiceRepository = myServiceRepository;
+    this.subscriptionPlanRepository = subscriptionPlanRepository;
+    this.walletService = walletService;
   }
 
-  public Payment createPayment(PaymentRequestDto paymentRequestDto) throws ResourceNotFoundException {
+  public Payment createPayment(PaymentRequestDto paymentRequestDto) throws RuntimeException {
     Payment entity = paymentMapper.toEntity(paymentRequestDto);
-    entity.setUser(userRepository.findById(paymentRequestDto.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequestDto.getUserId())));
+    User user = userRepository.findById(paymentRequestDto.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequestDto.getUserId()));
+    boolean checkBalance = walletService.checkBalance(user.getWallet().getId(), paymentRequestDto.getAmount());
+
+    if (!checkBalance) {
+      throw new RuntimeException("Insufficient funds");
+    }
+
+    entity.setUser(user);
     entity.setCurrency(currencyRepository.findById(paymentRequestDto.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", paymentRequestDto.getCurrencyId())));
+    entity.setService(myServiceRepository.findById(paymentRequestDto.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", paymentRequestDto.getServiceId())));
+    entity.setSubscriptionPlan(subscriptionPlanRepository.findById(paymentRequestDto.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", paymentRequestDto.getSubscriptionPlanId())));
     return paymentRepository.save(entity);
   }
 
@@ -47,10 +64,14 @@ public class PaymentService {
     Payment updated = paymentMapper.partialUpdate(updatedPayment, payment);
     updated.setUser(userRepository.findById(updatedPayment.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedPayment.getUserId())));
     updated.setCurrency(currencyRepository.findById(updatedPayment.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", updatedPayment.getCurrencyId())));
+    updated.setService(myServiceRepository.findById(updatedPayment.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", updatedPayment.getServiceId())));
+    updated.setSubscriptionPlan(subscriptionPlanRepository.findById(updatedPayment.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedPayment.getSubscriptionPlanId())));
     return paymentRepository.save(updated);
   }
 
   public void deletePayment(Long id) {
     paymentRepository.deleteById(id);
   }
+
+
 }

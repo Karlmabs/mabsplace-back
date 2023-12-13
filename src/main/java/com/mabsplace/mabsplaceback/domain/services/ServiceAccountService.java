@@ -47,4 +47,10 @@ public class ServiceAccountService {
     updated.setMyService(myServiceRepository.findById(updatedServiceAccount.getMyServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", updatedServiceAccount.getMyServiceId())));
     return serviceAccountRepository.save(updated);
   }
+
+  // check if there are available profiles
+  public boolean checkIfAvailableProfiles(Long id) throws ResourceNotFoundException {
+    ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
+    return target.getAvailableProfiles() > 0;
+  }
 }

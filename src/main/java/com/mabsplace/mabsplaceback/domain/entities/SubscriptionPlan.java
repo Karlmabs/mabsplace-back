@@ -26,6 +26,10 @@ public class SubscriptionPlan {
   @Column(nullable = false)
   private BigDecimal price;
 
+  @ManyToOne
+  @JoinColumn(name = "currency_id", referencedColumnName = "id")
+  private Currency currency;
+
   @Column(nullable = false)
   private String description;
 

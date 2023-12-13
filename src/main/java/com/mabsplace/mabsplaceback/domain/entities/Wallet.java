@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 
 @Entity
 @Table(name = "wallets")
@@ -22,6 +24,8 @@ public class Wallet {
   @OneToOne
   @JoinColumn(name = "user_id", referencedColumnName = "id")
   private User user;
+
+  private BigDecimal balance = BigDecimal.ZERO;
 
   @ManyToOne
   @JoinColumn(name = "currency_id", referencedColumnName = "id")

@@ -9,6 +9,7 @@ import com.mabsplace.mabsplaceback.domain.repositories.WalletRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -56,5 +57,11 @@ public class WalletService {
     updated.setUser(userRepository.findById(updatedWallet.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedWallet.getUserId())));
     updated.setCurrency(currencyRepository.findById(updatedWallet.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", updatedWallet.getCurrencyId())));
     return walletRepository.save(updated);
+  }
+
+  // check if a user has enough balance in his wallet
+  public boolean checkBalance(Long userId, BigDecimal amount) {
+    Wallet wallet = walletRepository.findByUserId(userId);
+    return wallet.getBalance().compareTo(amount) >= 0;
   }
 }
