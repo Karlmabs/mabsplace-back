@@ -13,7 +13,6 @@ import java.io.Serializable;
 @Setter
 public class MyServiceRequestDto implements Serializable {
 
-
   private String name;
   private String description;
 

@@ -3,6 +3,7 @@ package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
@@ -68,5 +69,10 @@ public class UserService {
 
         userFound.setImage(originalFilename);
         userRepository.save(userFound);
+    }
+
+    public void updateAuthenticationType(String username, String oauth2ClientName) {
+        AuthenticationType authType = AuthenticationType.valueOf(oauth2ClientName.toUpperCase());
+        userRepository.updateAuthenticationType(username, authType);
     }
 }

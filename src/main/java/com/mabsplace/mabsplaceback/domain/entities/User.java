@@ -1,6 +1,9 @@
 package com.mabsplace.mabsplaceback.domain.entities;
 
+import com.mabsplace.mabsplaceback.domain.enums.AuthProvider;
+import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.util.HashSet;
@@ -29,9 +32,23 @@ public class User {
   private String firstname;
   @Column(nullable = false)
   private String lastname;
+  private String name;
   @Column(nullable = false)
   private String password;
   private String contact;
+
+  @Column(nullable = false)
+  private Boolean emailVerified = false;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "auth_type")
+  private AuthenticationType authType;
+
+  @NotNull
+  @Enumerated(EnumType.STRING)
+  private AuthProvider provider = AuthProvider.local;
+
+  private String providerId;
 
   private String image;
 

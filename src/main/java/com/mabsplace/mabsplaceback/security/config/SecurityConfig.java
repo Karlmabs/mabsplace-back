@@ -1,7 +1,13 @@
-package com.mabsplace.mabsplaceback.security;
+package com.mabsplace.mabsplaceback.security.config;
 
+import com.mabsplace.mabsplaceback.security.CustomUserDetailsService;
+import com.mabsplace.mabsplaceback.security.TokenAuthenticationFilter;
 import com.mabsplace.mabsplaceback.security.jwt.AuthEntryPointJwt;
 import com.mabsplace.mabsplaceback.security.jwt.AuthTokenFilter;
+import com.mabsplace.mabsplaceback.security.oauth2.CustomOAuth2UserService;
+import com.mabsplace.mabsplaceback.security.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
+import com.mabsplace.mabsplaceback.security.oauth2.OAuth2AuthenticationFailureHandler;
+import com.mabsplace.mabsplaceback.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import com.mabsplace.mabsplaceback.security.services.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -31,12 +37,34 @@ public class SecurityConfig {
   UserDetailsServiceImpl userDetailsService;
 
   @Autowired
+  private CustomUserDetailsService customUserDetailsService;
+
+  @Autowired
   private AuthEntryPointJwt unauthorizedHandler;
 
   @Bean
   public AuthTokenFilter authenticationJwtTokenFilter() {
     return new AuthTokenFilter();
   }
+
+  @Bean
+  public HttpCookieOAuth2AuthorizationRequestRepository cookieAuthorizationRequestRepository() {
+    return new HttpCookieOAuth2AuthorizationRequestRepository();
+  }
+
+  @Bean
+  public TokenAuthenticationFilter tokenAuthenticationFilter() {
+    return new TokenAuthenticationFilter();
+  }
+
+  @Autowired
+  private CustomOAuth2UserService customOAuth2UserService;
+
+  @Autowired
+  private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
+  @Autowired
+  private OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -49,6 +77,19 @@ public class SecurityConfig {
                             .requestMatchers("/v3/**").permitAll()
                             .requestMatchers("/api/test/**").permitAll()
                             .anyRequest().permitAll()
+            ).oauth2Login(oauth2 ->
+                    oauth2.authorizationEndpoint( auth ->
+                                    auth.baseUri( "/oauth2/authorize" )
+                                            .authorizationRequestRepository( cookieAuthorizationRequestRepository() )
+                            )
+                            .redirectionEndpoint( redir ->
+                                    redir.baseUri( "/oauth2/callback/*" )
+                            )
+                            .userInfoEndpoint( userInfo ->
+                                    userInfo.userService( customOAuth2UserService )
+                            )
+                            .successHandler(oAuth2AuthenticationSuccessHandler)
+                            .failureHandler(oAuth2AuthenticationFailureHandler)
             );
 
     // fix H2 database console: Refused to display ' in a frame because it set 'X-Frame-Options' to 'deny'
@@ -56,7 +97,7 @@ public class SecurityConfig {
 
     http.authenticationProvider(authenticationProvider());
 
-    http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+    http.addFilterBefore(tokenAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
@@ -65,7 +106,7 @@ public class SecurityConfig {
   public AuthenticationProvider authenticationProvider(){
     DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
 
-    authProvider.setUserDetailsService(userDetailsService);
+    authProvider.setUserDetailsService(customUserDetailsService);
     authProvider.setPasswordEncoder(passwordEncoder());
 
     return authProvider;
@@ -80,6 +121,7 @@ public class SecurityConfig {
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
   }
+
 
 }
 

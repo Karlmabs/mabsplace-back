@@ -3,30 +3,35 @@ package com.mabsplace.mabsplaceback.security;
 
 import com.mabsplace.mabsplaceback.domain.entities.Role;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.entities.VerificationToken;
 import com.mabsplace.mabsplaceback.domain.repositories.RoleRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
+import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import com.mabsplace.mabsplaceback.security.events.OnRegistrationCompleteEvent;
 import com.mabsplace.mabsplaceback.security.jwt.JwtUtils;
+import com.mabsplace.mabsplaceback.security.request.AuthResponse;
 import com.mabsplace.mabsplaceback.security.request.LoginRequest;
 import com.mabsplace.mabsplaceback.security.request.SignupRequest;
 import com.mabsplace.mabsplaceback.security.response.MessageResponse;
-import com.mabsplace.mabsplaceback.security.response.UserInfoResponse;
-import com.mabsplace.mabsplaceback.security.services.UserDetailsImpl;
+import com.mabsplace.mabsplaceback.security.services.UserServiceSec;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.net.URI;
+import java.util.*;
 
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -48,7 +53,45 @@ public class AuthController {
   @Autowired
   JwtUtils jwtUtils;
 
-  @PostMapping("/signin")
+  @Autowired
+  private TokenProvider tokenProvider;
+
+  @Autowired
+  HttpServletRequest request;
+
+  @Autowired
+  ApplicationEventPublisher eventPublisher;
+
+  @Autowired
+  UserServiceSec service;
+
+  @PostMapping("/login")
+  public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+
+//    Optional<User> userOptional = userRepository.findByPhoneNumber(loginRequest.getPhoneNumber());
+    userRepository.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new RuntimeException("User doesn't exist !!!!"));
+
+    Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(
+                    loginRequest.getUsername(),
+                    loginRequest.getPassword()
+            )
+    );
+
+    Optional<User> loggedIn = userRepository.findByUsername(loginRequest.getUsername());
+
+    if (loggedIn.isPresent() && !loggedIn.get().getEmailVerified()) {
+      throw new RuntimeException("UserEmailIsNotVerified");
+    }
+
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+    String token = tokenProvider.createToken(authentication);
+
+    return ResponseEntity.ok().body(new AuthResponse(token, authentication.getPrincipal()));
+  }
+
+  /*@PostMapping("/signin")
   public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
 
     Authentication authentication = authenticationManager
@@ -69,16 +112,16 @@ public class AuthController {
                     userDetails.getUsername(),
                     userDetails.getEmail(),
                     roles));
-  }
+  }*/
 
   @PostMapping("/signup")
-  public ResponseEntity<?> registerUser(@RequestBody SignupRequest signUpRequest) {
-    if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-      return ResponseEntity.badRequest().body(new MessageResponse("Error: Username is already taken!"));
-    }
+  public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) throws BadRequestException {
 
     if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-      return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
+      throw new BadRequestException("Email address already in use.");
+    }
+    if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+      throw new BadRequestException("Username already in use.");
     }
 
     User user = User.builder()
@@ -94,22 +137,32 @@ public class AuthController {
     Set<Role> roles = new HashSet<>();
 
     if (strRoles == null) {
-      Role userRole = roleRepository.findByName("ROLE_USER")
-              .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-      roles.add(userRole);
+      throw new BadRequestException("Role is not found.");
     } else {
       strRoles.forEach(role -> {
-            Role adminRole = roleRepository.findByName(role)
-                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            roles.add(adminRole);
+        Role adminRole = roleRepository.findByName(role)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+        roles.add(adminRole);
       });
     }
 
     user.setRoles(roles);
+    user.setEmailVerified(false);
 
-    userRepository.save(user);
+    User result = userRepository.save(user);
 
-    return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+    URI location = ServletUriComponentsBuilder
+            .fromCurrentContextPath().path("/user/me")
+            .buildAndExpand(result.getId()).toUri();
+
+    String appUrl = request.getContextPath();
+
+    eventPublisher.publishEvent(new OnRegistrationCompleteEvent(user,
+            request.getLocale(), appUrl));
+
+
+    return ResponseEntity.created(location)
+            .body(new MessageResponse("User registered successfully!"));
   }
 
   @PostMapping("/signout")
@@ -117,5 +170,34 @@ public class AuthController {
     ResponseCookie cookie = jwtUtils.getCleanJwtCookie();
     return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString())
             .body(new MessageResponse("You've been signed out!"));
+  }
+
+  @GetMapping("/user/me")
+//    @PreAuthorize("hasRole('USER')")
+  public User getCurrentUser(@CurrentUser UserPrincipal userPrincipal) {
+    return userRepository.findById(userPrincipal.getId())
+            .orElseThrow(() -> new ResourceNotFoundException("User", "id", userPrincipal.getId()));
+  }
+
+  @GetMapping("/registrationConfirm")
+  public boolean confirmRegistration
+          (@RequestParam("token") String token) throws Exception {
+
+    Locale locale = request.getLocale();
+
+    VerificationToken verificationToken = service.getVerificationToken(token);
+    if (verificationToken == null) {
+      return false;
+    }
+
+    User user = verificationToken.getUser();
+    Calendar cal = Calendar.getInstance();
+    if ((verificationToken.getExpiryDate().getTime() - cal.getTime().getTime()) <= 0) {
+      return false;
+    }
+
+    user.setEmailVerified(true);
+    userRepository.save(user);
+    return true;
   }
 }
