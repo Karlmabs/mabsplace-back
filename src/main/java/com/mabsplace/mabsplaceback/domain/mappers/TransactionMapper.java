@@ -3,6 +3,7 @@ package com.mabsplace.mabsplaceback.domain.mappers;
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Transaction;
+import com.mabsplace.mabsplaceback.domain.entities.Wallet;
 import org.mapstruct.*;
 
 import java.util.List;
@@ -12,7 +13,23 @@ public interface TransactionMapper {
 
   Transaction toEntity(TransactionRequestDto transactionRequestDto);
 
+  @Mapping(target = "receiverWalletId" , expression = "java(mapReceiverWallet(transaction.getReceiverWallet()))")
+  @Mapping(target = "senderWalletId" , expression = "java(mapSenderWallet(transaction.getSenderWallet()))")
   TransactionResponseDto toDto(Transaction transaction);
+
+  default Long mapReceiverWallet(Wallet wallet) {
+    if (wallet == null) {
+      return null;
+    }
+    return wallet.getId();
+  }
+
+  default Long mapSenderWallet(Wallet wallet) {
+    if (wallet == null) {
+      return null;
+    }
+    return wallet.getId();
+  }
 
   List<TransactionResponseDto> toDtoList(List<Transaction> transactions);
 

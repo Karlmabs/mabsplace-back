@@ -1,7 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.wallet;
 
 import com.mabsplace.mabsplaceback.domain.dtos.currency.CurrencyResponseDto;
-import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +14,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 public class WalletResponseDto implements Serializable {
-  private UserResponseDto user;
+  private long userId;
   private BigDecimal balance;
   private CurrencyResponseDto currency;
 }

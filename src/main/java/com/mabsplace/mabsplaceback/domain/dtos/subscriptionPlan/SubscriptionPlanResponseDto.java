@@ -1,7 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan;
 
 import com.mabsplace.mabsplaceback.domain.dtos.currency.CurrencyResponseDto;
-import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,13 +15,14 @@ import java.math.BigDecimal;
 @Setter
 public class SubscriptionPlanResponseDto implements Serializable {
   private Long id;
+
   private String name; // e.g., "Monthly", "Yearly"
 
   private BigDecimal price;
 
   private String description;
 
-  private MyServiceResponseDto myService;
+  private long myServiceId;
 
   private CurrencyResponseDto currency;
 }

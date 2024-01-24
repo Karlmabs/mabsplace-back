@@ -37,7 +37,7 @@ public class Subscription {
 
   private Date endDate;
 
-  @Enumerated
+  @Enumerated(EnumType.STRING)
   private SubscriptionStatus status = SubscriptionStatus.ACTIVE;
 
 }

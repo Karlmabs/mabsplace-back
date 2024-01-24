@@ -14,5 +14,6 @@ import java.io.Serializable;
 public class ProfileRequestDto implements Serializable {
   private long serviceAccountId;
   private long subscriptionId;
+  private String pin;
   private String profileName;
 }

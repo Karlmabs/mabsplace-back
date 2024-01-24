@@ -2,7 +2,7 @@ package com.mabsplace.mabsplaceback.domain.mappers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentResponseDto;
-import com.mabsplace.mabsplaceback.domain.entities.Payment;
+import com.mabsplace.mabsplaceback.domain.entities.*;
 import org.mapstruct.*;
 
 import java.util.List;
@@ -11,7 +11,39 @@ import java.util.List;
 public interface PaymentMapper {
   Payment toEntity(PaymentRequestDto paymentRequestDto);
 
+  @Mapping(target = "userId", expression = "java(mapUser(payment.getUser()))")
+  @Mapping(target = "currencyId", expression = "java(mapCurrency(payment.getCurrency()))")
+  @Mapping(target = "serviceId", expression = "java(payment.getService().getId())")
+  @Mapping(target = "subscriptionPlanId", expression = "java(payment.getSubscriptionPlan().getId())")
   PaymentResponseDto toDto(Payment payment);
+
+  default Long mapUser(User user) {
+    if (user == null) {
+      return null;
+    }
+    return user.getId();
+  }
+
+  default Long mapCurrency(Currency currency) {
+    if (currency == null) {
+      return null;
+    }
+    return currency.getId();
+  }
+
+  default Long mapService(MyService myService) {
+    if (myService == null) {
+      return null;
+    }
+    return myService.getId();
+  }
+
+  default Long mapSubscriptionPlan(SubscriptionPlan subscriptionPlan) {
+    if (subscriptionPlan == null) {
+      return null;
+    }
+    return subscriptionPlan.getId();
+  }
 
   List<PaymentResponseDto> toDtoList(List<Payment> payments);
 

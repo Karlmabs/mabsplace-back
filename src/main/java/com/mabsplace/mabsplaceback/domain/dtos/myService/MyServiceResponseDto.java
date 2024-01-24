@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.dtos.myService;
 
 import com.mabsplace.mabsplaceback.domain.dtos.serviceAccount.ServiceAccountResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan.SubscriptionPlanResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Set;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -18,4 +20,5 @@ public class MyServiceResponseDto implements Serializable {
   private String name;
   private String description;
   private List<ServiceAccountResponseDto> serviceAccounts;
+  private Set<SubscriptionPlanResponseDto> subscriptionPlans;
 }

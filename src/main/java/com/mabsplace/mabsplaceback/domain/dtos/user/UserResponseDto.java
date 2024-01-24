@@ -1,9 +1,9 @@
 package com.mabsplace.mabsplaceback.domain.dtos.user;
 
+import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.role.RoleResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.wallet.WalletResponseDto;
-import com.mabsplace.mabsplaceback.domain.entities.Payment;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,6 +30,6 @@ public class UserResponseDto implements Serializable{
     private Set<RoleResponseDto> roles = new HashSet<>();
     private WalletResponseDto wallet;
     private List<SubscriptionResponseDto> subscriptions;
-    private List<Payment> payments;
+    private List<PaymentResponseDto> payments;
 
 }

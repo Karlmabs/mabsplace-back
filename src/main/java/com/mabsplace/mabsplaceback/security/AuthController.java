@@ -4,6 +4,9 @@ package com.mabsplace.mabsplaceback.security;
 import com.mabsplace.mabsplaceback.domain.entities.Role;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.entities.VerificationToken;
+import com.mabsplace.mabsplaceback.domain.entities.Wallet;
+import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
+import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.RoleRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
@@ -30,6 +33,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.*;
 
@@ -43,6 +47,9 @@ public class AuthController {
 
   @Autowired
   UserRepository userRepository;
+
+  @Autowired
+  CurrencyRepository currencyRepository;
 
   @Autowired
   RoleRepository roleRepository;
@@ -147,9 +154,20 @@ public class AuthController {
     }
 
     user.setRoles(roles);
-    user.setEmailVerified(false);
+    user.setEmailVerified(true);
+    user.setAuthType(AuthenticationType.DATABASE);
 
     User result = userRepository.save(user);
+
+    result.setWallet(
+            Wallet.builder()
+                    .user(result)
+                    .balance(BigDecimal.ZERO)
+                    .currency(currencyRepository.findAll().getFirst())
+                    .build()
+    );
+
+    result = userRepository.save(result);
 
     URI location = ServletUriComponentsBuilder
             .fromCurrentContextPath().path("/user/me")

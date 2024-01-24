@@ -26,13 +26,20 @@
 
 spring:
   datasource:
-    url: jdbc:postgresql://5.250.177.235:5432/mabsplace?createDatabaseIfNotExist=true
+    url: jdbc:postgresql://localhost:5432/mabsplace
     username: postgres
     password: password
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      idle-timeout: 600000
+      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: update
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   security:
     oauth2:

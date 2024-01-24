@@ -6,7 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "services")
@@ -25,5 +27,7 @@ public class MyService {
   @OneToMany(mappedBy = "myService", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ServiceAccount> serviceAccounts;
 
-  // Getters and Setters
+  @OneToMany(mappedBy = "myService", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Set<SubscriptionPlan> subscriptionPlans = new LinkedHashSet<>();
+
 }

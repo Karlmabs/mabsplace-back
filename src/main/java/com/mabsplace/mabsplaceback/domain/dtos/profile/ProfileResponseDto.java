@@ -1,7 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.profile;
 
-import com.mabsplace.mabsplaceback.domain.dtos.serviceAccount.ServiceAccountResponseDto;
-import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
+import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +14,9 @@ import java.io.Serializable;
 @Setter
 public class ProfileResponseDto implements Serializable {
   private Long id;
-  private ServiceAccountResponseDto serviceAccount;
-  private SubscriptionResponseDto subscription;
+  private long serviceAccountId;
+  private long subscriptionId;
+  private ProfileStatus status;
+  private String pin;
   private String profileName;
 }

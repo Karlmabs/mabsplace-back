@@ -56,7 +56,7 @@ public class User {
   @JoinTable(joinColumns = @JoinColumn(name = "user_id"))
   private Set<Role> roles = new HashSet<>();
 
-  @OneToOne(mappedBy = "user")
+  @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
   private Wallet wallet;
 
   @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

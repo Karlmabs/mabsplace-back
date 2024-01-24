@@ -1,8 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.subscription;
 
-import com.mabsplace.mabsplaceback.domain.dtos.profile.ProfileResponseDto;
-import com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan.SubscriptionPlanResponseDto;
-import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
+import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,13 +15,16 @@ import java.util.Date;
 @Setter
 public class SubscriptionResponseDto implements Serializable {
   private Long id;
-  private UserResponseDto user;
 
-  private SubscriptionPlanResponseDto subscriptionPlan;
+  private long userId;
 
-  private ProfileResponseDto profile;
+  private long profileId;
 
   private Date startDate;
 
   private Date endDate;
+
+  private long subscriptionPlanId;
+
+  private SubscriptionStatus status;
 }

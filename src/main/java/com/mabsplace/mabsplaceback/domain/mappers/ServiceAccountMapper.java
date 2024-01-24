@@ -2,6 +2,7 @@ package com.mabsplace.mabsplaceback.domain.mappers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.serviceAccount.ServiceAccountRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.serviceAccount.ServiceAccountResponseDto;
+import com.mabsplace.mabsplaceback.domain.entities.MyService;
 import com.mabsplace.mabsplaceback.domain.entities.ServiceAccount;
 import org.mapstruct.*;
 
@@ -12,7 +13,15 @@ public interface ServiceAccountMapper {
 
   ServiceAccount toEntity(ServiceAccountRequestDto serviceAccountRequestDto);
 
+  @Mapping(target = "myServiceId", expression = "java(mapService(serviceAccount.getMyService()))")
   ServiceAccountResponseDto toDto(ServiceAccount serviceAccount);
+
+  default Long mapService(MyService myService) {
+    if (myService == null) {
+      return null;
+    }
+    return myService.getId();
+  }
 
   List<ServiceAccountResponseDto> toDtoList(List<ServiceAccount> serviceAccounts);
 

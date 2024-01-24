@@ -28,7 +28,9 @@ public class Profile {
 
   private String profileName;
 
-  @Enumerated
+  private String pin;
+
+  @Enumerated(EnumType.STRING)
   private ProfileStatus status = ProfileStatus.INACTIVE;
 
 }

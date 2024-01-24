@@ -1,6 +1,5 @@
 package com.mabsplace.mabsplaceback.domain.dtos.serviceAccount;
 
-import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.profile.ProfileResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,6 +18,6 @@ public class ServiceAccountResponseDto implements Serializable {
   private String login;
   private String password;
   private String accountDetails;
-  private MyServiceResponseDto myService;
+  private long myServiceId;
   private List<ProfileResponseDto> profiles;
 }

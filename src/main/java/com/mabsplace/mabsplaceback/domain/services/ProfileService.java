@@ -30,7 +30,9 @@ public class ProfileService {
   public Profile createProfile(ProfileRequestDto profile) throws ResourceNotFoundException{
     Profile newProfile = mapper.toEntity(profile);
     newProfile.setServiceAccount(serviceAccountRepository.findById(profile.getServiceAccountId()).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", profile.getServiceAccountId())));
-    newProfile.setSubscription(subscriptionRepository.findById(profile.getSubscriptionId()).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", profile.getSubscriptionId())));
+    if(profile.getSubscriptionId() != 0) {
+      newProfile.setSubscription(subscriptionRepository.findById(profile.getSubscriptionId()).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", profile.getSubscriptionId())));
+    }
     return profileRepository.save(newProfile);
   }
 
@@ -50,7 +52,9 @@ public class ProfileService {
     Profile target = profileRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
     Profile updated = mapper.partialUpdate(updatedProfile, target);
     updated.setServiceAccount(serviceAccountRepository.findById(updatedProfile.getServiceAccountId()).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", updatedProfile.getServiceAccountId())));
-    updated.setSubscription(subscriptionRepository.findById(updatedProfile.getSubscriptionId()).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", updatedProfile.getSubscriptionId())));
+    if(updatedProfile.getSubscriptionId() != 0) {
+      updated.setSubscription(subscriptionRepository.findById(updatedProfile.getSubscriptionId()).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", updatedProfile.getSubscriptionId())));
+    }
     return profileRepository.save(updated);
   }
 }
