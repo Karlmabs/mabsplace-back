@@ -1,17 +1,30 @@
 version: '3'
 
 services:
-  postgres:
-    image: postgres
-    container_name: postgres-container
+#  postgres:
+#    image: postgres
+#    container_name: postgres-container
+#    environment:
+#      POSTGRES_PASSWORD: password
+#      POSTGRES_DB: mabsplace
+#    ports:
+#      - 5432:5432
+#    volumes:
+#      - ./postgres-data:/var/lib/postgresql/data
+#  #      - ./init-scripts/create-db.sql:/docker-entrypoint-initdb.d/init.sql
+
+  db:
+    image: mysql:latest
+    restart: always
     environment:
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mabsplace
+      MYSQL_DATABASE: mabsplace
+      MYSQL_USER: karlmabs
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: password
     ports:
-      - 5432:5432
+      - "3306:3306"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-  #      - ./init-scripts/create-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql-data:/var/lib/mysql
 
   #  spring-app:
   #    build: .

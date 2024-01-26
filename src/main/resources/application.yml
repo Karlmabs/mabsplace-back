@@ -1,45 +1,11 @@
-#spring:
-#  datasource:
-#    url: jdbc:postgresql://localhost:5432/mabsplace?createDatabaseIfNotExist=true
-#    username: postgres
-#    password: password
-#  jpa:
-#    hibernate:
-#      ddl-auto: update
-#    database-platform: org.hibernate.dialect.PostgreSQLDialect
-#
-#mabsplace:
-#  app:
-#    jwtCookieName: mabsplace
-#    jwtSecret: ======================mabsplace=Spring===========================
-#    jwtExpirationMs: 86400000
-#  openapi:
-#    dev-url: http://localhost:8080
-#    prod-url: https://seedtrack.herokuapp.com
-#
-#
-#minio:
-#  url: http://localhost:9000
-#  access-key: minio
-#  secret-key: minio123
-#  bucket-name: mabsplace
-
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/mabsplace
-    username: postgres
+    url: jdbc:mysql://localhost:3306/mabsplace
+    username: karlmabs
     password: password
-    hikari:
-      connection-timeout: 30000
-      maximum-pool-size: 10
-      idle-timeout: 600000
-      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: update
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   security:
     oauth2:
