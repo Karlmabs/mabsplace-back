@@ -2,8 +2,10 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan.SubscriptionPlanResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.MyService;
 import com.mabsplace.mabsplaceback.domain.mappers.MyServiceMapper;
+import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionPlanMapper;
 import com.mabsplace.mabsplaceback.domain.services.MyServiceService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,9 +21,12 @@ public class MyServiceController {
 
   private final MyServiceMapper mapper;
 
-  public MyServiceController(MyServiceService myServiceService, MyServiceMapper mapper) {
+  private final SubscriptionPlanMapper subscriptionPlanMapper;
+
+  public MyServiceController(MyServiceService myServiceService, MyServiceMapper mapper, SubscriptionPlanMapper subscriptionPlanMapper) {
     this.myServiceService = myServiceService;
     this.mapper = mapper;
+    this.subscriptionPlanMapper = subscriptionPlanMapper;
   }
 
     @PostMapping
@@ -36,6 +41,12 @@ public class MyServiceController {
   //@PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
   public ResponseEntity<MyServiceResponseDto> getServiceById(@PathVariable Long id) {
     return ResponseEntity.ok(mapper.toDto(myServiceService.getService(id)));
+  }
+
+  @GetMapping("/{id}/subscriptionPlans")
+  //@PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+  public ResponseEntity<List<SubscriptionPlanResponseDto> > getSubscriptionPlansByServiceId(@PathVariable Long id) {
+    return ResponseEntity.ok(subscriptionPlanMapper.toDtoList(myServiceService.getSubscriptionPlansByServiceId(id)));
   }
 
   /*@GetMapping

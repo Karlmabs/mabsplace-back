@@ -29,6 +29,10 @@ public class Subscription {
   @JoinColumn(name = "plan_id", referencedColumnName = "id")
   private SubscriptionPlan subscriptionPlan;
 
+  @ManyToOne
+  @JoinColumn(name = "service_id", referencedColumnName = "id")
+  private MyService service;
+
   @OneToOne
   @JoinColumn(name = "profile_id", referencedColumnName = "id")
   private Profile profile;

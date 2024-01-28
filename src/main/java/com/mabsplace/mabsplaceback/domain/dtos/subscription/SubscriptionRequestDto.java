@@ -18,7 +18,9 @@ public class SubscriptionRequestDto implements Serializable {
 
   private long subscriptionPlanId;
 
-  private long profileId;
+  private long serviceAccountId;
+
+  private long serviceId;
 
   private Date startDate;
 

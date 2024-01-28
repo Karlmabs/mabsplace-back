@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -35,11 +36,12 @@ public class ServiceAccount {
   private List<Profile> profiles;
 
   // return the number of available profiles, not assigned to a user
-  public int getAvailableProfiles() {
-    int availableProfiles = 0;
+  public List<Profile> getAvailableProfiles() {
+    List<Profile> availableProfiles = new ArrayList<>();
+
     for (Profile profile : profiles) {
       if (profile.getStatus() == ProfileStatus.INACTIVE) {
-        availableProfiles++;
+        availableProfiles.add(profile);
       }
     }
     return availableProfiles;

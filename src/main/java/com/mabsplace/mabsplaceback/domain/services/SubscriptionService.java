@@ -23,27 +23,33 @@ public class SubscriptionService {
   private final SubscriptionPlanRepository subscriptionPlanRepository;
   private final ProfileRepository profileRepository;
 
-  public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository) {
+  private final ServiceAccountService serviceAccountService;
+
+  public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService) {
     this.subscriptionRepository = subscriptionRepository;
     this.mapper = mapper;
     this.userRepository = userRepository;
     this.subscriptionPlanRepository = subscriptionPlanRepository;
     this.profileRepository = profileRepository;
+    this.serviceAccountService = serviceAccountService;
   }
 
-  public Subscription createSubscription(SubscriptionRequestDto subscription) throws ResourceNotFoundException{
+  public Subscription createSubscription(SubscriptionRequestDto subscription) throws ResourceNotFoundException {
     Subscription newSubscription = mapper.toEntity(subscription);
     newSubscription.setUser(userRepository.findById(subscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", subscription.getUserId())));
     newSubscription.setSubscriptionPlan(subscriptionPlanRepository.findById(subscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", subscription.getSubscriptionPlanId())));
 
-    Profile profile = profileRepository.findById(subscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", subscription.getProfileId()));
-    profile.setStatus(ProfileStatus.ACTIVE);
+    List<Profile> availableProfiles = serviceAccountService.getAvailableProfiles(subscription.getServiceAccountId());
 
-    profile = profileRepository.save(profile);
+    if (!availableProfiles.isEmpty()) {
+      Profile profile = profileRepository.findById(availableProfiles.getFirst().getId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", availableProfiles.getFirst().getId()));
+      profile.setStatus(ProfileStatus.ACTIVE);
+      profile = profileRepository.save(profile);
 
-    newSubscription.setProfile(profile);
-
-    return subscriptionRepository.save(newSubscription);
+      newSubscription.setProfile(profile);
+      return subscriptionRepository.save(newSubscription);
+    } else
+      throw new RuntimeException("No available profiles for this subscription");
   }
 
   public void deleteSubscription(Long id) {
@@ -64,13 +70,16 @@ public class SubscriptionService {
     updated.setUser(userRepository.findById(updatedSubscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedSubscription.getUserId())));
     updated.setSubscriptionPlan(subscriptionPlanRepository.findById(updatedSubscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getSubscriptionPlanId())));
 
-    Profile profile = profileRepository.findById(updatedSubscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
-    profile.setStatus(ProfileStatus.ACTIVE);
+    List<Profile> availableProfiles = serviceAccountService.getAvailableProfiles(updatedSubscription.getServiceAccountId());
 
-    profile = profileRepository.save(profile);
+    if (!availableProfiles.isEmpty()) {
+      Profile profile = profileRepository.findById(availableProfiles.getFirst().getId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", availableProfiles.getFirst().getId()));
+      profile.setStatus(ProfileStatus.ACTIVE);
+      profile = profileRepository.save(profile);
 
-    updated.setProfile(profile);
-
-    return subscriptionRepository.save(updated);
+      updated.setProfile(profile);
+      return subscriptionRepository.save(updated);
+    } else
+      throw new RuntimeException("No available profiles for this subscription");
   }
 }

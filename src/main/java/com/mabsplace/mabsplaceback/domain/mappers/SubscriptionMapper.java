@@ -18,6 +18,7 @@ public interface SubscriptionMapper {
   @Mapping(target = "userId", expression = "java(mapUser(subscription.getUser()))")
   @Mapping(target = "subscriptionPlanId", expression = "java(mapSubscriptionPlan(subscription.getSubscriptionPlan()))")
   @Mapping(target = "profileId", expression = "java(mapProfile(subscription.getProfile()))")
+  @Mapping(target = "serviceName", expression = "java(mapServiceName(subscription.getService().getName()))")
   SubscriptionResponseDto toDto(Subscription subscription);
 
   default Long mapUser(User user) {
@@ -25,6 +26,13 @@ public interface SubscriptionMapper {
       return null;
     }
     return user.getId();
+  }
+
+  default String mapServiceName(String serviceName) {
+    if (serviceName == null) {
+      return null;
+    }
+    return serviceName;
   }
 
   default Long mapSubscriptionPlan(SubscriptionPlan subscriptionPlan) {

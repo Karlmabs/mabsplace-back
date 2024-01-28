@@ -3,6 +3,7 @@ package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.MyService;
+import com.mabsplace.mabsplaceback.domain.entities.SubscriptionPlan;
 import com.mabsplace.mabsplaceback.domain.mappers.MyServiceMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.MyServiceRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
@@ -42,5 +43,9 @@ public class MyServiceService {
     MyService myService = myServiceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Service", "id", id));
     MyService updated = mapper.partialUpdate(updatedUser, myService);
     return myServiceRepository.save(updated);
+  }
+
+  public List<SubscriptionPlan> getSubscriptionPlansByServiceId(Long id) {
+    return myServiceRepository.getSubscriptionPlansByServiceId(id);
   }
 }

@@ -14,11 +14,14 @@ import java.util.Date;
 @Getter
 @Setter
 public class SubscriptionResponseDto implements Serializable {
+
   private Long id;
 
   private long userId;
 
   private long profileId;
+
+  private String serviceName;
 
   private Date startDate;
 

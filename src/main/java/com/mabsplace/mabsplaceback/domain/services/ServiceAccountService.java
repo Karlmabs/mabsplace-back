@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.serviceAccount.ServiceAccountRequestDto;
+import com.mabsplace.mabsplaceback.domain.entities.Profile;
 import com.mabsplace.mabsplaceback.domain.entities.ServiceAccount;
 import com.mabsplace.mabsplaceback.domain.mappers.ServiceAccountMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.MyServiceRepository;
@@ -49,8 +50,8 @@ public class ServiceAccountService {
   }
 
   // check if there are available profiles
-  public boolean checkIfAvailableProfiles(Long id) throws ResourceNotFoundException {
+  public List<Profile> getAvailableProfiles(Long id) throws ResourceNotFoundException {
     ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
-    return target.getAvailableProfiles() > 0;
+    return target.getAvailableProfiles();
   }
 }
