@@ -1,14 +1,14 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
+import com.mabsplace.mabsplaceback.domain.entities.MyService;
 import com.mabsplace.mabsplaceback.domain.entities.Profile;
+import com.mabsplace.mabsplaceback.domain.entities.ServiceAccount;
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
+import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
-import com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository;
-import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionPlanRepository;
-import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionRepository;
-import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -22,24 +22,34 @@ public class SubscriptionService {
   private final UserRepository userRepository;
   private final SubscriptionPlanRepository subscriptionPlanRepository;
   private final ProfileRepository profileRepository;
-
   private final ServiceAccountService serviceAccountService;
+  private final MyServiceService myServiceService;
+  private final MyServiceRepository myServiceRepository;
 
-  public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService) {
+  public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository) {
     this.subscriptionRepository = subscriptionRepository;
     this.mapper = mapper;
     this.userRepository = userRepository;
     this.subscriptionPlanRepository = subscriptionPlanRepository;
     this.profileRepository = profileRepository;
     this.serviceAccountService = serviceAccountService;
+    this.myServiceService = myServiceService;
+    this.myServiceRepository = myServiceRepository;
   }
+
 
   public Subscription createSubscription(SubscriptionRequestDto subscription) throws ResourceNotFoundException {
     Subscription newSubscription = mapper.toEntity(subscription);
     newSubscription.setUser(userRepository.findById(subscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", subscription.getUserId())));
     newSubscription.setSubscriptionPlan(subscriptionPlanRepository.findById(subscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", subscription.getSubscriptionPlanId())));
+    MyService service = myServiceRepository.findById(subscription.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("Service", "id", subscription.getServiceId()));
 
-    List<Profile> availableProfiles = serviceAccountService.getAvailableProfiles(subscription.getServiceAccountId());
+    newSubscription.setService(service);
+    newSubscription.setStatus(SubscriptionStatus.ACTIVE);
+
+    List<ServiceAccount> availableServiceAccounts = myServiceService.getAvailableServiceAccounts(subscription.getServiceId());
+
+    List<Profile> availableProfiles = serviceAccountService.getAvailableProfiles(availableServiceAccounts.getFirst().getId());
 
     if (!availableProfiles.isEmpty()) {
       Profile profile = profileRepository.findById(availableProfiles.getFirst().getId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", availableProfiles.getFirst().getId()));
@@ -70,7 +80,13 @@ public class SubscriptionService {
     updated.setUser(userRepository.findById(updatedSubscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedSubscription.getUserId())));
     updated.setSubscriptionPlan(subscriptionPlanRepository.findById(updatedSubscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getSubscriptionPlanId())));
 
-    List<Profile> availableProfiles = serviceAccountService.getAvailableProfiles(updatedSubscription.getServiceAccountId());
+    MyService service = myServiceRepository.findById(updatedSubscription.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("Service", "id", updatedSubscription.getServiceId()));
+
+    updated.setService(service);
+
+    List<ServiceAccount> availableServiceAccounts = myServiceService.getAvailableServiceAccounts(updatedSubscription.getServiceId());
+
+    List<Profile> availableProfiles = serviceAccountService.getAvailableProfiles(availableServiceAccounts.getFirst().getId());
 
     if (!availableProfiles.isEmpty()) {
       Profile profile = profileRepository.findById(availableProfiles.getFirst().getId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", availableProfiles.getFirst().getId()));

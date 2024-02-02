@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -29,5 +30,16 @@ public class MyService {
 
   @OneToMany(mappedBy = "myService", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<SubscriptionPlan> subscriptionPlans = new LinkedHashSet<>();
+
+  public List<ServiceAccount> getAvailableAccounts() {
+    List<ServiceAccount> availableAccounts = new ArrayList<>();
+
+    for (ServiceAccount account : serviceAccounts) {
+      if (!account.getAvailableProfiles().isEmpty()) {
+        availableAccounts.add(account);
+      }
+    }
+    return availableAccounts;
+  }
 
 }
