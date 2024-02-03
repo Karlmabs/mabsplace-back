@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan;
 
+import com.mabsplace.mabsplaceback.domain.enums.Period;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +18,8 @@ public class SubscriptionPlanRequestDto implements Serializable {
   private String name; // e.g., "Monthly", "Yearly"
 
   private BigDecimal price;
+
+  private Period period;
 
   private String description;
 
