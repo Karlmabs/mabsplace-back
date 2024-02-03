@@ -33,5 +33,7 @@ public class SubscriptionResponseDto implements Serializable {
 
   private long subscriptionPlanId;
 
+  private String subscriptionPlanName;
+
   private SubscriptionStatus status;
 }

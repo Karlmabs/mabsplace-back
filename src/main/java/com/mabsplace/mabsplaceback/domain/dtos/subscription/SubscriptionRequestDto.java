@@ -21,6 +21,4 @@ public class SubscriptionRequestDto implements Serializable {
   private long serviceId;
 
   private Date startDate;
-
-  private Date endDate;
 }
