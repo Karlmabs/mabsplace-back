@@ -1,15 +1,13 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
-import com.mabsplace.mabsplaceback.domain.entities.MyService;
-import com.mabsplace.mabsplaceback.domain.entities.Profile;
-import com.mabsplace.mabsplaceback.domain.entities.ServiceAccount;
-import com.mabsplace.mabsplaceback.domain.entities.Subscription;
+import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import com.mabsplace.mabsplaceback.utils.Utils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -41,11 +39,15 @@ public class SubscriptionService {
   public Subscription createSubscription(SubscriptionRequestDto subscription) throws ResourceNotFoundException {
     Subscription newSubscription = mapper.toEntity(subscription);
     newSubscription.setUser(userRepository.findById(subscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", subscription.getUserId())));
-    newSubscription.setSubscriptionPlan(subscriptionPlanRepository.findById(subscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", subscription.getSubscriptionPlanId())));
+
+    SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(subscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", subscription.getSubscriptionPlanId()));
+
+    newSubscription.setSubscriptionPlan(subscriptionPlan);
     MyService service = myServiceRepository.findById(subscription.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("Service", "id", subscription.getServiceId()));
 
     newSubscription.setService(service);
     newSubscription.setStatus(SubscriptionStatus.ACTIVE);
+    newSubscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscriptionPlan.getPeriod()));
 
     List<ServiceAccount> availableServiceAccounts = myServiceService.getAvailableServiceAccounts(subscription.getServiceId());
 

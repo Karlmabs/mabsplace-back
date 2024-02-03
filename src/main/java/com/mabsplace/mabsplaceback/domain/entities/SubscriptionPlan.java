@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.entities;
 
+import com.mabsplace.mabsplaceback.domain.enums.Period;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,10 +22,14 @@ public class SubscriptionPlan {
   private Long id;
 
   @Column(nullable = false)
-  private String name; // e.g., "Monthly", "Yearly"
+  private String name;
 
   @Column(nullable = false)
   private BigDecimal price;
+
+  @Column(nullable = false)
+  @Enumerated(EnumType.STRING)
+  private Period period;
 
   @ManyToOne
   @JoinColumn(name = "currency_id", referencedColumnName = "id")
