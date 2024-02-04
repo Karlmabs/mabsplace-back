@@ -7,6 +7,7 @@ import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import com.mabsplace.mabsplaceback.notifications.service.NotificationService;
 import com.mabsplace.mabsplaceback.utils.Utils;
 import org.springframework.stereotype.Service;
 
@@ -23,8 +24,9 @@ public class SubscriptionService {
   private final ServiceAccountService serviceAccountService;
   private final MyServiceService myServiceService;
   private final MyServiceRepository myServiceRepository;
+  private final NotificationService notificationService;
 
-  public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository) {
+  public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService) {
     this.subscriptionRepository = subscriptionRepository;
     this.mapper = mapper;
     this.userRepository = userRepository;
@@ -33,6 +35,7 @@ public class SubscriptionService {
     this.serviceAccountService = serviceAccountService;
     this.myServiceService = myServiceService;
     this.myServiceRepository = myServiceRepository;
+    this.notificationService = notificationService;
   }
 
 
@@ -59,6 +62,7 @@ public class SubscriptionService {
       profile = profileRepository.save(profile);
 
       newSubscription.setProfile(profile);
+      notificationService.sendNotificationToUser(newSubscription.getUser().getUsername(), "Subscription created successfully");
       return subscriptionRepository.save(newSubscription);
     } else
       throw new RuntimeException("No available profiles for this subscription");
