@@ -18,6 +18,8 @@ import java.util.Set;
 public class MyServiceResponseDto implements Serializable {
   private Long id;
   private String name;
+  private String logo;
+  private String image;
   private String description;
   private List<ServiceAccountResponseDto> serviceAccounts;
   private Set<SubscriptionPlanResponseDto> subscriptionPlans;

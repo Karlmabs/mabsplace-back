@@ -14,6 +14,8 @@ import java.io.Serializable;
 public class MyServiceRequestDto implements Serializable {
 
   private String name;
+  private String logo;
+  private String image;
   private String description;
 
 }
