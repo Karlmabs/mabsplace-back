@@ -6,6 +6,7 @@ import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.entities.VerificationToken;
 import com.mabsplace.mabsplaceback.domain.entities.Wallet;
 import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
+import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.RoleRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
@@ -72,6 +73,12 @@ public class AuthController {
   @Autowired
   UserServiceSec service;
 
+  private final UserMapper userMapper;
+
+  public AuthController(UserMapper userMapper) {
+    this.userMapper = userMapper;
+  }
+
   @PostMapping("/login")
   public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
@@ -95,7 +102,7 @@ public class AuthController {
 
     String token = tokenProvider.createToken(authentication);
 
-    return ResponseEntity.ok().body(new AuthResponse(token, authentication.getPrincipal()));
+    return ResponseEntity.ok().body(new AuthResponse(token, userMapper.toDto(loggedIn.get())));
   }
 
   @PostMapping("/signup")
