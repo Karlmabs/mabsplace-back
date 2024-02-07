@@ -1,8 +1,10 @@
 package com.mabsplace.mabsplaceback.domain.controllers;
 
+import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.services.UserService;
 import com.mabsplace.mabsplaceback.utils.PageDto;
@@ -23,9 +25,12 @@ public class UserController {
     private final UserService userService;
     private final UserMapper mapper;
 
-    public UserController(UserService userService, UserMapper mapper) {
+    private final SubscriptionMapper subscriptionMapper;
+
+    public UserController(UserService userService, UserMapper mapper, SubscriptionMapper subscriptionMapper) {
         this.userService = userService;
         this.mapper = mapper;
+      this.subscriptionMapper = subscriptionMapper;
     }
 
     /*@PostMapping
@@ -49,6 +54,12 @@ public class UserController {
 //    @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<UserResponseDto> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(mapper.toDto(userService.getById(id)));
+    }
+
+    @GetMapping("/{id}/subscriptions")
+//    @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+    public ResponseEntity<List<SubscriptionResponseDto>> getSubscriptionsByUserId(@PathVariable Long id) {
+        return ResponseEntity.ok(subscriptionMapper.toDtoList(userService.getSubscriptionsByUserId(id)));
     }
 
     @GetMapping

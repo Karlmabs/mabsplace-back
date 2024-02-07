@@ -2,8 +2,12 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
+import com.mabsplace.mabsplaceback.domain.entities.Profile;
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
+import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
+import com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionRepository;
 import com.mabsplace.mabsplaceback.domain.services.SubscriptionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +21,16 @@ public class SubscriptionController {
   
   private final SubscriptionService subscriptionService;
   private final SubscriptionMapper mapper;
-  public SubscriptionController(SubscriptionService subscriptionService, SubscriptionMapper mapper) {
+  private final SubscriptionRepository subscriptionRepository;
+  private final ProfileRepository profileRepository;
+
+  public SubscriptionController(SubscriptionService subscriptionService, SubscriptionMapper mapper,
+                                SubscriptionRepository subscriptionRepository,
+                                ProfileRepository profileRepository) {
     this.subscriptionService = subscriptionService;
     this.mapper = mapper;
+    this.subscriptionRepository = subscriptionRepository;
+    this.profileRepository = profileRepository;
   }
 
   @PostMapping
@@ -55,6 +66,10 @@ public class SubscriptionController {
   @DeleteMapping("/{id}")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
   public ResponseEntity<Void> deleteSubscription(@PathVariable Long id) {
+    Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new RuntimeException("Subscription not found"));
+    Profile profile = profileRepository.findById(subscription.getProfile().getId()).orElseThrow(() -> new RuntimeException("Profile not found"));
+    profile.setStatus(ProfileStatus.INACTIVE);
+    profileRepository.save(profile);
     subscriptionService.deleteSubscription(id);
     return new ResponseEntity<>(HttpStatus.NO_CONTENT);
   }
