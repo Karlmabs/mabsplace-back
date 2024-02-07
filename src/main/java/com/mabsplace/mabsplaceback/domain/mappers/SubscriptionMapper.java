@@ -18,6 +18,7 @@ public interface SubscriptionMapper {
   @Mapping(target = "userId", expression = "java(mapUser(subscription.getUser()))")
   @Mapping(target = "subscriptionPlanId", expression = "java(mapSubscriptionPlan(subscription.getSubscriptionPlan()))")
   @Mapping(target = "profileId", expression = "java(mapProfile(subscription.getProfile()))")
+  @Mapping(target = "serviceId", expression = "java(subscription.getService().getId())")
   @Mapping(target = "serviceName", expression = "java(mapServiceName(subscription.getService().getName()))")
   @Mapping(target = "username", expression = "java(subscription.getUser().getUsername())")
   @Mapping(target = "profileName", expression = "java(subscription.getProfile().getProfileName())")
