@@ -29,6 +29,8 @@ public class SubscriptionResponseDto implements Serializable {
 
   private String serviceName;
 
+  private String serviceLogo;
+
   private Date startDate;
 
   private Date endDate;
