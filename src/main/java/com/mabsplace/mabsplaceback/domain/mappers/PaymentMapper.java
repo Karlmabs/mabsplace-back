@@ -15,6 +15,9 @@ public interface PaymentMapper {
   @Mapping(target = "currencyId", expression = "java(mapCurrency(payment.getCurrency()))")
   @Mapping(target = "serviceId", expression = "java(payment.getService().getId())")
   @Mapping(target = "subscriptionPlanId", expression = "java(payment.getSubscriptionPlan().getId())")
+  @Mapping(target = "currencyName", expression = "java(payment.getCurrency().getName())")
+  @Mapping(target = "serviceName", expression = "java(payment.getService().getName())")
+  @Mapping(target = "subscriptionPlanName", expression = "java(payment.getSubscriptionPlan().getName())")
   PaymentResponseDto toDto(Payment payment);
 
   default Long mapUser(User user) {

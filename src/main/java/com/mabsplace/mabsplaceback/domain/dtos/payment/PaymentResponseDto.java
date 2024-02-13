@@ -22,8 +22,11 @@ public class PaymentResponseDto {
   private Date paymentDate;
 
   private long currencyId;
+  private String currencyName;
   private long serviceId;
+  private String serviceName;
   private long subscriptionPlanId;
+  private String subscriptionPlanName;
 
   private PaymentStatus status;
 
