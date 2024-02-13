@@ -64,4 +64,16 @@ public class WalletService {
     Wallet wallet = walletRepository.findByUserId(userId);
     return wallet.getBalance().compareTo(amount) >= 0;
   }
+
+  public Wallet debit(Long id, BigDecimal amount) {
+    Wallet wallet = walletRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", id));
+    wallet.setBalance(wallet.getBalance().subtract(amount));
+    return walletRepository.save(wallet);
+  }
+
+  public Wallet credit(Long id, BigDecimal amount) {
+    Wallet wallet = walletRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", id));
+    wallet.setBalance(wallet.getBalance().add(amount));
+    return walletRepository.save(wallet);
+  }
 }

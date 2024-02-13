@@ -2,10 +2,7 @@ package com.mabsplace.mabsplaceback.domain.entities;
 
 import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.Date;
 
@@ -15,6 +12,7 @@ import java.util.Date;
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 public class Subscription {
 
   @Id

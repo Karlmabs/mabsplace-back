@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -42,6 +43,27 @@ public class WalletController {
     List<Wallet> Wallets = walletService.getAllWallets();
     return new ResponseEntity<>(mapper.toDtoList(Wallets), HttpStatus.OK);
   }
+
+  @PatchMapping("/{id}/credit/{amount}")
+//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+  public ResponseEntity<WalletResponseDto> creditWallet(@PathVariable Long id, @PathVariable Double amount) {
+    Wallet updated = walletService.credit(id, BigDecimal.valueOf(amount));
+    if (updated != null) {
+      return new ResponseEntity<>(mapper.toDto(updated), HttpStatus.OK);
+    }
+    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+  }
+
+  @PatchMapping("/{id}/debit/{amount}")
+//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+  public ResponseEntity<WalletResponseDto> debitWallet(@PathVariable Long id, @PathVariable Double amount) {
+    Wallet updated = walletService.debit(id, BigDecimal.valueOf(amount));
+    if (updated != null) {
+      return new ResponseEntity<>(mapper.toDto(updated), HttpStatus.OK);
+    }
+    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+  }
+
 
   @PutMapping("/{id}")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")

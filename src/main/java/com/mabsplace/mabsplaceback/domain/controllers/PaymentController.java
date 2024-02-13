@@ -3,10 +3,12 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
+import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.PaymentMapper;
 import com.mabsplace.mabsplaceback.domain.services.PaymentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,7 +27,7 @@ public class PaymentController {
 
   @PostMapping
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-  public ResponseEntity<PaymentResponseDto> createUser(@RequestBody PaymentRequestDto paymentRequestDto) {
+  public ResponseEntity<PaymentResponseDto> createPayment(@RequestBody PaymentRequestDto paymentRequestDto) {
     Payment createdPayment = paymentService.createPayment(paymentRequestDto);
     return new ResponseEntity<>(mapper.toDto(createdPayment), HttpStatus.CREATED);
   }
@@ -51,6 +53,13 @@ public class PaymentController {
       return new ResponseEntity<>(mapper.toDto(updated), HttpStatus.OK);
     }
     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+  }
+
+  @PatchMapping("/{id}/{status}")
+  @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+  public ResponseEntity<PaymentResponseDto> updatePaymentStatus(@PathVariable("id") Long id, @PathVariable("status") String status) {
+    Payment payment = paymentService.changePaymentStatus(id, PaymentStatus.valueOf(status));
+    return new ResponseEntity<>(mapper.toDto(payment), HttpStatus.OK);
   }
 
   @DeleteMapping("/{id}")
