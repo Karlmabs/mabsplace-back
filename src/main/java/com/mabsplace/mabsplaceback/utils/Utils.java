@@ -37,4 +37,8 @@ public class Utils {
 
     return calendar.getTime();
   }
+
+  public static String generateUniquePromoCode() {
+    return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+  }
 }

@@ -10,6 +10,7 @@ import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -29,7 +30,9 @@ public class PaymentService {
   private final WalletService walletService;
   private final SubscriptionService subscriptionService;
 
-  public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, SubscriptionService subscriptionService) {
+  private final DiscountService discountService;
+
+  public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, SubscriptionService subscriptionService, DiscountService discountService) {
     this.paymentRepository = paymentRepository;
     this.paymentMapper = paymentMapper;
     this.userRepository = userRepository;
@@ -38,12 +41,17 @@ public class PaymentService {
     this.subscriptionPlanRepository = subscriptionPlanRepository;
     this.walletService = walletService;
     this.subscriptionService = subscriptionService;
+      this.discountService = discountService;
   }
 
   public Payment createPayment(PaymentRequestDto paymentRequestDto) throws RuntimeException {
     Payment entity = paymentMapper.toEntity(paymentRequestDto);
     User user = userRepository.findById(paymentRequestDto.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequestDto.getUserId()));
-    boolean checkBalance = walletService.checkBalance(user.getWallet().getId(), paymentRequestDto.getAmount());
+
+    double discount = discountService.getDiscountForUser(user.getId());
+    BigDecimal amountAfterDiscount = paymentRequestDto.getAmount().subtract(BigDecimal.valueOf(discount));
+
+    boolean checkBalance = walletService.checkBalance(user.getWallet().getId(), amountAfterDiscount);
 
     if (!checkBalance) {
       throw new RuntimeException("Insufficient funds");
@@ -53,10 +61,10 @@ public class PaymentService {
     entity.setCurrency(currencyRepository.findById(paymentRequestDto.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", paymentRequestDto.getCurrencyId())));
     entity.setService(myServiceRepository.findById(paymentRequestDto.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", paymentRequestDto.getServiceId())));
     entity.setSubscriptionPlan(subscriptionPlanRepository.findById(paymentRequestDto.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", paymentRequestDto.getSubscriptionPlanId())));
-    entity.setAmount(paymentRequestDto.getAmount());
+    entity.setAmount(amountAfterDiscount);
     entity.setStatus(PaymentStatus.PENDING);
 
-    walletService.debit(user.getWallet().getId(), paymentRequestDto.getAmount());
+    walletService.debit(user.getWallet().getId(), amountAfterDiscount);
 
     return paymentRepository.save(entity);
   }

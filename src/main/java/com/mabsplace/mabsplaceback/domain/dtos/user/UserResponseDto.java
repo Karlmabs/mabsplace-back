@@ -1,6 +1,8 @@
 package com.mabsplace.mabsplaceback.domain.dtos.user;
 
+import com.mabsplace.mabsplaceback.domain.dtos.discount.DiscountResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.role.RoleResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.wallet.WalletResponseDto;
@@ -31,5 +33,7 @@ public class UserResponseDto implements Serializable{
     private WalletResponseDto wallet;
     private List<SubscriptionResponseDto> subscriptions;
     private List<PaymentResponseDto> payments;
+    private PromoCodeResponseDto promoCode;
+    private Set<DiscountResponseDto> discounts;
 
 }

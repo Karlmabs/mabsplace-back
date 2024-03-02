@@ -10,6 +10,7 @@ import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.RoleRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
+import com.mabsplace.mabsplaceback.domain.services.PromoCodeService;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.security.events.OnRegistrationCompleteEvent;
 import com.mabsplace.mabsplaceback.security.jwt.JwtUtils;
@@ -75,8 +76,11 @@ public class AuthController {
 
   private final UserMapper userMapper;
 
-  public AuthController(UserMapper userMapper) {
+  private final PromoCodeService promoCodeService;
+
+  public AuthController(UserMapper userMapper, PromoCodeService promoCodeService) {
     this.userMapper = userMapper;
+      this.promoCodeService = promoCodeService;
   }
 
   @PostMapping("/login")
@@ -150,6 +154,11 @@ public class AuthController {
                     .currency(currencyRepository.findAll().getFirst())
                     .build()
     );
+
+    promoCodeService.generatePromoCode(result);
+
+    if(signUpRequest.getPromoCode() != null && !signUpRequest.getPromoCode().isEmpty())
+      promoCodeService.registerUserWithPromoCode(signUpRequest.getPromoCode(), result);
 
     result = userRepository.save(result);
 

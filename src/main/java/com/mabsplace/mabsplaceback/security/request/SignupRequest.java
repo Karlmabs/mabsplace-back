@@ -26,4 +26,6 @@ public class SignupRequest implements Serializable {
 
   private String lastname;
 
+  private String promoCode;
+
 }
