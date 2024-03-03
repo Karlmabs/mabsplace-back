@@ -10,8 +10,10 @@ import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.minio.MinioService;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -24,6 +26,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper mapper;
     private final MinioService minioService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     public UserService(UserRepository userRepository, UserMapper mapper, MinioService minioService) {
         this.userRepository = userRepository;
@@ -79,5 +84,15 @@ public class UserService {
 
     public List<Subscription> getSubscriptionsByUserId(Long id) {
         return userRepository.getSubscriptionsByUserId(id);
+    }
+
+    public boolean changePassword(String username, String oldPassword, String newPassword) {
+        Optional<User> optionalUser = userRepository.findByUsername(username);
+        if (optionalUser.isPresent() && passwordEncoder.matches(oldPassword, optionalUser.get().getPassword())) {
+            optionalUser.get().setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(optionalUser.get());
+            return true;
+        }
+        return false;
     }
 }

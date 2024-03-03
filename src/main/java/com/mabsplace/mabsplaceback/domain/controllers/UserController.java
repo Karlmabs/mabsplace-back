@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.user.PasswordChangeDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.User;
@@ -92,6 +93,16 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @PutMapping("/{username}/password")
+    public ResponseEntity<?> changePassword(@PathVariable String username, @RequestBody PasswordChangeDto passwordChangeDto) {
+        boolean isPasswordChanged = userService.changePassword(username, passwordChangeDto.getOldPassword(), passwordChangeDto.getNewPassword());
+        if (isPasswordChanged) {
+            return ResponseEntity.ok("Password changed successfully");
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Old password is incorrect");
+        }
     }
     
 }
