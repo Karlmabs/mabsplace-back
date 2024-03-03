@@ -77,6 +77,7 @@ public class SecurityConfig {
                             .requestMatchers("/v3/**").permitAll()
                             .requestMatchers("/api/test/**").permitAll()
                             .requestMatchers("/ws/**").permitAll()
+                            .requestMatchers("/api/images/**").permitAll()
                             .anyRequest().authenticated()
             ).oauth2Login(oauth2 ->
                     oauth2.authorizationEndpoint( auth ->
