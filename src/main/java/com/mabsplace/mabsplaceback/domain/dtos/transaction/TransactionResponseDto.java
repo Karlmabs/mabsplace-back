@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.dtos.transaction;
 
 import com.mabsplace.mabsplaceback.domain.dtos.currency.CurrencyResponseDto;
+import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,4 +31,6 @@ public class TransactionResponseDto implements Serializable {
     private CurrencyResponseDto currency;
 
     private String transactionType;
+
+    private TransactionStatus transactionStatus;
 }
