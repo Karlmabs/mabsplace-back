@@ -32,9 +32,9 @@ public class TransactionService {
     }
 
     // implement method to change a transaction status
-    public Transaction changeTransactionStatus(Long id, TransactionType transactionType) throws ResourceNotFoundException {
+    public Transaction changeTransactionStatus(Long id, TransactionStatus transactionStatus) throws ResourceNotFoundException {
         Transaction target = transactionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Transaction", "id", id));
-        target.setTransactionType(transactionType);
+        target.setTransactionStatus(transactionStatus);
         // if the transaction status is completed and the transaction type is topup, credit the receiver wallet and if the transaction status is completed and the transaction type is withdrawal, debit the sender wallet
         if (target.getTransactionStatus().equals(TransactionStatus.COMPLETED)) {
             if (target.getTransactionType().equals(TransactionType.TOPUP)) {

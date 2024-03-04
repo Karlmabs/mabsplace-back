@@ -3,6 +3,7 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Transaction;
+import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import com.mabsplace.mabsplaceback.domain.mappers.TransactionMapper;
 import com.mabsplace.mabsplaceback.domain.services.TransactionService;
@@ -32,10 +33,10 @@ public class TransactionController {
     }
 
     // implement api to change the status of a transaction
-    @PutMapping("/{id}/status/{transactionType}")
+    @PutMapping("/{id}/status/{transactionStatus}")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<TransactionResponseDto> changeTransactionStatus(@PathVariable ("id") Long id, @PathVariable ("transactionType") String transactionType) {
-        Transaction createdTransaction = transactionService.changeTransactionStatus(id, TransactionType.valueOf(transactionType));
+    public ResponseEntity<TransactionResponseDto> changeTransactionStatus(@PathVariable ("id") Long id, @PathVariable ("transactionStatus") String transactionStatus) {
+        Transaction createdTransaction = transactionService.changeTransactionStatus(id, TransactionStatus.valueOf(transactionStatus));
         return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
     }
 
