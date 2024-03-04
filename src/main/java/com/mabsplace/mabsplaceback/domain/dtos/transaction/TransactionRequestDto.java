@@ -19,6 +19,12 @@ public class TransactionRequestDto implements Serializable {
   private long receiverWalletId;
 
   private BigDecimal amount;
+
   private Date transactionDate;
+
+  private String senderName;
+
+  private String senderPhoneNumber;
+
   private long currencyId;
 }

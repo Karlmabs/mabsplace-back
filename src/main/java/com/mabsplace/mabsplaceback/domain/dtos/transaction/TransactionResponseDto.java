@@ -15,13 +15,19 @@ import java.util.Date;
 @Getter
 @Setter
 public class TransactionResponseDto implements Serializable {
-  private Long id;
+    private Long id;
 
-  private long senderWalletId;
+    private long senderWalletId;
 
-  private long receiverWalletId;
+    private long receiverWalletId;
 
-  private BigDecimal amount;
-  private Date transactionDate;
-  private CurrencyResponseDto currency;
+    private String senderName;
+
+    private String senderPhoneNumber;
+
+    private BigDecimal amount;
+    private Date transactionDate;
+    private CurrencyResponseDto currency;
+
+    private String transactionType;
 }
