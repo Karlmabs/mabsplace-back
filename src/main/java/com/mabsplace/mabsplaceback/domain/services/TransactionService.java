@@ -53,6 +53,7 @@ public class TransactionService {
         newTransaction.setCurrency(currencyRepository.findById(transaction.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", transaction.getCurrencyId())));
         newTransaction.setTransactionType(TransactionType.TOPUP);
         newTransaction.setTransactionDate(new Date());
+        newTransaction.setTransactionStatus(TransactionStatus.PENDING);
         return transactionRepository.save(newTransaction);
     }
 
@@ -63,6 +64,7 @@ public class TransactionService {
         newTransaction.setCurrency(currencyRepository.findById(transaction.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", transaction.getCurrencyId())));
         newTransaction.setTransactionType(TransactionType.WITHDRAWAL);
         newTransaction.setTransactionDate(new Date());
+        newTransaction.setTransactionStatus(TransactionStatus.PENDING);
         return transactionRepository.save(newTransaction);
     }
 
