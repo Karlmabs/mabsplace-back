@@ -15,7 +15,7 @@ import java.util.List;
 
 @Configuration
 @SecurityScheme(type = SecuritySchemeType.HTTP,
-  name = "basicAuth",
+  name = "bearerAuth",
   scheme = "bearer", bearerFormat = "JWT")
 public class OpenAPIConfig {
 
