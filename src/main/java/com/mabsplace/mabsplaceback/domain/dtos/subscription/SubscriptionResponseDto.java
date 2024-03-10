@@ -15,29 +15,35 @@ import java.util.Date;
 @Setter
 public class SubscriptionResponseDto implements Serializable {
 
-  private Long id;
+    private Long id;
 
-  private long userId;
+    private long userId;
 
-  private String username;
+    private String username;
 
-  private long profileId;
+    private long profileId;
 
-  private String profileName;
+    private String profilePin;
 
-  private long serviceId;
+    private String login;
 
-  private String serviceName;
+    private String password;
 
-  private String serviceLogo;
+    private String profileName;
 
-  private Date startDate;
+    private long serviceId;
 
-  private Date endDate;
+    private String serviceName;
 
-  private long subscriptionPlanId;
+    private String serviceLogo;
 
-  private String subscriptionPlanName;
+    private Date startDate;
 
-  private SubscriptionStatus status;
+    private Date endDate;
+
+    private long subscriptionPlanId;
+
+    private String subscriptionPlanName;
+
+    private SubscriptionStatus status;
 }
