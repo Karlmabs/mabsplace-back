@@ -1,7 +1,9 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.coolpay.PaymentRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.Transaction;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import com.mabsplace.mabsplaceback.domain.mappers.TransactionMapper;
@@ -9,10 +11,19 @@ import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.TransactionRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.WalletRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 public class TransactionService {
@@ -23,12 +34,22 @@ public class TransactionService {
     private final WalletService walletService;
     private final CurrencyRepository currencyRepository;
 
-    public TransactionService(TransactionRepository transactionRepository, TransactionMapper mapper, WalletRepository walletRepository, WalletService walletService, CurrencyRepository currencyRepository) {
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    private final CoolPayService coolPayService;
+
+    private static final Logger logger = LoggerFactory.getLogger(TransactionService.class);
+
+    @Value("${mabsplace.app.privateKey}")
+    private String privateKey;
+
+    public TransactionService(TransactionRepository transactionRepository, TransactionMapper mapper, WalletRepository walletRepository, WalletService walletService, CurrencyRepository currencyRepository, CoolPayService coolPayService) {
         this.transactionRepository = transactionRepository;
         this.mapper = mapper;
         this.walletRepository = walletRepository;
         this.walletService = walletService;
         this.currencyRepository = currencyRepository;
+        this.coolPayService = coolPayService;
     }
 
     // implement method to change a transaction status
@@ -54,7 +75,74 @@ public class TransactionService {
         newTransaction.setTransactionType(TransactionType.TOPUP);
         newTransaction.setTransactionDate(new Date());
         newTransaction.setTransactionStatus(TransactionStatus.PENDING);
-        return transactionRepository.save(newTransaction);
+
+        Transaction save = transactionRepository.save(newTransaction);
+
+        User user = save.getReceiverWallet().getUser();
+
+        PaymentRequest build = PaymentRequest.builder()
+                .transaction_amount(save.getAmount().doubleValue())
+                .transaction_currency("XAF")
+                .transaction_reason("Payment for order")
+                .app_transaction_ref(save.getTransactionRef())
+                .customer_name(user.getFirstname() + " " + user.getLastname())
+                .customer_email(user.getEmail())
+                .customer_phone_number(user.getPhonenumber())
+                .build();
+
+        executorService.submit(() -> coolPayService.makePayment(build));
+
+        return save;
+    }
+
+    public String calculateMD5Signature(Map<String, Object> data) {
+        logger.info("Calculating MD5 signature for data {}", data);
+        try {
+            // Construct the string as per the given concatenation rule
+            String dataString = String.valueOf(data.get("transaction_ref"))
+                    + data.get("transaction_type")
+                    + BigDecimal.valueOf(Double.parseDouble(data.get("transaction_amount").toString())).toPlainString()
+                    + data.get("transaction_currency")
+                    + data.get("transaction_operator")
+                    + privateKey;
+
+            logger.info("Data string for signature calculation: {}", dataString);
+
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hashInBytes = md.digest(dataString.getBytes());
+
+            logger.info("MD5 hash for data string: {}", hashInBytes);
+
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashInBytes) {
+                sb.append(String.format("%02x", b));
+            }
+
+            logger.info("MD5 signature for data: {}", sb);
+
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("MD5 cryptographic algorithm is not available.", e);
+            throw new RuntimeException("MD5 cryptographic algorithm is not available.", e);
+        }
+    }
+
+    public void updateTransactionStatus(String transactionRef, String status) {
+        logger.info("Updating payment status for transaction ref {}", transactionRef);
+
+        Transaction transaction = transactionRepository.findByTransactionRef(transactionRef).orElseThrow(() -> new RuntimeException("Payment not found."));
+
+        logger.info("Transaction status is {}", status);
+
+        if (status.equals("SUCCESS") && transaction.getTransactionType().equals(TransactionType.TOPUP)) {
+            walletService.credit(transaction.getReceiverWallet().getId(), transaction.getAmount());
+            transaction.setTransactionStatus(TransactionStatus.COMPLETED);
+        } else
+            transaction.setTransactionStatus(TransactionStatus.CANCELLED);
+
+        logger.info("Transaction status updated to {}", transaction.getTransactionStatus());
+
+        transactionRepository.save(transaction);
     }
 
     public Transaction withdrawFromWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {

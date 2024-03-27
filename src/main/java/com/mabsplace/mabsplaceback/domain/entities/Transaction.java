@@ -31,6 +31,8 @@ public class Transaction {
   @JoinColumn(name = "receiver_wallet_id", referencedColumnName = "id")
   private Wallet receiverWallet;
 
+  private String transactionRef;
+
   private String senderName;
 
   private String senderPhoneNumber;

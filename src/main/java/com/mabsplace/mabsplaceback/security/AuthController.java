@@ -124,6 +124,7 @@ public class AuthController {
             .email(signUpRequest.getEmail())
             .password(encoder.encode(signUpRequest.getPassword()))
             .phonenumber(signUpRequest.getPhonenumber())
+            .emailVerified(true)
             .firstname(signUpRequest.getFirstname())
             .lastname(signUpRequest.getLastname())
             .build();

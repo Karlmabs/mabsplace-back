@@ -7,11 +7,15 @@ import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import com.mabsplace.mabsplaceback.domain.mappers.TransactionMapper;
 import com.mabsplace.mabsplaceback.domain.services.TransactionService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -19,6 +23,8 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final TransactionMapper mapper;
+
+    private static final Logger logger = LoggerFactory.getLogger(TransactionController.class);
 
     public TransactionController(TransactionService transactionService, TransactionMapper mapper) {
         this.transactionService = transactionService;
@@ -32,10 +38,36 @@ public class TransactionController {
         return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
     }
 
+    @PostMapping("/transaction-callback")
+    public ResponseEntity<String> handlePaymentCallback(HttpServletRequest request, @RequestBody Map<String, Object> callbackData) {
+        logger.info("Handling payment callback with data: {}", callbackData);
+
+        /*if (!request.getRemoteAddr().equals(MY_COOLPAY_IP)) {
+            logger.error("Received callback from unknown IP: {}", request.getRemoteAddr());
+            return ResponseEntity.badRequest().body("KO");
+        }*/
+
+        logger.info("Received callback from CoolPay");
+        /*String expectedSignature = callbackData.get("signature").toString();
+        String calculatedSignature = paymentService.calculateMD5Signature(callbackData);
+
+        if (!expectedSignature.equals(calculatedSignature)) {
+            logger.error("Received callback with invalid signature");
+            return ResponseEntity.badRequest().body("KO");
+        }*/
+
+        logger.info("Updating payment status for transaction ref: {}", callbackData.get("app_transaction_ref"));
+        transactionService.updateTransactionStatus((String) callbackData.get("app_transaction_ref"), (String) callbackData.get("transaction_status"));
+
+        logger.info("Payment status updated successfully");
+
+        return ResponseEntity.ok("OK");
+    }
+
     // implement api to change the status of a transaction
     @PutMapping("/{id}/status/{transactionStatus}")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<TransactionResponseDto> changeTransactionStatus(@PathVariable ("id") Long id, @PathVariable ("transactionStatus") String transactionStatus) {
+    public ResponseEntity<TransactionResponseDto> changeTransactionStatus(@PathVariable("id") Long id, @PathVariable("transactionStatus") String transactionStatus) {
         Transaction createdTransaction = transactionService.changeTransactionStatus(id, TransactionStatus.valueOf(transactionStatus));
         return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
     }

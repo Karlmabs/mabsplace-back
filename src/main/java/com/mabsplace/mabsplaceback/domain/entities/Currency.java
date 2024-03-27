@@ -21,5 +21,4 @@ public class Currency {
   private Double exchangeRate;
   private String symbol;
 
-  // Getters and Setters
 }

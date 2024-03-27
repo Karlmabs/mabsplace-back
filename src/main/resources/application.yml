@@ -6,6 +6,8 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+#  liquibase:
+#    change-log: classpath:db/changelog/db.changelog-master.yaml
 
   security:
     oauth2:
@@ -43,6 +45,8 @@ mabsplace:
     jwtCookieName: mabsplace
     jwtSecret: ======================mabsplace=Spring===========================
     jwtExpirationMs: 86400000
+    baseUrl: https://my-coolpay.com/api/1ab431cc-4586-4521-9e02-a53b24f1ecdb/
+    privateKey: QYVLTmSoDoOsAIi4NZkah6QZXi9PUJkXi0pMc6QeLyRd0rnokyB5p1XhZs8talt8
   openapi:
     dev-url: http://localhost:8080
     prod-url: http://mabsplace.com:8080

@@ -2,10 +2,12 @@ package com.mabsplace.mabsplaceback.swagger;
 
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Contact;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -49,6 +51,17 @@ public class OpenAPIConfig {
             .description("This API exposes endpoints of MabsPlace.").termsOfService("https://www.mabsplace.com/terms")
             .license(mitLicense);
 
-    return new OpenAPI().info(info).servers(List.of(devServer, prodServer));
+    io.swagger.v3.oas.models.security.SecurityScheme securityScheme = new io.swagger.v3.oas.models.security.SecurityScheme()
+            .type(io.swagger.v3.oas.models.security.SecurityScheme.Type.HTTP)
+            .scheme("bearer")
+            .bearerFormat("JWT")
+            .in(io.swagger.v3.oas.models.security.SecurityScheme.In.HEADER)
+            .name("Authorization");
+
+    return new OpenAPI()
+            .info(info)
+            .servers(List.of(devServer, prodServer))
+            .components(new Components().addSecuritySchemes("bearerAuth", securityScheme))
+            .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
   }
 }

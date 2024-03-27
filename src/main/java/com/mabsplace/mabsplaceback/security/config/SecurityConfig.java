@@ -78,6 +78,7 @@ public class SecurityConfig {
                             .requestMatchers("/api/test/**").permitAll()
                             .requestMatchers("/ws/**").permitAll()
                             .requestMatchers("/api/images/**").permitAll()
+                            .requestMatchers("/api/transactions/transaction-callback").permitAll()
                             .anyRequest().authenticated()
             ).oauth2Login(oauth2 ->
                     oauth2.authorizationEndpoint( auth ->
