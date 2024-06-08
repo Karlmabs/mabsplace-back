@@ -9,6 +9,18 @@ spring:
 #  liquibase:
 #    change-log: classpath:db/changelog/db.changelog-master.yaml
 
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: maboukarl2@gmail.com
+    password: pwdp yksa qees lbuf
+    properties:
+      mail:
+        smtp:
+          auth: true
+  #          starttls:
+  #            enable: true
+
   security:
     oauth2:
       client:

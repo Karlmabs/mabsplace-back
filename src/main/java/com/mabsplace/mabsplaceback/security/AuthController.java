@@ -10,6 +10,7 @@ import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.RoleRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
+import com.mabsplace.mabsplaceback.domain.services.EmailVerificationService;
 import com.mabsplace.mabsplaceback.domain.services.PromoCodeService;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.security.events.OnRegistrationCompleteEvent;
@@ -17,14 +18,17 @@ import com.mabsplace.mabsplaceback.security.jwt.JwtUtils;
 import com.mabsplace.mabsplaceback.security.request.AuthResponse;
 import com.mabsplace.mabsplaceback.security.request.LoginRequest;
 import com.mabsplace.mabsplaceback.security.request.SignupRequest;
+import com.mabsplace.mabsplaceback.security.request.VerifyCodeRequest;
 import com.mabsplace.mabsplaceback.security.response.MessageResponse;
 import com.mabsplace.mabsplaceback.security.services.UserServiceSec;
+import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -69,6 +73,9 @@ public class AuthController {
   HttpServletRequest request;
 
   @Autowired
+  private EmailVerificationService emailVerificationService;
+
+  @Autowired
   ApplicationEventPublisher eventPublisher;
 
   @Autowired
@@ -84,7 +91,7 @@ public class AuthController {
   }
 
   @PostMapping("/login")
-  public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+  public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) throws MessagingException {
 
 //    Optional<User> userOptional = userRepository.findByPhoneNumber(loginRequest.getPhoneNumber());
     userRepository.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new RuntimeException("User doesn't exist !!!!"));
@@ -102,11 +109,26 @@ public class AuthController {
       throw new RuntimeException("UserEmailIsNotVerified");
     }
 
+    emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
+
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
     String token = tokenProvider.createToken(authentication);
 
     return ResponseEntity.ok().body(new AuthResponse(token, userMapper.toDto(loggedIn.get())));
+  }
+
+  @PostMapping("/verify")
+  public ResponseEntity<?> verifyCode(@RequestBody VerifyCodeRequest verifyCodeRequest) {
+    String userEmail = verifyCodeRequest.getEmail();
+    String userEnteredCode = verifyCodeRequest.getCode();
+
+    if (emailVerificationService.verifyCode(userEmail, userEnteredCode)) {
+      return ResponseEntity.ok().body(new MessageResponse("User verified successfully."));
+
+    } else {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Invalid verification code."));
+    }
   }
 
   @PostMapping("/signup")
