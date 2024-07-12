@@ -92,7 +92,7 @@ public class SubscriptionService {
         updated.setStatus(updatedSubscription.getStatus());
         updated.setEndDate(Utils.addPeriod(updatedSubscription.getStartDate(), updated.getSubscriptionPlan().getPeriod()));
 
-        if (updatedSubscription.getProfileId() != 0L) {
+        if (updatedSubscription.getProfileId() != 0L && target.getProfile().getId() != updatedSubscription.getProfileId()){
             Profile profile = profileRepository.findById(updatedSubscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
 
             // Check if the profile is already active
