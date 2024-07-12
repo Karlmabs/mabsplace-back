@@ -16,6 +16,7 @@ public interface ProfileMapper {
 
   @Mapping(target = "subscriptionId", expression = "java(mapSubscription(profile.getSubscription()))")
   @Mapping(target = "serviceAccountId", expression = "java(mapServiceAccount(profile.getServiceAccount()))")
+  @Mapping(target = "account", expression = "java(mapServiceAccountName(profile.getServiceAccount()))")
   ProfileResponseDto toDto(Profile profile);
 
   default Long mapSubscription(Subscription subscription) {
@@ -30,6 +31,13 @@ public interface ProfileMapper {
       return null;
     }
     return serviceAccount.getId();
+  }
+
+  default String mapServiceAccountName(ServiceAccount serviceAccount) {
+    if (serviceAccount == null) {
+      return null;
+    }
+    return serviceAccount.getLogin();
   }
 
 

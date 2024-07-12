@@ -15,6 +15,7 @@ import java.io.Serializable;
 public class ProfileResponseDto implements Serializable {
   private Long id;
   private long serviceAccountId;
+  private String account;
   private long subscriptionId;
   private ProfileStatus status;
   private String pin;
