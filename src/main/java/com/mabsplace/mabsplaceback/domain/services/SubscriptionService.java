@@ -44,16 +44,21 @@ public class SubscriptionService {
         newSubscription.setUser(userRepository.findById(subscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", subscription.getUserId())));
 
         SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(subscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", subscription.getSubscriptionPlanId()));
-
         newSubscription.setSubscriptionPlan(subscriptionPlan);
-        MyService service = myServiceRepository.findById(subscription.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("Service", "id", subscription.getServiceId()));
 
+        MyService service = myServiceRepository.findById(subscription.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("Service", "id", subscription.getServiceId()));
         newSubscription.setService(service);
         newSubscription.setStatus(subscription.getStatus());
         newSubscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscriptionPlan.getPeriod()));
 
         if (subscription.getProfileId() != 0L) {
             Profile profile = profileRepository.findById(subscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", subscription.getProfileId()));
+
+            // Check if the profile is already active
+            if (profile.getStatus() == ProfileStatus.ACTIVE) {
+                throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
+            }
+
             profile.setStatus(ProfileStatus.ACTIVE);
             profile = profileRepository.save(profile);
             newSubscription.setProfile(profile);
@@ -61,7 +66,6 @@ public class SubscriptionService {
 
         notificationService.sendNotificationToUser(newSubscription.getUser().getUsername(), "Subscription created successfully");
         return subscriptionRepository.save(newSubscription);
-
     }
 
     public void deleteSubscription(Long id) {
@@ -90,6 +94,12 @@ public class SubscriptionService {
 
         if (updatedSubscription.getProfileId() != 0L) {
             Profile profile = profileRepository.findById(updatedSubscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
+
+            // Check if the profile is already active
+            if (profile.getStatus() == ProfileStatus.ACTIVE) {
+                throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
+            }
+
             profile.setStatus(ProfileStatus.ACTIVE);
             profile = profileRepository.save(profile);
             updated.setProfile(profile);
