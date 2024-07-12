@@ -41,6 +41,10 @@ public class SubscriptionPlanService {
     return subscriptionPlanRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", id));
   }
 
+  public List<SubscriptionPlan> getSubscriptionPlansByMyServiceId(Long myServiceId) {
+    return subscriptionPlanRepository.findByMyServiceId(myServiceId);
+  }
+
   public void deleteSubscriptionPlan(Long id) {
     subscriptionPlanRepository.deleteById(id);
   }
