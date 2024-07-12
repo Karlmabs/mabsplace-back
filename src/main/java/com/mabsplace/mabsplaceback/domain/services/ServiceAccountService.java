@@ -14,44 +14,48 @@ import java.util.List;
 @Service
 public class ServiceAccountService {
 
-  private final ServiceAccountRepository serviceAccountRepository;
-  private final ServiceAccountMapper mapper;
-  private final MyServiceRepository myServiceRepository;
+    private final ServiceAccountRepository serviceAccountRepository;
+    private final ServiceAccountMapper mapper;
+    private final MyServiceRepository myServiceRepository;
 
-  public ServiceAccountService(ServiceAccountRepository serviceAccountRepository, ServiceAccountMapper mapper, MyServiceRepository myServiceRepository) {
-    this.serviceAccountRepository = serviceAccountRepository;
-    this.mapper = mapper;
-    this.myServiceRepository = myServiceRepository;
-  }
+    public ServiceAccountService(ServiceAccountRepository serviceAccountRepository, ServiceAccountMapper mapper, MyServiceRepository myServiceRepository) {
+        this.serviceAccountRepository = serviceAccountRepository;
+        this.mapper = mapper;
+        this.myServiceRepository = myServiceRepository;
+    }
 
-  public ServiceAccount createServiceAccount(ServiceAccountRequestDto serviceAccount) throws ResourceNotFoundException{
-    ServiceAccount newServiceAccount = mapper.toEntity(serviceAccount);
-    newServiceAccount.setMyService(myServiceRepository.findById(serviceAccount.getMyServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", serviceAccount.getMyServiceId())));
-    return serviceAccountRepository.save(newServiceAccount);
-  }
+    public ServiceAccount createServiceAccount(ServiceAccountRequestDto serviceAccount) throws ResourceNotFoundException {
+        ServiceAccount newServiceAccount = mapper.toEntity(serviceAccount);
+        newServiceAccount.setMyService(myServiceRepository.findById(serviceAccount.getMyServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", serviceAccount.getMyServiceId())));
+        return serviceAccountRepository.save(newServiceAccount);
+    }
 
-  public void deleteServiceAccount(Long id) {
-    serviceAccountRepository.deleteById(id);
-  }
+    public void deleteServiceAccount(Long id) {
+        serviceAccountRepository.deleteById(id);
+    }
 
-  public ServiceAccount getServiceAccountById(Long id) throws ResourceNotFoundException {
-    return serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
-  }
+    public ServiceAccount getServiceAccountById(Long id) throws ResourceNotFoundException {
+        return serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
+    }
 
-  public List<ServiceAccount> getAllServiceAccounts() {
-    return serviceAccountRepository.findAll();
-  }
+    public List<ServiceAccount> getAllServiceAccounts() {
+        return serviceAccountRepository.findAll();
+    }
 
-  public ServiceAccount updateServiceAccount(Long id, ServiceAccountRequestDto updatedServiceAccount) throws ResourceNotFoundException{
-    ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
-    ServiceAccount updated = mapper.partialUpdate(updatedServiceAccount, target);
-    updated.setMyService(myServiceRepository.findById(updatedServiceAccount.getMyServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", updatedServiceAccount.getMyServiceId())));
-    return serviceAccountRepository.save(updated);
-  }
+    public List<ServiceAccount> getServiceAccountsByMyServiceId(Long myServiceId) throws ResourceNotFoundException {
+        return serviceAccountRepository.findByMyServiceId(myServiceId);
+    }
 
-  // check if there are available profiles
-  public List<Profile> getAvailableProfiles(Long id) throws ResourceNotFoundException {
-    ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
-    return target.getAvailableProfiles();
-  }
+    public ServiceAccount updateServiceAccount(Long id, ServiceAccountRequestDto updatedServiceAccount) throws ResourceNotFoundException {
+        ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
+        ServiceAccount updated = mapper.partialUpdate(updatedServiceAccount, target);
+        updated.setMyService(myServiceRepository.findById(updatedServiceAccount.getMyServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", updatedServiceAccount.getMyServiceId())));
+        return serviceAccountRepository.save(updated);
+    }
+
+    // check if there are available profiles
+    public List<Profile> getAvailableProfiles(Long id) throws ResourceNotFoundException {
+        ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
+        return target.getAvailableProfiles();
+    }
 }

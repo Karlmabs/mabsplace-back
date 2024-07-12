@@ -57,4 +57,9 @@ public class ProfileService {
     }
     return profileRepository.save(updated);
   }
+
+public List<Profile> getProfilesByServiceAccountId(Long serviceAccountId) {
+    return profileRepository.findByServiceAccountId(serviceAccountId);
+  }
+
 }

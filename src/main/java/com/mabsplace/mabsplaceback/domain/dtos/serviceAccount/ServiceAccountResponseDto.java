@@ -19,5 +19,6 @@ public class ServiceAccountResponseDto implements Serializable {
   private String password;
   private String accountDetails;
   private long myServiceId;
+  private String serviceName;
   private List<ProfileResponseDto> profiles;
 }
