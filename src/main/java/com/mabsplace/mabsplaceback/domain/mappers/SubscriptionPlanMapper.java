@@ -14,6 +14,7 @@ public interface SubscriptionPlanMapper {
   SubscriptionPlan toEntity(SubscriptionPlanRequestDto subscriptionPlanRequestDto);
 
   @Mapping(target = "myServiceId", expression = "java(mapService(subscriptionPlan.getMyService()))")
+  @Mapping(target = "serviceName", expression = "java(subscriptionPlan.getMyService().getName())")
   SubscriptionPlanResponseDto toDto(SubscriptionPlan subscriptionPlan);
 
   default Long mapService(MyService myService) {

@@ -27,5 +27,7 @@ public class SubscriptionPlanResponseDto implements Serializable {
 
   private long myServiceId;
 
+  private String serviceName;
+
   private CurrencyResponseDto currency;
 }
