@@ -24,9 +24,9 @@ public interface SubscriptionMapper {
   @Mapping(target = "username", expression = "java(subscription.getUser().getUsername())")
   @Mapping(target = "profileName", expression = "java(mapProfileName(subscription.getProfile()))")
   @Mapping(target = "subscriptionPlanName", expression = "java(subscription.getSubscriptionPlan().getName())")
-  @Mapping(target = "login", expression = "java(subscription.getProfile().getServiceAccount().getLogin())")
-  @Mapping(target = "password", expression = "java(subscription.getProfile().getServiceAccount().getPassword())")
-  @Mapping(target = "profilePin", expression = "java(subscription.getProfile().getPin())")
+  @Mapping(target = "login", expression = "java(mapAccountLogin(subscription.getProfile()))")
+  @Mapping(target = "password", expression = "java(mapAccountPassword(subscription.getProfile())")
+  @Mapping(target = "profilePin", expression = "java(mapProfilePin(subscription.getProfile())")
   SubscriptionResponseDto toDto(Subscription subscription);
 
   default Long mapUser(User user) {
@@ -45,6 +45,27 @@ public interface SubscriptionMapper {
       return "";
     }
     return profile.getProfileName();
+  }
+
+  default String mapAccountLogin(Profile profile) {
+    if (profile == null) {
+      return "";
+    }
+    return profile.getServiceAccount().getLogin();
+  }
+
+  default String mapAccountPassword(Profile profile) {
+    if (profile == null) {
+      return "";
+    }
+    return profile.getServiceAccount().getPassword();
+  }
+
+  default String mapProfilePin(Profile profile) {
+    if (profile == null) {
+      return "";
+    }
+    return profile.getPin();
   }
 
   default Long mapSubscriptionPlan(SubscriptionPlan subscriptionPlan) {
