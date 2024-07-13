@@ -19,7 +19,7 @@ public interface ServiceAccountMapper {
 
     default Long mapService(MyService myService) {
         if (myService == null) {
-            return null;
+            return 0L;
         }
         return myService.getId();
     }

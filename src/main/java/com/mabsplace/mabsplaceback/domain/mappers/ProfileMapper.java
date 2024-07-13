@@ -28,14 +28,14 @@ public interface ProfileMapper {
 
   default Long mapServiceAccount(ServiceAccount serviceAccount) {
     if (serviceAccount == null) {
-      return null;
+      return 0L;
     }
     return serviceAccount.getId();
   }
 
   default String mapServiceAccountName(ServiceAccount serviceAccount) {
     if (serviceAccount == null) {
-      return null;
+      return "";
     }
     return serviceAccount.getLogin();
   }

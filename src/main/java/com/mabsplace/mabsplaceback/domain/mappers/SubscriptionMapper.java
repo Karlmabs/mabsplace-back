@@ -31,7 +31,7 @@ public interface SubscriptionMapper {
 
   default Long mapUser(User user) {
     if (user == null) {
-      return null;
+      return 0L;
     }
     return user.getId();
   }
@@ -42,14 +42,14 @@ public interface SubscriptionMapper {
 
   default Long mapSubscriptionPlan(SubscriptionPlan subscriptionPlan) {
     if (subscriptionPlan == null) {
-      return null;
+      return 0L;
     }
     return subscriptionPlan.getId();
   }
 
   default Long mapProfile(Profile profile) {
     if (profile == null) {
-      return null;
+      return 0L;
     }
     return profile.getId();
   }

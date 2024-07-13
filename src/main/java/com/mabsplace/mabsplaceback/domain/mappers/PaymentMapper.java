@@ -22,28 +22,28 @@ public interface PaymentMapper {
 
   default Long mapUser(User user) {
     if (user == null) {
-      return null;
+      return 0L;
     }
     return user.getId();
   }
 
   default Long mapCurrency(Currency currency) {
     if (currency == null) {
-      return null;
+      return 0L;
     }
     return currency.getId();
   }
 
   default Long mapService(MyService myService) {
     if (myService == null) {
-      return null;
+      return 0L;
     }
     return myService.getId();
   }
 
   default Long mapSubscriptionPlan(SubscriptionPlan subscriptionPlan) {
     if (subscriptionPlan == null) {
-      return null;
+      return 0L;
     }
     return subscriptionPlan.getId();
   }

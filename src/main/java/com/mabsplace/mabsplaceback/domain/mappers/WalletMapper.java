@@ -18,7 +18,7 @@ public interface WalletMapper {
 
   default Long mapUser(User user) {
     if (user == null) {
-      return null;
+      return 0L;
     }
     return user.getId();
   }

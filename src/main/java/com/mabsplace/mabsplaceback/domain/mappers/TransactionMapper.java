@@ -19,14 +19,14 @@ public interface TransactionMapper {
 
   default Long mapReceiverWallet(Wallet wallet) {
     if (wallet == null) {
-      return null;
+      return 0L;
     }
     return wallet.getId();
   }
 
   default Long mapSenderWallet(Wallet wallet) {
     if (wallet == null) {
-      return null;
+      return 0L;
     }
     return wallet.getId();
   }
