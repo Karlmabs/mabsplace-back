@@ -22,7 +22,7 @@ public interface SubscriptionMapper {
   @Mapping(target = "serviceName", expression = "java(mapServiceName(subscription.getService().getName()))")
   @Mapping(target = "serviceLogo", expression = "java(mapServiceName(subscription.getService().getLogo()))")
   @Mapping(target = "username", expression = "java(subscription.getUser().getUsername())")
-  @Mapping(target = "profileName", expression = "java(subscription.getProfile().getProfileName())")
+  @Mapping(target = "profileName", expression = "java(mapProfileName(subscription.getProfile()))")
   @Mapping(target = "subscriptionPlanName", expression = "java(subscription.getSubscriptionPlan().getName())")
   @Mapping(target = "login", expression = "java(subscription.getProfile().getServiceAccount().getLogin())")
   @Mapping(target = "password", expression = "java(subscription.getProfile().getServiceAccount().getPassword())")
@@ -38,6 +38,13 @@ public interface SubscriptionMapper {
 
   default String mapServiceName(String serviceName) {
       return serviceName;
+  }
+
+  default String mapProfileName(Profile profile) {
+    if (profile == null) {
+      return "";
+    }
+    return profile.getProfileName();
   }
 
   default Long mapSubscriptionPlan(SubscriptionPlan subscriptionPlan) {
