@@ -25,8 +25,8 @@ public interface SubscriptionMapper {
   @Mapping(target = "profileName", expression = "java(mapProfileName(subscription.getProfile()))")
   @Mapping(target = "subscriptionPlanName", expression = "java(subscription.getSubscriptionPlan().getName())")
   @Mapping(target = "login", expression = "java(mapAccountLogin(subscription.getProfile()))")
-  @Mapping(target = "password", expression = "java(mapAccountPassword(subscription.getProfile())")
-  @Mapping(target = "profilePin", expression = "java(mapProfilePin(subscription.getProfile())")
+  @Mapping(target = "password", expression = "java(mapAccountPassword(subscription.getProfile()))")
+  @Mapping(target = "profilePin", expression = "java(mapProfilePin(subscription.getProfile()))")
   SubscriptionResponseDto toDto(Subscription subscription);
 
   default Long mapUser(User user) {
