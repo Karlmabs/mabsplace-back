@@ -129,7 +129,7 @@ public class TransactionService {
         }
     }
 
-    public void updateTransactionStatus(String transactionRef, String status) {
+    public Transaction updateTransactionStatus(String transactionRef, String status) {
         logger.info("Updating payment status for transaction ref {}", transactionRef);
 
         Transaction transaction = transactionRepository.findByTransactionRef(transactionRef).orElseThrow(() -> new RuntimeException("Payment not found."));
@@ -144,7 +144,7 @@ public class TransactionService {
 
         logger.info("Transaction status updated to {}", transaction.getTransactionStatus());
 
-        transactionRepository.save(transaction);
+        return transactionRepository.save(transaction);
     }
 
     public Object withdrawFromWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {

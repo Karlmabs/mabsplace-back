@@ -66,10 +66,10 @@ public class TransactionController {
     }
 
     // implement api to change the status of a transaction
-    @PutMapping("/{id}/status/{transactionStatus}")
+    @PutMapping("/{transactionRef}/status/{transactionStatus}")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<TransactionResponseDto> changeTransactionStatus(@PathVariable("id") Long id, @PathVariable("transactionStatus") String transactionStatus) {
-        Transaction createdTransaction = transactionService.changeTransactionStatus(id, TransactionStatus.valueOf(transactionStatus));
+    public ResponseEntity<TransactionResponseDto> changeTransactionStatus(@PathVariable("transactionRef") String transactionRef, @PathVariable("transactionStatus") String transactionStatus) {
+        Transaction createdTransaction = transactionService.updateTransactionStatus(transactionRef, transactionStatus);
         return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
     }
 
