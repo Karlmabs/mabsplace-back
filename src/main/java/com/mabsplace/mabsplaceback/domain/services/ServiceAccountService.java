@@ -10,6 +10,7 @@ import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ServiceAccountService {
@@ -25,6 +26,12 @@ public class ServiceAccountService {
     }
 
     public ServiceAccount createServiceAccount(ServiceAccountRequestDto serviceAccount) throws ResourceNotFoundException {
+        List<ServiceAccount> existingServiceAccounts = serviceAccountRepository.findByMyServiceId(serviceAccount.getMyServiceId());
+        boolean emailExists = existingServiceAccounts.stream()
+                .anyMatch(sa -> sa.getLogin().equalsIgnoreCase(serviceAccount.getLogin()));
+        if (emailExists) {
+            throw new IllegalStateException("A ServiceAccount with the same login already exists under this service.");
+        }
         ServiceAccount newServiceAccount = mapper.toEntity(serviceAccount);
         newServiceAccount.setMyService(myServiceRepository.findById(serviceAccount.getMyServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", serviceAccount.getMyServiceId())));
         return serviceAccountRepository.save(newServiceAccount);
@@ -47,11 +54,20 @@ public class ServiceAccountService {
     }
 
     public ServiceAccount updateServiceAccount(Long id, ServiceAccountRequestDto updatedServiceAccount) throws ResourceNotFoundException {
-        ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
+        ServiceAccount target = serviceAccountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
+        List<ServiceAccount> existingServiceAccounts = serviceAccountRepository.findByMyServiceId(updatedServiceAccount.getMyServiceId())
+                .stream().filter(sa -> !sa.getId().equals(id)).toList();
+        boolean emailExists = existingServiceAccounts.stream()
+                .anyMatch(sa -> sa.getLogin().equalsIgnoreCase(updatedServiceAccount.getLogin()));
+        if (emailExists) {
+            throw new IllegalStateException("A ServiceAccount with the same login already exists under this service.");
+        }
         ServiceAccount updated = mapper.partialUpdate(updatedServiceAccount, target);
         updated.setMyService(myServiceRepository.findById(updatedServiceAccount.getMyServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", updatedServiceAccount.getMyServiceId())));
         return serviceAccountRepository.save(updated);
     }
+
 
     // check if there are available profiles
     public List<Profile> getAvailableProfiles(Long id) throws ResourceNotFoundException {

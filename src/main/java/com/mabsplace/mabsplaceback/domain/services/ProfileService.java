@@ -10,56 +10,75 @@ import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProfileService {
 
-  private final ProfileRepository profileRepository;
+    private final ProfileRepository profileRepository;
 
-  private final ProfileMapper mapper;
-  private final ServiceAccountRepository serviceAccountRepository;
-  private final SubscriptionRepository subscriptionRepository;
+    private final ProfileMapper mapper;
+    private final ServiceAccountRepository serviceAccountRepository;
+    private final SubscriptionRepository subscriptionRepository;
 
-  public ProfileService(ProfileRepository profileRepository, ProfileMapper mapper, ServiceAccountRepository serviceAccountRepository, SubscriptionRepository subscriptionRepository) {
-    this.profileRepository = profileRepository;
-    this.mapper = mapper;
-    this.serviceAccountRepository = serviceAccountRepository;
-    this.subscriptionRepository = subscriptionRepository;
-  }
-
-  public Profile createProfile(ProfileRequestDto profile) throws ResourceNotFoundException{
-    Profile newProfile = mapper.toEntity(profile);
-    newProfile.setServiceAccount(serviceAccountRepository.findById(profile.getServiceAccountId()).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", profile.getServiceAccountId())));
-    if(profile.getSubscriptionId() != 0) {
-      newProfile.setSubscription(subscriptionRepository.findById(profile.getSubscriptionId()).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", profile.getSubscriptionId())));
+    public ProfileService(ProfileRepository profileRepository, ProfileMapper mapper, ServiceAccountRepository serviceAccountRepository, SubscriptionRepository subscriptionRepository) {
+        this.profileRepository = profileRepository;
+        this.mapper = mapper;
+        this.serviceAccountRepository = serviceAccountRepository;
+        this.subscriptionRepository = subscriptionRepository;
     }
-    return profileRepository.save(newProfile);
-  }
 
-  public void deleteProfile(Long id) {
-    profileRepository.deleteById(id);
-  }
-
-  public Profile getProfileById(Long id) throws ResourceNotFoundException{
-    return profileRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
-  }
-
-  public List<Profile> getAllProfiles() {
-    return profileRepository.findAll();
-  }
-
-  public Profile updateProfile(Long id, ProfileRequestDto updatedProfile) throws ResourceNotFoundException{
-    Profile target = profileRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
-    Profile updated = mapper.partialUpdate(updatedProfile, target);
-    updated.setServiceAccount(serviceAccountRepository.findById(updatedProfile.getServiceAccountId()).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", updatedProfile.getServiceAccountId())));
-    if(updatedProfile.getSubscriptionId() != 0) {
-      updated.setSubscription(subscriptionRepository.findById(updatedProfile.getSubscriptionId()).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", updatedProfile.getSubscriptionId())));
+    public Profile updateProfile(Long id, ProfileRequestDto updatedProfile) throws ResourceNotFoundException {
+        Profile target = profileRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
+        List<Profile> existingProfiles = profileRepository.findByServiceAccountId(updatedProfile.getServiceAccountId())
+                .stream().filter(p -> !p.getId().equals(id)).toList();
+        boolean nameExists = existingProfiles.stream()
+                .anyMatch(p -> p.getProfileName().equalsIgnoreCase(updatedProfile.getProfileName()));
+        if (nameExists) {
+            throw new IllegalStateException("A profile with the same name already exists under this ServiceAccount.");
+        }
+        Profile updated = mapper.partialUpdate(updatedProfile, target);
+        updated.setServiceAccount(serviceAccountRepository.findById(updatedProfile.getServiceAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", updatedProfile.getServiceAccountId())));
+        if (updatedProfile.getSubscriptionId() != 0) {
+            updated.setSubscription(subscriptionRepository.findById(updatedProfile.getSubscriptionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", updatedProfile.getSubscriptionId())));
+        }
+        return profileRepository.save(updated);
     }
-    return profileRepository.save(updated);
-  }
 
-public List<Profile> getProfilesByServiceAccountId(Long serviceAccountId) {
-    return profileRepository.findByServiceAccountId(serviceAccountId);
-  }
+    public Profile createProfile(ProfileRequestDto profile) throws ResourceNotFoundException {
+        List<Profile> existingProfiles = profileRepository.findByServiceAccountId(profile.getServiceAccountId());
+        boolean nameExists = existingProfiles.stream()
+                .anyMatch(p -> p.getProfileName().equalsIgnoreCase(profile.getProfileName()));
+        if (nameExists) {
+            throw new IllegalStateException("A profile with the same name already exists under this ServiceAccount.");
+        }
+        Profile newProfile = mapper.toEntity(profile);
+        newProfile.setServiceAccount(serviceAccountRepository.findById(profile.getServiceAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", profile.getServiceAccountId())));
+        if (profile.getSubscriptionId() != 0) {
+            newProfile.setSubscription(subscriptionRepository.findById(profile.getSubscriptionId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", profile.getSubscriptionId())));
+        }
+        return profileRepository.save(newProfile);
+    }
+
+    public void deleteProfile(Long id) {
+        profileRepository.deleteById(id);
+    }
+
+    public Profile getProfileById(Long id) throws ResourceNotFoundException {
+        return profileRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
+    }
+
+    public List<Profile> getAllProfiles() {
+        return profileRepository.findAll();
+    }
+
+    public List<Profile> getProfilesByServiceAccountId(Long serviceAccountId) {
+        return profileRepository.findByServiceAccountId(serviceAccountId);
+    }
 
 }
