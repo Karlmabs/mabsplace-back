@@ -83,7 +83,7 @@ public class TransactionService {
         PaymentRequest build = PaymentRequest.builder()
                 .transaction_amount(save.getAmount().doubleValue())
                 .transaction_currency("XAF")
-                .transaction_reason("Payment for order")
+                .transaction_reason(transaction.getReason().isEmpty() ? "Payment for order" : transaction.getReason())
                 .app_transaction_ref(save.getTransactionRef())
                 .customer_name(user.getFirstname() + " " + user.getLastname())
                 .customer_email(user.getEmail())
@@ -156,14 +156,23 @@ public class TransactionService {
         return transactionRepository.save(newTransaction);
     }
 
-
     public Transaction createTransaction(TransactionRequestDto transaction) throws ResourceNotFoundException {
+        if (transaction.getTransactionType() == TransactionType.TOPUP) {
+            return topUpWallet(transaction);
+        } else if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
+            return withdrawFromWallet(transaction);
+        } else {
+            throw new IllegalArgumentException("Unsupported transaction type: " + transaction.getTransactionType());
+        }
+    }
+
+    /*public Transaction createTransaction(TransactionRequestDto transaction) throws ResourceNotFoundException {
         Transaction newTransaction = mapper.toEntity(transaction);
         newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
         newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
         newTransaction.setCurrency(currencyRepository.findById(transaction.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", transaction.getCurrencyId())));
         return transactionRepository.save(newTransaction);
-    }
+    }*/
 
     public Transaction getTransactionById(Long id) throws ResourceNotFoundException {
         return transactionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Transaction", "id", id));

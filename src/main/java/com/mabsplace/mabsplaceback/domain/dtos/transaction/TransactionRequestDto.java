@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.transaction;
 
+import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,17 +15,21 @@ import java.util.Date;
 @Getter
 @Setter
 public class TransactionRequestDto implements Serializable {
-  private long senderWalletId;
+    private long senderWalletId;
 
-  private long receiverWalletId;
+    private long receiverWalletId;
 
-  private BigDecimal amount;
+    private BigDecimal amount;
 
-  private Date transactionDate;
+    private Date transactionDate = new Date();
 
-  private String senderName;
+    private String senderName;
 
-  private String senderPhoneNumber;
+    private String senderPhoneNumber;
 
-  private long currencyId;
+    private long currencyId;
+
+    private String reason;
+
+    private TransactionType transactionType;
 }
