@@ -22,6 +22,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -75,6 +76,7 @@ public class TransactionService {
         newTransaction.setTransactionType(TransactionType.TOPUP);
         newTransaction.setTransactionDate(new Date());
         newTransaction.setTransactionStatus(TransactionStatus.PENDING);
+        newTransaction.setTransactionRef(UUID.randomUUID().toString());
 
         Transaction save = transactionRepository.save(newTransaction);
 
