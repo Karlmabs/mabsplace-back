@@ -87,7 +87,7 @@ public class TransactionService {
                 .app_transaction_ref(save.getTransactionRef())
                 .customer_name(user.getFirstname() + " " + user.getLastname())
                 .customer_email(user.getEmail())
-                .customer_phone_number(user.getPhonenumber())
+                .customer_phone_number(transaction.getSenderPhoneNumber())
                 .build();
 
         return coolPayService.generatePaymentLink(build);
