@@ -110,6 +110,22 @@ public class CoolPayService {
         return response.getBody();
     }
 
+    public Object generatePaymentLink(PaymentRequest paymentRequest) {
+        String url = baseUrl + "/paylink?ref="+paymentRequest.getApp_transaction_ref();
+
+        logger.info("Generating payment link request to CoolPay API");
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        HttpEntity<PaymentRequest> entity = new HttpEntity<>(paymentRequest, headers);
+
+        logger.info("Payment link request: {}", entity);
+
+        return restTemplate.postForObject(url, entity, Object.class);
+    }
+
 
 
 

@@ -33,9 +33,10 @@ public class TransactionController {
 
     @PostMapping("/top-up")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<TransactionResponseDto> topUpWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
-        Transaction createdTransaction = transactionService.topUpWallet(transactionRequestDto);
-        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+    public ResponseEntity<Object> topUpWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
+        Object createdTransaction = transactionService.topUpWallet(transactionRequestDto);
+//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+        return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
     @PostMapping("/transaction-callback")
@@ -74,16 +75,18 @@ public class TransactionController {
 
     @PostMapping("/withdraw")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<TransactionResponseDto> withdrawFromWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
-        Transaction createdTransaction = transactionService.withdrawFromWallet(transactionRequestDto);
-        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+    public ResponseEntity<Object> withdrawFromWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
+        Object createdTransaction = transactionService.withdrawFromWallet(transactionRequestDto);
+        return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
+//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
     }
 
     @PostMapping
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<TransactionResponseDto> createTransaction(@RequestBody TransactionRequestDto transactionRequestDto) {
-        Transaction createdTransaction = transactionService.createTransaction(transactionRequestDto);
-        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+    public ResponseEntity<Object> createTransaction(@RequestBody TransactionRequestDto transactionRequestDto) {
+        Object createdTransaction = transactionService.createTransaction(transactionRequestDto);
+//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+        return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")

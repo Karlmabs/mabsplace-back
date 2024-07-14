@@ -67,7 +67,7 @@ public class TransactionService {
         return transactionRepository.save(target);
     }
 
-    public Transaction topUpWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {
+    public Object topUpWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {
         Transaction newTransaction = mapper.toEntity(transaction);
         newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
         newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
@@ -90,9 +90,11 @@ public class TransactionService {
                 .customer_phone_number(user.getPhonenumber())
                 .build();
 
-        executorService.submit(() -> coolPayService.makePayment(build));
+        return coolPayService.generatePaymentLink(build);
 
-        return save;
+//        executorService.submit(() -> coolPayService.makePayment(build));
+
+//        return save;
     }
 
     public String calculateMD5Signature(Map<String, Object> data) {
@@ -145,7 +147,7 @@ public class TransactionService {
         transactionRepository.save(transaction);
     }
 
-    public Transaction withdrawFromWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {
+    public Object withdrawFromWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {
         Transaction newTransaction = mapper.toEntity(transaction);
         newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
         newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
@@ -156,7 +158,7 @@ public class TransactionService {
         return transactionRepository.save(newTransaction);
     }
 
-    public Transaction createTransaction(TransactionRequestDto transaction) throws ResourceNotFoundException {
+    public Object createTransaction(TransactionRequestDto transaction) throws ResourceNotFoundException {
         if (transaction.getTransactionType() == TransactionType.TOPUP) {
             return topUpWallet(transaction);
         } else if (transaction.getTransactionType() == TransactionType.WITHDRAWAL) {
