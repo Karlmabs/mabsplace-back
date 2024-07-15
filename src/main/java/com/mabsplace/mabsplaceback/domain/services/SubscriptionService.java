@@ -92,23 +92,28 @@ public class SubscriptionService {
         updated.setStatus(updatedSubscription.getStatus());
         updated.setEndDate(Utils.addPeriod(updatedSubscription.getStartDate(), updated.getSubscriptionPlan().getPeriod()));
 
-        if (updatedSubscription.getProfileId() != 0L && target.getProfile().getId() != updatedSubscription.getProfileId()){
-            Profile profile = profileRepository.findById(updatedSubscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
+        if (updatedSubscription.getProfileId() != 0L){
 
-            // Check if the profile is already active
-            if (profile.getStatus() == ProfileStatus.ACTIVE) {
-                throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
+            if(target.getProfile() != null && target.getProfile().getId() != updatedSubscription.getProfileId()){
+                Profile profile = profileRepository.findById(updatedSubscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
+
+                // Check if the profile is already active
+                if (profile.getStatus() == ProfileStatus.ACTIVE) {
+                    throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
+                }
+
+                profile.setStatus(ProfileStatus.ACTIVE);
+                profile = profileRepository.save(profile);
+                updated.setProfile(profile);
+
+                Profile oldProfile = target.getProfile();
+                if (oldProfile != null && !oldProfile.getId().equals(profile.getId())) {
+                    oldProfile.setStatus(ProfileStatus.INACTIVE);
+                    profileRepository.save(oldProfile);
+                }
             }
 
-            profile.setStatus(ProfileStatus.ACTIVE);
-            profile = profileRepository.save(profile);
-            updated.setProfile(profile);
 
-            Profile oldProfile = target.getProfile();
-            if (oldProfile != null && !oldProfile.getId().equals(profile.getId())) {
-                oldProfile.setStatus(ProfileStatus.INACTIVE);
-                profileRepository.save(oldProfile);
-            }
         }
 
         notificationService.sendNotificationToUser(updated.getUser().getUsername(), "Subscription updated successfully");
