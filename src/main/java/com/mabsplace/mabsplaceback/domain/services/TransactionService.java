@@ -14,6 +14,7 @@ import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -147,6 +148,26 @@ public class TransactionService {
         logger.info("Transaction status updated to {}", transaction.getTransactionStatus());
 
         return transactionRepository.save(transaction);
+    }
+
+    // Runs every hour
+    @Scheduled(fixedRate = 3600000)
+    public void checkAndCancelPendingTransactions() {
+        // Calculate the time one hour ago
+        Date oneHourAgo = new Date(System.currentTimeMillis() - 3600 * 1000);
+
+        // Fetch transactions that are PENDING and were created more than one hour ago
+        List<Transaction> transactions = transactionRepository.findByTransactionStatusAndTransactionDateBefore(TransactionStatus.PENDING, oneHourAgo);
+
+        // Update each transaction's status to CANCELLED
+        transactions.forEach(transaction -> {
+            try {
+                changeTransactionStatus(transaction.getId(), TransactionStatus.CANCELLED);
+            } catch (ResourceNotFoundException e) {
+                // Log the error or handle it as per your application's requirements
+                logger.error("Error cancelling transaction with id {}", transaction.getId(), e);
+            }
+        });
     }
 
     public Object withdrawFromWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {
