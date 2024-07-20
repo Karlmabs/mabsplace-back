@@ -41,4 +41,15 @@ public class Utils {
   public static String generateUniquePromoCode() {
     return UUID.randomUUID().toString().substring(0, 8).toUpperCase();
   }
+
+    public static Date addDays(Date endDate, int additionalDays) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(endDate);
+        calendar.add(Calendar.DATE, additionalDays);
+        return calendar.getTime();
+    }
+
+  public static Date getCurrentDate() {
+    return new Date();
+  }
 }

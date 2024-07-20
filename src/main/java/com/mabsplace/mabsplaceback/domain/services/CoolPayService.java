@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -32,7 +34,7 @@ public class CoolPayService {
     public Object makePayment(PaymentRequest paymentRequest) {
         String url = baseUrl + "/payin";
 
-        logger.info("Making payment request to CoolPay API");
+        logger.info("Starting makePayment for transactionRef: {}", paymentRequest.getApp_transaction_ref());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -40,11 +42,19 @@ public class CoolPayService {
 
         // Wrapping the DTO and headers in an HttpEntity
         HttpEntity<PaymentRequest> entity = new HttpEntity<>(paymentRequest, headers);
+        logger.debug("Payment request entity: {}", entity);
 
-        logger.info("Payment request: {}", entity);
-
-        // Making the POST request
-        return restTemplate.postForObject(url, entity, Object.class);
+        try {
+            Object response = restTemplate.postForObject(url, entity, Object.class);
+            logger.info("Payment successful for transactionRef: {}", paymentRequest.getApp_transaction_ref());
+            logger.debug("Payment response: {}", response);
+            return response;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            logger.error("Error during makePayment for transactionRef: {}. Error: {}", paymentRequest.getApp_transaction_ref(), e.getMessage());
+            throw e;
+        } finally {
+            logger.info("Completed makePayment for transactionRef: {}", paymentRequest.getApp_transaction_ref());
+        }
     }
 
     public Object authorizePayment(AuthorizationRequest authorizationRequest) {

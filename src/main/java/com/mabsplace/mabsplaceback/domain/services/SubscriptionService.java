@@ -92,31 +92,71 @@ public class SubscriptionService {
         updated.setStatus(updatedSubscription.getStatus());
         updated.setEndDate(Utils.addPeriod(updatedSubscription.getStartDate(), updated.getSubscriptionPlan().getPeriod()));
 
-        if (updatedSubscription.getProfileId() != 0L){
+        if (updatedSubscription.getProfileId() != 0L) {
+            Profile newProfile = profileRepository.findById(updatedSubscription.getProfileId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
 
-            if(target.getProfile() != null && target.getProfile().getId() != updatedSubscription.getProfileId()){
-                Profile profile = profileRepository.findById(updatedSubscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
-
-                // Check if the profile is already active
-                if (profile.getStatus() == ProfileStatus.ACTIVE) {
-                    throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
-                }
-
-                profile.setStatus(ProfileStatus.ACTIVE);
-                profile = profileRepository.save(profile);
-                updated.setProfile(profile);
-
-                Profile oldProfile = target.getProfile();
-                if (oldProfile != null && !oldProfile.getId().equals(profile.getId())) {
-                    oldProfile.setStatus(ProfileStatus.INACTIVE);
-                    profileRepository.save(oldProfile);
-                }
+            // Check if the profile is already active and not associated with this subscription
+            if (newProfile.getStatus() == ProfileStatus.ACTIVE && !newProfile.equals(target.getProfile())) {
+                throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
             }
 
+            // Update the new profile to ACTIVE and associate it with the subscription
+            newProfile.setStatus(ProfileStatus.ACTIVE);
+            profileRepository.save(newProfile);
+            updated.setProfile(newProfile);
 
+            // If there was an old profile and it's different from the new one, set it to INACTIVE
+            if (target.getProfile() != null && !target.getProfile().equals(newProfile)) {
+                Profile oldProfile = target.getProfile();
+                oldProfile.setStatus(ProfileStatus.INACTIVE);
+                profileRepository.save(oldProfile);
+            }
         }
 
         notificationService.sendNotificationToUser(updated.getUser().getUsername(), "Subscription updated successfully");
         return subscriptionRepository.save(updated);
+    }
+
+    // Update Subscription Status
+    public Subscription updateSubscriptionStatus(Long id, SubscriptionStatus newStatus){
+        Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
+        subscription.setStatus(newStatus);
+        return subscriptionRepository.save(subscription);
+    }
+
+    // Extend Subscription
+    public Subscription extendSubscription(Long id, int additionalDays){
+        Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
+        subscription.setEndDate(Utils.addDays(subscription.getEndDate(), additionalDays));
+        return subscriptionRepository.save(subscription);
+    }
+
+    // Find Subscriptions by User
+    public List<Subscription> findSubscriptionsByUser(Long userId){
+        return subscriptionRepository.findByUserId(userId);
+    }
+
+    // Find Subscriptions by Status
+    public List<Subscription> findSubscriptionsByStatus(SubscriptionStatus status){
+        return subscriptionRepository.findByStatus(status);
+    }
+
+    // Bulk Update Subscriptions
+    public List<Subscription> bulkUpdateSubscriptions(List<Long> subscriptionIds, SubscriptionRequestDto updatedData){
+        List<Subscription> subscriptions = subscriptionRepository.findAllById(subscriptionIds);
+        for (Subscription subscription : subscriptions) {
+            mapper.partialUpdate(updatedData, subscription);
+            subscriptionRepository.save(subscription);
+        }
+        return subscriptions;
+    }
+
+    // Renew Subscription
+    public Subscription renewSubscription(Long id){
+        Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
+        subscription.setStartDate(Utils.getCurrentDate());
+        subscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscription.getSubscriptionPlan().getPeriod()));
+        return subscriptionRepository.save(subscription);
     }
 }
