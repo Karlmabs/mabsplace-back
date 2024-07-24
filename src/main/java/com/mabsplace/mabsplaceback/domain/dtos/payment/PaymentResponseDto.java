@@ -17,6 +17,7 @@ public class PaymentResponseDto {
   private Long id;
 
   private long userId;
+  private String userName;
 
   private BigDecimal amount;
   private Date paymentDate;
