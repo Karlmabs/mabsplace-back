@@ -36,8 +36,8 @@ public class MabsplaceBackApplication {
 		Properties props = mailSender.getJavaMailProperties();
 		props.put("mail.transport.protocol", "smtp");
 		props.put("mail.smtp.auth", "true");
-		props.put("mail.smtp.starttls.enable", "true"); // For port 587
-		props.put("mail.smtp.ssl.enable", "false"); // If you use port 465
+		props.put("mail.smtp.starttls.enable", "false"); // For port 587
+		props.put("mail.smtp.ssl.enable", "true"); // If you use port 465
 
 		return mailSender;
 	}
