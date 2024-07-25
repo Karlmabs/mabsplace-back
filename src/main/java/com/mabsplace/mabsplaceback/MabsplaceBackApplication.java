@@ -27,8 +27,8 @@ public class MabsplaceBackApplication {
 	@Bean
 	public JavaMailSender mailSender() {
 		JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-		mailSender.setHost("smtp.ionos.com");
-		mailSender.setPort(587); // You can also use port 465 for SSL
+		mailSender.setHost("smtp.ionos.fr");
+		mailSender.setPort(465); // You can also use port 465 for SSL
 
 		mailSender.setUsername("karl.mabou@mabsplace.com"); // Replace with your Ionos email
 		mailSender.setPassword("Karlmabs1!"); // Replace with your Ionos email password
