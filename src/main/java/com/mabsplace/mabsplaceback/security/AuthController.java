@@ -48,190 +48,190 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-  @Autowired
-  AuthenticationManager authenticationManager;
+    @Autowired
+    AuthenticationManager authenticationManager;
 
-  @Autowired
-  UserRepository userRepository;
+    @Autowired
+    UserRepository userRepository;
 
-  @Autowired
-  CurrencyRepository currencyRepository;
+    @Autowired
+    CurrencyRepository currencyRepository;
 
-  @Autowired
-  RoleRepository roleRepository;
+    @Autowired
+    RoleRepository roleRepository;
 
-  @Autowired
-  PasswordEncoder encoder;
+    @Autowired
+    PasswordEncoder encoder;
 
-  @Autowired
-  JwtUtils jwtUtils;
+    @Autowired
+    JwtUtils jwtUtils;
 
-  @Autowired
-  private TokenProvider tokenProvider;
+    @Autowired
+    private TokenProvider tokenProvider;
 
-  @Autowired
-  HttpServletRequest request;
+    @Autowired
+    HttpServletRequest request;
 
-  @Autowired
-  private EmailVerificationService emailVerificationService;
+    @Autowired
+    private EmailVerificationService emailVerificationService;
 
-  @Autowired
-  ApplicationEventPublisher eventPublisher;
+    @Autowired
+    ApplicationEventPublisher eventPublisher;
 
-  @Autowired
-  UserServiceSec service;
+    @Autowired
+    UserServiceSec service;
 
-  private final UserMapper userMapper;
+    private final UserMapper userMapper;
 
-  private final PromoCodeService promoCodeService;
+    private final PromoCodeService promoCodeService;
 
-  public AuthController(UserMapper userMapper, PromoCodeService promoCodeService) {
-    this.userMapper = userMapper;
-      this.promoCodeService = promoCodeService;
-  }
+    public AuthController(UserMapper userMapper, PromoCodeService promoCodeService) {
+        this.userMapper = userMapper;
+        this.promoCodeService = promoCodeService;
+    }
 
-  @PostMapping("/login")
-  public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) throws MessagingException {
+    @PostMapping("/login")
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) throws MessagingException {
 
 //    Optional<User> userOptional = userRepository.findByPhoneNumber(loginRequest.getPhoneNumber());
-    userRepository.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new RuntimeException("User doesn't exist !!!!"));
+        userRepository.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new RuntimeException("User doesn't exist !!!!"));
 
-    Authentication authentication = authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(
-                    loginRequest.getUsername(),
-                    loginRequest.getPassword()
-            )
-    );
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginRequest.getUsername(),
+                        loginRequest.getPassword()
+                )
+        );
 
-    Optional<User> loggedIn = userRepository.findByUsername(loginRequest.getUsername());
+        Optional<User> loggedIn = userRepository.findByUsername(loginRequest.getUsername());
 
-    if (loggedIn.isPresent() && !loggedIn.get().getEmailVerified()) {
-      throw new RuntimeException("UserEmailIsNotVerified");
+        if (loggedIn.isPresent() && !loggedIn.get().getEmailVerified()) {
+            throw new RuntimeException("User not verified");
+        }
+
+        emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String token = tokenProvider.createToken(authentication);
+
+        return ResponseEntity.ok().body(new AuthResponse(token, userMapper.toDto(loggedIn.get())));
     }
 
-    emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
+    @PostMapping("/verify")
+    public ResponseEntity<?> verifyCode(@RequestBody VerifyCodeRequest verifyCodeRequest) {
+        String userEmail = verifyCodeRequest.getEmail();
+        String userEnteredCode = verifyCodeRequest.getCode();
 
-    SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (emailVerificationService.verifyCode(userEmail, userEnteredCode))
+            return ResponseEntity.ok().body(new MessageResponse("User verified successfully."));
 
-    String token = tokenProvider.createToken(authentication);
+        else
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Invalid verification code."));
 
-    return ResponseEntity.ok().body(new AuthResponse(token, userMapper.toDto(loggedIn.get())));
-  }
-
-  @PostMapping("/verify")
-  public ResponseEntity<?> verifyCode(@RequestBody VerifyCodeRequest verifyCodeRequest) {
-    String userEmail = verifyCodeRequest.getEmail();
-    String userEnteredCode = verifyCodeRequest.getCode();
-
-    if (emailVerificationService.verifyCode(userEmail, userEnteredCode)) {
-      return ResponseEntity.ok().body(new MessageResponse("User verified successfully."));
-
-    } else {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Invalid verification code."));
-    }
-  }
-
-  @PostMapping("/signup")
-  public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) throws BadRequestException {
-
-    if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-      throw new BadRequestException("Email address already in use.");
-    }
-    if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-      throw new BadRequestException("Username already in use.");
     }
 
-    User user = User.builder()
-            .username(signUpRequest.getUsername())
-            .email(signUpRequest.getEmail())
-            .password(encoder.encode(signUpRequest.getPassword()))
-            .phonenumber(signUpRequest.getPhonenumber())
-            .emailVerified(true)
-            .firstname(signUpRequest.getFirstname())
-            .lastname(signUpRequest.getLastname())
-            .build();
+    @PostMapping("/signup")
+    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) throws BadRequestException {
 
-    Set<String> strRoles = signUpRequest.getRole();
-    Set<Role> roles = new HashSet<>();
+        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+            throw new BadRequestException("Email address already in use.");
+        }
+        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+            throw new BadRequestException("Username already in use.");
+        }
 
-    if (strRoles == null) {
-      throw new BadRequestException("Role is not found.");
-    } else {
-      strRoles.forEach(role -> {
-        Role adminRole = roleRepository.findByName(role)
-                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-        roles.add(adminRole);
-      });
+        User user = User.builder()
+                .username(signUpRequest.getUsername())
+                .email(signUpRequest.getEmail())
+                .password(encoder.encode(signUpRequest.getPassword()))
+                .phonenumber(signUpRequest.getPhonenumber())
+                .emailVerified(true)
+                .firstname(signUpRequest.getFirstname())
+                .lastname(signUpRequest.getLastname())
+                .build();
+
+        Set<String> strRoles = signUpRequest.getRole();
+        Set<Role> roles = new HashSet<>();
+
+        if (strRoles == null) {
+            throw new BadRequestException("Role is not found.");
+        } else {
+            strRoles.forEach(role -> {
+                Role adminRole = roleRepository.findByName(role)
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                roles.add(adminRole);
+            });
+        }
+
+        user.setRoles(roles);
+        user.setEmailVerified(true);
+        user.setAuthType(AuthenticationType.DATABASE);
+
+        User result = userRepository.save(user);
+
+        result.setWallet(
+                Wallet.builder()
+                        .user(result)
+                        .balance(BigDecimal.ZERO)
+                        .currency(currencyRepository.findAll().getFirst())
+                        .build()
+        );
+
+        promoCodeService.generatePromoCode(result);
+
+        if (signUpRequest.getPromoCode() != null && !signUpRequest.getPromoCode().isEmpty())
+            promoCodeService.registerUserWithPromoCode(signUpRequest.getPromoCode(), result);
+
+        result = userRepository.save(result);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentContextPath().path("/user/me")
+                .buildAndExpand(result.getId()).toUri();
+
+        String appUrl = request.getContextPath();
+
+        eventPublisher.publishEvent(new OnRegistrationCompleteEvent(user,
+                request.getLocale(), appUrl));
+
+
+        return ResponseEntity.created(location)
+                .body(new MessageResponse("User registered successfully!"));
     }
 
-    user.setRoles(roles);
-    user.setEmailVerified(true);
-    user.setAuthType(AuthenticationType.DATABASE);
+    @PostMapping("/signout")
+    public ResponseEntity<?> logoutUser() {
+        ResponseCookie cookie = jwtUtils.getCleanJwtCookie();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(new MessageResponse("You've been signed out!"));
+    }
 
-    User result = userRepository.save(user);
-
-    result.setWallet(
-            Wallet.builder()
-                    .user(result)
-                    .balance(BigDecimal.ZERO)
-                    .currency(currencyRepository.findAll().getFirst())
-                    .build()
-    );
-
-    promoCodeService.generatePromoCode(result);
-
-    if(signUpRequest.getPromoCode() != null && !signUpRequest.getPromoCode().isEmpty())
-      promoCodeService.registerUserWithPromoCode(signUpRequest.getPromoCode(), result);
-
-    result = userRepository.save(result);
-
-    URI location = ServletUriComponentsBuilder
-            .fromCurrentContextPath().path("/user/me")
-            .buildAndExpand(result.getId()).toUri();
-
-    String appUrl = request.getContextPath();
-
-    eventPublisher.publishEvent(new OnRegistrationCompleteEvent(user,
-            request.getLocale(), appUrl));
-
-
-    return ResponseEntity.created(location)
-            .body(new MessageResponse("User registered successfully!"));
-  }
-
-  @PostMapping("/signout")
-  public ResponseEntity<?> logoutUser() {
-    ResponseCookie cookie = jwtUtils.getCleanJwtCookie();
-    return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString())
-            .body(new MessageResponse("You've been signed out!"));
-  }
-
-  @GetMapping("/user/me")
+    @GetMapping("/user/me")
 //    @PreAuthorize("hasRole('USER')")
-  public User getCurrentUser(@CurrentUser UserPrincipal userPrincipal) {
-    return userRepository.findById(userPrincipal.getId())
-            .orElseThrow(() -> new ResourceNotFoundException("User", "id", userPrincipal.getId()));
-  }
-
-  @GetMapping("/registrationConfirm")
-  public boolean confirmRegistration
-          (@RequestParam("token") String token) throws Exception {
-
-    Locale locale = request.getLocale();
-
-    VerificationToken verificationToken = service.getVerificationToken(token);
-    if (verificationToken == null) {
-      return false;
+    public User getCurrentUser(@CurrentUser UserPrincipal userPrincipal) {
+        return userRepository.findById(userPrincipal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userPrincipal.getId()));
     }
 
-    User user = verificationToken.getUser();
-    Calendar cal = Calendar.getInstance();
-    if ((verificationToken.getExpiryDate().getTime() - cal.getTime().getTime()) <= 0) {
-      return false;
-    }
+    @GetMapping("/registrationConfirm")
+    public boolean confirmRegistration
+            (@RequestParam("token") String token) throws Exception {
 
-    user.setEmailVerified(true);
-    userRepository.save(user);
-    return true;
-  }
+        Locale locale = request.getLocale();
+
+        VerificationToken verificationToken = service.getVerificationToken(token);
+        if (verificationToken == null) {
+            return false;
+        }
+
+        User user = verificationToken.getUser();
+        Calendar cal = Calendar.getInstance();
+        if ((verificationToken.getExpiryDate().getTime() - cal.getTime().getTime()) <= 0) {
+            return false;
+        }
+
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        return true;
+    }
 }

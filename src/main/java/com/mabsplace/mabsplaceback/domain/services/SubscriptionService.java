@@ -9,8 +9,10 @@ import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.notifications.service.NotificationService;
 import com.mabsplace.mabsplaceback.utils.Utils;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -116,6 +118,20 @@ public class SubscriptionService {
 
         notificationService.sendNotificationToUser(updated.getUser().getUsername(), "Subscription updated successfully");
         return subscriptionRepository.save(updated);
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
+    public void expireSubscriptions() {
+        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNot(new Date(), SubscriptionStatus.EXPIRED);
+        for (Subscription subscription : subscriptions) {
+            subscription.setStatus(SubscriptionStatus.EXPIRED);
+            Profile profile = subscription.getProfile();
+            if (profile != null) {
+                profile.setStatus(ProfileStatus.INACTIVE);
+                profileRepository.save(profile);
+            }
+            subscriptionRepository.save(subscription);
+        }
     }
 
     // Update Subscription Status
