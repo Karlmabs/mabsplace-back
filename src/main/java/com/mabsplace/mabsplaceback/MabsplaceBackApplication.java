@@ -19,31 +19,31 @@ import java.util.Properties;
 @EnableScheduling
 public class MabsplaceBackApplication {
 
-	@Bean
-	public RestTemplate restTemplate() {
-		return new RestTemplate();
-	}
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 
-	@Bean
-	public JavaMailSender mailSender() {
-		JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
-		mailSender.setHost("smtp.ionos.fr");
-		mailSender.setPort(587); // You can also use port 465 for SSL
+    @Bean
+    public JavaMailSender mailSender() {
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+        mailSender.setHost("smtp.gmail.com");
+        mailSender.setPort(587);
 
-		mailSender.setUsername("karl.mabou@mabsplace.com"); // Replace with your Ionos email
-		mailSender.setPassword("Karlmabs1!"); // Replace with your Ionos email password
+        mailSender.setUsername("maboukarl2@gmail.com");
+        mailSender.setPassword("pwdp yksa qees lbuf");
 
-		Properties props = mailSender.getJavaMailProperties();
-		props.put("mail.transport.protocol", "smtp");
-		props.put("mail.smtp.auth", "true");
-		props.put("mail.smtp.starttls.enable", "true"); // For port 587
-		props.put("mail.smtp.ssl.enable", "false"); // If you use port 465
+        Properties props = mailSender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.starttls.enable", "true");
+//    props.put("mail.debug", "true");
 
-		return mailSender;
-	}
+        return mailSender;
+    }
 
-	public static void main(String[] args) {
-		SpringApplication.run(MabsplaceBackApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(MabsplaceBackApplication.class, args);
+    }
 
 }
