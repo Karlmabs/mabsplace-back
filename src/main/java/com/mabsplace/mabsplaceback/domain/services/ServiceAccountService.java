@@ -69,9 +69,4 @@ public class ServiceAccountService {
     }
 
 
-    // check if there are available profiles
-    public List<Profile> getAvailableProfiles(Long id) throws ResourceNotFoundException {
-        ServiceAccount target = serviceAccountRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", id));
-        return target.getAvailableProfiles();
-    }
 }

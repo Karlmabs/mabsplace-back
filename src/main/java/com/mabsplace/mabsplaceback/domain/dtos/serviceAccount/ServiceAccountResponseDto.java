@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
 
 @AllArgsConstructor
@@ -20,5 +21,6 @@ public class ServiceAccountResponseDto implements Serializable {
   private String accountDetails;
   private long myServiceId;
   private String serviceName;
+  private Date paymentDate;
   private List<ProfileResponseDto> profiles;
 }

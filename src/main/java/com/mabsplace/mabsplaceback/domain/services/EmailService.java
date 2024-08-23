@@ -1,19 +1,29 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.entities.ServiceAccount;
+import com.mabsplace.mabsplaceback.domain.repositories.ServiceAccountRepository;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class EmailService {
 
     private final JavaMailSender mailSender;
+    private final ServiceAccountRepository serviceAccountRepository;
 
-    public EmailService(JavaMailSender mailSender) {
+    public EmailService(JavaMailSender mailSender, ServiceAccountRepository serviceAccountRepository) {
         this.mailSender = mailSender;
+        this.serviceAccountRepository = serviceAccountRepository;
     }
 
     @Async
@@ -102,6 +112,29 @@ public class EmailService {
                 "</html>\n";
         message.setContent(htmlContent, "text/html; charset=utf-8");
 
+        mailSender.send(message);
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
+    public void notifyUpcomingPayments() {
+        Date today = new Date();
+        List<ServiceAccount> serviceAccounts = serviceAccountRepository.findAll();
+        for (ServiceAccount serviceAccount : serviceAccounts) {
+            if (serviceAccount.getPaymentDate() != null) {
+                long diffInMillies = Math.abs(serviceAccount.getPaymentDate().getTime() - today.getTime());
+                long diff = TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+                if (diff <= 3) { // Notify if payment date is within 3 days
+                    sendNotificationEmail(serviceAccount);
+                }
+            }
+        }
+    }
+
+    private void sendNotificationEmail(ServiceAccount serviceAccount) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo("user@example.com"); // Replace with actual user email
+        message.setSubject("Upcoming Subscription Payment Reminder");
+        message.setText("Dear user,\n\nThis is a reminder that your subscription for " + serviceAccount.getMyService().getName() + " is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.");
         mailSender.send(message);
     }
 

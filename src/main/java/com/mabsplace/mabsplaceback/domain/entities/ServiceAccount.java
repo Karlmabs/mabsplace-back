@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -35,15 +36,6 @@ public class ServiceAccount {
   @OneToMany(mappedBy = "serviceAccount", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<Profile> profiles;
 
-  // return the number of available profiles, not assigned to a user
-  public List<Profile> getAvailableProfiles() {
-    List<Profile> availableProfiles = new ArrayList<>();
+  private Date paymentDate;
 
-    for (Profile profile : profiles) {
-      if (profile.getStatus() == ProfileStatus.INACTIVE) {
-        availableProfiles.add(profile);
-      }
-    }
-    return availableProfiles;
-  }
 }

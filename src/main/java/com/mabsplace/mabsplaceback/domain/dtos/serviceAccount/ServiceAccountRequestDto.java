@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.Date;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -19,4 +20,6 @@ public class ServiceAccountRequestDto implements Serializable {
   private String accountDetails;
 
   private long myServiceId;
+
+  private Date paymentDate;
 }
