@@ -132,7 +132,7 @@ public class EmailService {
 
     private void sendNotificationEmail(ServiceAccount serviceAccount) {
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo("user@example.com"); // Replace with actual user email
+        message.setTo("maboukarl2@gmail.com"); // Replace with actual user email
         message.setSubject("Upcoming Subscription Payment Reminder");
         message.setText("Dear user,\n\nThis is a reminder that your subscription for " + serviceAccount.getMyService().getName() + " is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.");
         mailSender.send(message);
