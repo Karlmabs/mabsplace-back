@@ -100,6 +100,35 @@ public class TransactionService {
 //        return save;
     }
 
+    public Object topUpWalletMobile(TransactionRequestDto transaction) throws ResourceNotFoundException {
+        Transaction newTransaction = mapper.toEntity(transaction);
+        newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
+        newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
+        newTransaction.setCurrency(currencyRepository.findById(transaction.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", transaction.getCurrencyId())));
+        newTransaction.setTransactionType(TransactionType.TOPUP);
+        newTransaction.setTransactionDate(new Date());
+        newTransaction.setTransactionStatus(TransactionStatus.PENDING);
+        newTransaction.setTransactionRef(UUID.randomUUID().toString());
+
+        Transaction save = transactionRepository.save(newTransaction);
+
+        User user = save.getReceiverWallet().getUser();
+
+        PaymentRequest build = PaymentRequest.builder()
+                .transaction_amount(save.getAmount().doubleValue())
+                .transaction_currency("XAF")
+                .transaction_reason(transaction.getReason().isEmpty() ? "Payment for order" : transaction.getReason())
+                .app_transaction_ref(save.getTransactionRef())
+                .customer_name(user.getFirstname() + " " + user.getLastname())
+                .customer_email(user.getEmail())
+                .customer_phone_number(transaction.getSenderPhoneNumber())
+                .build();
+
+        executorService.submit(() -> coolPayService.makePayment(build));
+
+        return save;
+    }
+
     public String calculateMD5Signature(Map<String, Object> data) {
         logger.info("Calculating MD5 signature for data {}", data);
         try {

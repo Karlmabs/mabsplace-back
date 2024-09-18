@@ -39,6 +39,14 @@ public class TransactionController {
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
+    @PostMapping("/top-up-mobile")
+//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+    public ResponseEntity<Object> topUpWalletMobile(@RequestBody TransactionRequestDto transactionRequestDto) {
+        Object createdTransaction = transactionService.topUpWalletMobile(transactionRequestDto);
+//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+        return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
+    }
+
     @PostMapping("/transaction-callback")
     public ResponseEntity<String> handlePaymentCallback(HttpServletRequest request, @RequestBody Map<String, Object> callbackData) {
         logger.info("Handling payment callback with data: {}", callbackData);
