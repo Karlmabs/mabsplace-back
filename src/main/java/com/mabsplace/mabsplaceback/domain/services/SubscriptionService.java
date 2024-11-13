@@ -71,6 +71,13 @@ public class SubscriptionService {
     }
 
     public void deleteSubscription(Long id) {
+        // free the profile if it's associated with the subscription before deleting it
+        Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
+        Profile profile = subscription.getProfile();
+        if (profile != null) {
+            profile.setStatus(ProfileStatus.INACTIVE);
+            profileRepository.save(profile);
+        }
         subscriptionRepository.deleteById(id);
     }
 
