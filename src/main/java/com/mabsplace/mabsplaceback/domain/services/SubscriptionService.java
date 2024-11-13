@@ -9,6 +9,7 @@ import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.notifications.service.NotificationService;
 import com.mabsplace.mabsplaceback.utils.Utils;
+import jakarta.mail.MessagingException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -27,8 +28,9 @@ public class SubscriptionService {
     private final MyServiceService myServiceService;
     private final MyServiceRepository myServiceRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService) {
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, EmailService emailService) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -38,6 +40,7 @@ public class SubscriptionService {
         this.myServiceService = myServiceService;
         this.myServiceRepository = myServiceRepository;
         this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
 
@@ -128,7 +131,7 @@ public class SubscriptionService {
     }
 
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
-    public void expireSubscriptions() {
+    public void expireSubscriptions() throws MessagingException {
         List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNot(new Date(), SubscriptionStatus.EXPIRED);
         for (Subscription subscription : subscriptions) {
             subscription.setStatus(SubscriptionStatus.EXPIRED);
@@ -137,6 +140,7 @@ public class SubscriptionService {
                 profile.setStatus(ProfileStatus.INACTIVE);
                 profileRepository.save(profile);
             }
+            emailService.sendEmail("mabsplace2024@gmail.com", "Subscription Expired", "Subscription with id " + subscription.getId() + " has expired for user " + subscription.getUser().getUsername());
             subscriptionRepository.save(subscription);
         }
     }
