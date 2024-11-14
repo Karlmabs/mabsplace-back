@@ -2,6 +2,7 @@ package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.profile.ProfileRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.Profile;
+import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.ProfileMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.ServiceAccountRepository;
@@ -66,6 +67,11 @@ public class ProfileService {
     }
 
     public void deleteProfile(Long id) {
+        // prevent the deletion of a profile that has the status of "active"
+        Profile target = profileRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
+        if (target.getStatus() == ProfileStatus.ACTIVE) {
+            throw new RuntimeException("Cannot delete an active profile.");
+        }
         profileRepository.deleteById(id);
     }
 

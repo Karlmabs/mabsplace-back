@@ -33,6 +33,11 @@ public class MyServiceService {
   }
 
   public void deleteService(Long id) {
+    // prevent deletion of service with service accounts and subscription plans
+    MyService myService = myServiceRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Service", "id", id));
+    if (!myService.getServiceAccounts().isEmpty() || !myService.getSubscriptionPlans().isEmpty()) {
+      throw new RuntimeException("Service cannot be deleted because it has associated ServiceAccounts or SubscriptionPlans.");
+    }
     myServiceRepository.deleteById(id);
   }
 
