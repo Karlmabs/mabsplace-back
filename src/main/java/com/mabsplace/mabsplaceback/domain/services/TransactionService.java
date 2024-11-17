@@ -248,4 +248,8 @@ public class TransactionService {
     public void deleteTransaction(Long id) {
         transactionRepository.deleteById(id);
     }
+
+    public List<Transaction> getTransactionsByUserId(Long userId) {
+        return transactionRepository.findByReceiverWalletUserId(userId);
+    }
 }

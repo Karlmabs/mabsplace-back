@@ -12,4 +12,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByTransactionRef(String transactionRef);
 
     List<Transaction> findByTransactionStatusAndTransactionDateBefore(TransactionStatus transactionStatus, Date oneHourAgo);
+
+    List<Transaction> findByReceiverWalletUserId(Long userId);
 }

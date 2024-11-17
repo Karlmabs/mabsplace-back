@@ -126,4 +126,12 @@ public class TransactionController {
         transactionService.deleteTransaction(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
+
+    // get all transactions involving a user
+    @GetMapping("/user/{userId}")
+//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+    public ResponseEntity<List<TransactionResponseDto>> getTransactionsByUserId(@PathVariable Long userId) {
+        List<Transaction> Transactions = transactionService.getTransactionsByUserId(userId);
+        return new ResponseEntity<>(mapper.toDtoList(Transactions), HttpStatus.OK);
+    }
 }
