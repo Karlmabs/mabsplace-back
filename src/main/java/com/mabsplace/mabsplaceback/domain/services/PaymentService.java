@@ -58,6 +58,7 @@ public class PaymentService {
         User user = userRepository.findById(paymentRequestDto.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequestDto.getUserId()));
 
         logger.info("User found: " + user.toString());
+        logger.info("User balance: " + user.getWallet().getBalance());
 
         double discount = discountService.getDiscountForUser(user.getId());
         BigDecimal amountAfterDiscount = paymentRequestDto.getAmount().subtract(BigDecimal.valueOf(discount));
