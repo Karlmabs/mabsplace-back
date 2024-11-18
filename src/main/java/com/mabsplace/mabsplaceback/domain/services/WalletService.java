@@ -73,6 +73,12 @@ public class WalletService {
     return wallet.getBalance().compareTo(amount) >= 0;
   }
 
+  public boolean checkBalance(BigDecimal userBalance, BigDecimal amount) {
+    return userBalance.compareTo(amount) >= 0;
+  }
+
+
+
   public Wallet debit(Long id, BigDecimal amount) {
     Wallet wallet = walletRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", id));
     wallet.setBalance(wallet.getBalance().subtract(amount));

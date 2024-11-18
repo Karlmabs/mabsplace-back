@@ -65,7 +65,7 @@ public class PaymentService {
 
         logger.info("Amount after discount: " + amountAfterDiscount);
 
-        boolean checkBalance = walletService.checkBalance(user.getWallet().getId(), amountAfterDiscount);
+        boolean checkBalance = walletService.checkBalance(user.getWallet().getBalance(), amountAfterDiscount);
 
         logger.info("Checking balance: " + checkBalance);
 
