@@ -7,6 +7,8 @@ import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.WalletRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,6 +21,8 @@ public class WalletService {
   private final WalletMapper mapper;
   private final UserRepository userRepository;
   private final CurrencyRepository currencyRepository;
+
+  private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
   public WalletService(WalletRepository walletRepository, WalletMapper mapper, UserRepository userRepository, CurrencyRepository currencyRepository) {
     this.walletRepository = walletRepository;
@@ -61,7 +65,11 @@ public class WalletService {
 
   // check if a user has enough balance in his wallet
   public boolean checkBalance(Long userId, BigDecimal amount) {
+    logger.info("Checking balance for user with id: " + userId);
     Wallet wallet = walletRepository.findByUserId(userId);
+    logger.info("User found: " + wallet.getUser().getUsername());
+    logger.info("User balance: " + wallet.getBalance());
+    logger.info("Amount to be deducted: " + amount);
     return wallet.getBalance().compareTo(amount) >= 0;
   }
 
