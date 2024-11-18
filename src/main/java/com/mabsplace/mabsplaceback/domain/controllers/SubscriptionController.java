@@ -73,4 +73,12 @@ public class SubscriptionController {
     subscriptionService.deleteSubscription(id);
     return new ResponseEntity<>(HttpStatus.NO_CONTENT);
   }
+
+  // get all subscriptions of a user
+    @GetMapping("/user/{userId}")
+//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+    public ResponseEntity<List<SubscriptionResponseDto>> getSubscriptionsByUserId(@PathVariable Long userId) {
+        List<Subscription> Subscriptions = subscriptionService.getSubscriptionsByUserId(userId);
+        return new ResponseEntity<>(mapper.toDtoList(Subscriptions), HttpStatus.OK);
+    }
 }

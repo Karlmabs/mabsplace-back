@@ -186,4 +186,8 @@ public class SubscriptionService {
         subscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscription.getSubscriptionPlan().getPeriod()));
         return subscriptionRepository.save(subscription);
     }
+
+    public List<Subscription> getSubscriptionsByUserId(Long userId) {
+        return subscriptionRepository.findByUserId(userId);
+    }
 }
