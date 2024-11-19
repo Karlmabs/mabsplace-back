@@ -234,4 +234,18 @@ public class AuthController {
         userRepository.save(user);
         return true;
     }
+
+    @GetMapping("/sendVerificationCode/{email}")
+    public ResponseEntity<?> sendVerificationCode(@PathVariable ("email") String email) throws MessagingException {
+        emailVerificationService.sendVerificationCode(email);
+        return ResponseEntity.ok().body(new MessageResponse("Verification code sent successfully."));
+    }
+
+    @GetMapping("/verifyCode/{email}/{code}")
+    public ResponseEntity<?> verifyCode(@PathVariable ("email") String email, @PathVariable ("code") String code) {
+        if (emailVerificationService.verifyCode(email, code))
+            return ResponseEntity.ok().body(new MessageResponse("User verified successfully."));
+        else
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Invalid verification code."));
+    }
 }
