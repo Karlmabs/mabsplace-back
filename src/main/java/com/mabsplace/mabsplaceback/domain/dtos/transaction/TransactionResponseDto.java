@@ -29,6 +29,7 @@ public class TransactionResponseDto implements Serializable {
     private BigDecimal amount;
     private Date transactionDate;
     private CurrencyResponseDto currency;
+    private String transactionRef;
 
     private String transactionType;
 

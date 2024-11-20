@@ -2,6 +2,7 @@ package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.coolpay.PaymentRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionRequestDto;
+import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Transaction;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
@@ -100,7 +101,7 @@ public class TransactionService {
 //        return save;
     }
 
-    public Object topUpWalletMobile(TransactionRequestDto transaction) throws ResourceNotFoundException {
+    public TransactionResponseDto topUpWalletMobile(TransactionRequestDto transaction) throws ResourceNotFoundException {
         Transaction newTransaction = mapper.toEntity(transaction);
         newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
         newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
@@ -126,7 +127,7 @@ public class TransactionService {
 
         executorService.submit(() -> coolPayService.makePayment(build));
 
-        return save;
+        return mapper.toDto(save);
     }
 
     public String calculateMD5Signature(Map<String, Object> data) {

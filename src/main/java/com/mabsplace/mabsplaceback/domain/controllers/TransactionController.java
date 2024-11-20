@@ -41,8 +41,8 @@ public class TransactionController {
 
     @PostMapping("/top-up-mobile")
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<Object> topUpWalletMobile(@RequestBody TransactionRequestDto transactionRequestDto) {
-        Object createdTransaction = transactionService.topUpWalletMobile(transactionRequestDto);
+    public ResponseEntity<TransactionResponseDto> topUpWalletMobile(@RequestBody TransactionRequestDto transactionRequestDto) {
+        TransactionResponseDto createdTransaction = transactionService.topUpWalletMobile(transactionRequestDto);
 //        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
