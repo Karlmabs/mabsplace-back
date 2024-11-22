@@ -27,7 +27,7 @@ public class Notification {
     private boolean read;
     private LocalDateTime createdAt;
 
-    @Column(columnDefinition = "jsonb")
+    @Column(columnDefinition = "JSON")
     private String data;
 
     // Getters and setters
