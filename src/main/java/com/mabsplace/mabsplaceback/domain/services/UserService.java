@@ -68,8 +68,14 @@ public class UserService {
         return userRepository.save(user);
     }
 
+
     public void uploadImage(long userId, String originalFilename, InputStream inputStream, String contentType) throws RuntimeException {
         User userFound = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        // Check if the user already has an image and delete it
+        if (userFound.getImage() != null) {
+            minioService.deleteImage(userFound.getImage());
+        }
 
         minioService.uploadImage(originalFilename, inputStream, contentType);
 

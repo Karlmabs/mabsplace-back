@@ -9,34 +9,42 @@ import java.io.InputStream;
 @Service
 public class MinioService {
 
-  private final MinioClient minioClient;
+    private final MinioClient minioClient;
 
-  private final MinioProperties minioProperties;
+    private final MinioProperties minioProperties;
 
-  public MinioService(MinioClient minioClient, MinioProperties minioProperties) {
-    this.minioClient = minioClient;
-    this.minioProperties = minioProperties;
-  }
-
-  public void uploadImage(String objectName, InputStream inputStream, String contentType) throws RuntimeException{
-    try {
-      minioClient.putObject(PutObjectArgs.builder()
-              .bucket(minioProperties.getBucketName())
-              .object(objectName)
-              .stream(inputStream, inputStream.available(), -1)
-              .contentType(contentType)
-              .build());
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to upload image");
+    public MinioService(MinioClient minioClient, MinioProperties minioProperties) {
+        this.minioClient = minioClient;
+        this.minioProperties = minioProperties;
     }
-  }
 
-  public InputStream downloadImage(String objectName) {
-    try {
-      return minioClient.getObject(GetObjectArgs.builder().bucket(minioProperties.getBucketName()).object(objectName).build());
-    } catch (Exception e) {
-      // Handle exception
-      return null;
+    public void uploadImage(String objectName, InputStream inputStream, String contentType) throws RuntimeException {
+        try {
+            minioClient.putObject(PutObjectArgs.builder()
+                    .bucket(minioProperties.getBucketName())
+                    .object(objectName)
+                    .stream(inputStream, inputStream.available(), -1)
+                    .contentType(contentType)
+                    .build());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload image");
+        }
     }
-  }
+
+    public InputStream downloadImage(String objectName) {
+        try {
+            return minioClient.getObject(GetObjectArgs.builder().bucket(minioProperties.getBucketName()).object(objectName).build());
+        } catch (Exception e) {
+            // Handle exception
+            return null;
+        }
+    }
+
+    public void deleteImage(String objectName) {
+        try {
+            minioClient.removeObject(RemoveObjectArgs.builder().bucket(minioProperties.getBucketName()).object(objectName).build());
+        } catch (Exception e) {
+            // Handle exception
+        }
+    }
 }
