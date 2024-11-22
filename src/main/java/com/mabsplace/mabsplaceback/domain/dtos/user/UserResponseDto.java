@@ -30,6 +30,7 @@ public class UserResponseDto implements Serializable{
     private String lastname;
     private String contact;
     private String image;
+    private String pushToken;
     private Set<RoleResponseDto> roles = new HashSet<>();
     private WalletResponseDto wallet;
     private List<SubscriptionResponseDto> subscriptions;

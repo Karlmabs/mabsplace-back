@@ -7,13 +7,13 @@ import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
-import com.mabsplace.mabsplaceback.notifications.service.NotificationService;
 import com.mabsplace.mabsplaceback.utils.Utils;
 import jakarta.mail.MessagingException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 @Service
@@ -69,7 +69,7 @@ public class SubscriptionService {
             newSubscription.setProfile(profile);
         }
 
-        notificationService.sendNotificationToUser(newSubscription.getUser().getUsername(), "Subscription created successfully");
+        notificationService.sendNotificationToUser(newSubscription.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());
         return subscriptionRepository.save(newSubscription);
     }
 
@@ -126,7 +126,7 @@ public class SubscriptionService {
             }
         }
 
-        notificationService.sendNotificationToUser(updated.getUser().getUsername(), "Subscription updated successfully");
+        notificationService.sendNotificationToUser(updated.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());
         return subscriptionRepository.save(updated);
     }
 

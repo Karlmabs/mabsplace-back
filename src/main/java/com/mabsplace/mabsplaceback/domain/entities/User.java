@@ -19,71 +19,73 @@ import java.util.Set;
 @Builder
 public class User {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
-  @Column(nullable = false, unique = true)
-  private String username;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, unique = true)
+    private String username;
 
-  @Column(nullable = false, unique = true)
-  private String email;
-  @Column(nullable = false, unique = true)
-  private String phonenumber;
-  private String firstname;
-  @Column(nullable = false)
-  private String lastname;
-  private String name;
-  @Column(nullable = false)
-  private String password;
-  private String contact;
+    @Column(nullable = false, unique = true)
+    private String email;
+    @Column(nullable = false, unique = true)
+    private String phonenumber;
+    private String firstname;
+    @Column(nullable = false)
+    private String lastname;
+    private String name;
+    @Column(nullable = false)
+    private String password;
+    private String contact;
 
-  @Column(nullable = false)
-  private Boolean emailVerified = false;
+    @Column(nullable = false)
+    private Boolean emailVerified = false;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "auth_type")
-  private AuthenticationType authType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_type")
+    private AuthenticationType authType;
 
-  @NotNull
-  @Enumerated(EnumType.STRING)
-  private AuthProvider provider = AuthProvider.local;
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    private AuthProvider provider = AuthProvider.local;
 
-  private String providerId;
+    private String providerId;
 
-  private String image;
+    private String image;
 
-  @ManyToMany
-  @JoinTable(joinColumns = @JoinColumn(name = "user_id"))
-  private Set<Role> roles = new HashSet<>();
+    private String pushToken;
 
-  @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
-  private Wallet wallet;
+    @ManyToMany
+    @JoinTable(joinColumns = @JoinColumn(name = "user_id"))
+    private Set<Role> roles = new HashSet<>();
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Subscription> subscriptions;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private Wallet wallet;
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Payment> payments;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Subscription> subscriptions;
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Post> posts;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Payment> payments;
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Comment> comments;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Post> posts;
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Like> likes;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments;
 
-  @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Message> sentMessages;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Like> likes;
 
-  @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<Message> receivedMessages;
+    @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Message> sentMessages;
 
-  @OneToOne(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
-  private PromoCode promoCode;
+    @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Message> receivedMessages;
 
-  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-  private Set<Discount> discounts;
+    @OneToOne(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
+    private PromoCode promoCode;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Discount> discounts;
 
 }
