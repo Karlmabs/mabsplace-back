@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.logging.Logger;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,6 +23,8 @@ public class NotificationController {
 
     @Autowired
     private NotificationService notificationService;
+
+    private static final Logger LOGGER = Logger.getLogger(NotificationController.class.getName());
 
     /**
      * Update user's push notification token
@@ -91,6 +94,7 @@ public class NotificationController {
     @PostMapping("/mark-all-read")
     public ResponseEntity<ApiResponse> markAllAsRead(Authentication authentication) {
         try {
+
             notificationService.markAllAsRead(authentication.getName());
             return ResponseEntity.ok(new ApiResponse(
                     true,
