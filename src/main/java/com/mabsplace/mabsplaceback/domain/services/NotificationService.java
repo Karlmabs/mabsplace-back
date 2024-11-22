@@ -14,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -73,13 +74,18 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+
     public void markAllAsRead(String email) {
         LOGGER.info("Marking all notifications as read for user: " + email);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         LOGGER.info("User found: " + user.getEmail());
         LOGGER.info("Marking all notifications as read");
-        notificationRepository.markAllAsRead(user.getId());
+
+        List<Notification> notifications = notificationRepository.findByUserOrderByCreatedAtDesc(user);
+
+        notifications.forEach(notification -> notification.setRead(true));
+        notificationRepository.saveAll(notifications);
     }
 
     public void updateUserPushToken(String email, String pushToken) {
