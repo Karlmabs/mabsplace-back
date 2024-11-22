@@ -22,9 +22,12 @@ public class Notification {
     private String message;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "notification_type")
     private NotificationType type;
 
+    @Column(name = "is_read")
     private boolean read;
+
     private LocalDateTime createdAt;
 
     @Column(columnDefinition = "JSON")
