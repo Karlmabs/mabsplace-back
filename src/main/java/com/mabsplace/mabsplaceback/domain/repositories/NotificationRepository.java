@@ -3,7 +3,6 @@ package com.mabsplace.mabsplaceback.domain.repositories;
 import com.mabsplace.mabsplaceback.domain.entities.Notification;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;

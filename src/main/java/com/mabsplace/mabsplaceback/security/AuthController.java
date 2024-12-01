@@ -91,7 +91,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) throws MessagingException {
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, @RequestHeader(value = "User-Agent") String userAgent) throws MessagingException {
 
 //    Optional<User> userOptional = userRepository.findByPhoneNumber(loginRequest.getPhoneNumber());
         userRepository.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new RuntimeException("User doesn't exist !!!!"));
@@ -109,7 +109,9 @@ public class AuthController {
             throw new RuntimeException("User not verified");
         }
 
-        emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
+        if (!userAgent.contains("Mobile")) {
+            emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
+        }
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -248,4 +250,6 @@ public class AuthController {
         else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Invalid verification code."));
     }
+
+
 }

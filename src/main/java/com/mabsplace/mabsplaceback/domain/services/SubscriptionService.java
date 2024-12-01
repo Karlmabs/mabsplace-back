@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
@@ -140,7 +141,23 @@ public class SubscriptionService {
                 profile.setStatus(ProfileStatus.INACTIVE);
                 profileRepository.save(profile);
             }
-            emailService.sendEmail("mabsplace2024@gmail.com", "Subscription Expired", "Subscription with id " + subscription.getId() + " has expired for user " + subscription.getUser().getUsername());
+
+            EmailRequest emailRequest = EmailRequest.builder()
+                    .to("maboukarl2@gmail.com")
+                    .cc(List.of("yvanos510@gmail.com"))
+                    .subject("Subscription Expired")
+                    .headerText("Subscription Expired")
+                    .body(String.format(
+                            "<p>The subscription of %s has now expired. The Account he was using for %s is %s on the profile %s. You need to change its pin or account password. </p>",
+                            subscription.getUser().getUsername(),
+                            subscription.getService().getName(),
+                            subscription.getProfile().getServiceAccount().getLogin(),
+                            subscription.getProfile().getProfileName()
+                    ))
+                    .companyName("MabsPlace")
+                    .build();
+
+            emailService.sendEmail(emailRequest);
             subscriptionRepository.save(subscription);
         }
     }

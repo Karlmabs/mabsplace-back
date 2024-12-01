@@ -1,16 +1,17 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import com.mabsplace.mabsplaceback.domain.entities.ServiceAccount;
 import com.mabsplace.mabsplaceback.domain.repositories.ServiceAccountRepository;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Year;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -27,96 +28,141 @@ public class EmailService {
     }
 
     @Async
-    public void sendEmail(String to, String subject, String body) throws MessagingException {
+    public void sendEmail(EmailRequest request) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
 
-        message.setFrom(new InternetAddress("sender@example.com"));
-        message.setRecipient(MimeMessage.RecipientType.TO, new InternetAddress(to));
-        message.setSubject(subject);
+        String defaultFromEmail = "noreply@mabsplace.com";
+        message.setFrom(new InternetAddress(request.getFromEmail() != null ? request.getFromEmail() : defaultFromEmail));
+        message.setRecipient(MimeMessage.RecipientType.TO, new InternetAddress(request.getTo()));
+        if (request.getCc() != null) {
+            message.setRecipients(MimeMessage.RecipientType.CC, InternetAddress.parse(String.join(",", request.getCc())));
+        }
+        if (request.getBcc() != null) {
+            message.setRecipients(MimeMessage.RecipientType.BCC, InternetAddress.parse(String.join(",", request.getBcc())));
+        }
+        message.setSubject(request.getSubject());
 
-        String htmlContent = "<!DOCTYPE html>\n" +
-                "<html lang=\"en\">\n" +
-                "<head>\n" +
-                "    <meta charset=\"UTF-8\">\n" +
-                "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
-                "    <title>2FA Code</title>\n" +
-                "    <style>\n" +
-                "        body {\n" +
-                "            font-family: Arial, sans-serif;\n" +
-                "            background-color: #f9f9f9;\n" +
-                "            margin: 0;\n" +
-                "            padding: 0;\n" +
-                "        }\n" +
-                "        .container {\n" +
-                "            width: 100%;\n" +
-                "            max-width: 600px;\n" +
-                "            margin: 50px auto;\n" +
-                "            background-color: #ffffff;\n" +
-                "            border-radius: 8px;\n" +
-                "            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\n" +
-                "            overflow: hidden;\n" +
-                "        }\n" +
-                "        .header {\n" +
-                "            background-color: #007BFF;\n" +
-                "            color: #ffffff;\n" +
-                "            text-align: center;\n" +
-                "            padding: 20px;\n" +
-                "        }\n" +
-                "        .header h1 {\n" +
-                "            margin: 0;\n" +
-                "            font-size: 24px;\n" +
-                "        }\n" +
-                "        .content {\n" +
-                "            padding: 30px;\n" +
-                "            text-align: center;\n" +
-                "        }\n" +
-                "        .content p {\n" +
-                "            font-size: 18px;\n" +
-                "            line-height: 1.6;\n" +
-                "            margin: 20px 0;\n" +
-                "        }\n" +
-                "        .code {\n" +
-                "            display: inline-block;\n" +
-                "            background-color: #f1f1f1;\n" +
-                "            color: #333333;\n" +
-                "            font-size: 24px;\n" +
-                "            padding: 10px 20px;\n" +
-                "            border-radius: 5px;\n" +
-                "            margin-top: 20px;\n" +
-                "        }\n" +
-                "        .footer {\n" +
-                "            background-color: #f1f1f1;\n" +
-                "            color: #888888;\n" +
-                "            text-align: center;\n" +
-                "            padding: 20px;\n" +
-                "            font-size: 14px;\n" +
-                "        }\n" +
-                "    </style>\n" +
-                "</head>\n" +
-                "<body>\n" +
-                "    <div class=\"container\">\n" +
-                "        <div class=\"header\">\n" +
-                "            <h1>Two-Factor Authentication</h1>\n" +
-                "        </div>\n" +
-                "        <div class=\"content\">\n" +
-                "            <p>Hello dear customer,</p>\n" +
-                "            <p>To complete your login, please use the following 2FA code:</p>\n" +
-                "            <div class=\"code\">[ "+body+" ]</div>\n" +
-                "            <p>If you did not request this code, please secure your account immediately.</p>\n" +
-                "        </div>\n" +
-                "        <div class=\"footer\">\n" +
-                "            <p>&copy; 2024 Your Company. All rights reserved.</p>\n" +
-                "        </div>\n" +
-                "    </div>\n" +
-                "</body>\n" +
-                "</html>\n";
+        String htmlContent = """
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>%s</title>
+                    <style>
+                        :root {
+                            --primary-color: #1a73e8;
+                            --secondary-color: #f8f9fa;
+                            --text-color: #202124;
+                            --muted-color: #5f6368;
+                        }
+                        
+                        body {
+                            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                            background-color: #ffffff;
+                            margin: 0;
+                            padding: 0;
+                            color: var(--text-color);
+                            line-height: 1.6;
+                        }
+                        
+                        .container {
+                            width: 100%%;
+                            max-width: 600px;
+                            margin: 40px auto;
+                            background-color: #ffffff;
+                            border: 1px solid #dadce0;
+                            border-radius: 8px;
+                            overflow: hidden;
+                        }
+                        
+                        .header {
+                            background-color: var(--primary-color);
+                            color: #ffffff;
+                            text-align: center;
+                            padding: 24px 20px;
+                        }
+                        
+                        .header h1 {
+                            margin: 0;
+                            font-size: 24px;
+                            font-weight: 500;
+                        }
+                        
+                        .content {
+                            padding: 32px 24px;
+                            background-color: #ffffff;
+                        }
+                        
+                        .content p {
+                            font-size: 16px;
+                            margin: 16px 0;
+                            color: var(--text-color);
+                        }
+                        
+                        .message-box {
+                            background-color: var(--secondary-color);
+                            border-radius: 4px;
+                            padding: 16px;
+                            margin: 24px 0;
+                        }
+                        
+                        .button {
+                            display: inline-block;
+                            background-color: var(--primary-color);
+                            color: #ffffff;
+                            text-decoration: none;
+                            padding: 12px 24px;
+                            border-radius: 4px;
+                            margin: 16px 0;
+                            font-weight: 500;
+                        }
+                        
+                        .footer {
+                            background-color: var(--secondary-color);
+                            color: var(--muted-color);
+                            text-align: center;
+                            padding: 20px;
+                            font-size: 14px;
+                            border-top: 1px solid #dadce0;
+                        }
+                        
+                        @media only screen and (max-width: 600px) {
+                            .container {
+                                margin: 0;
+                                border-radius: 0;
+                                border: none;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>%s</h1>
+                        </div>
+                        <div class="content">
+                            %s
+                        </div>
+                        <div class="footer">
+                            <p>%s</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(
+                request.getSubject(),
+                request.getHeaderText(),
+                request.getBody(),
+                request.getFooterText() != null ? request.getFooterText() : "© " + Year.now().getValue() + " " + request.getCompanyName() + ". All rights reserved."
+        );
+
         message.setContent(htmlContent, "text/html; charset=utf-8");
-
         mailSender.send(message);
     }
 
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
-    public void notifyUpcomingPayments() {
+    public void notifyUpcomingPayments() throws MessagingException {
         Date today = new Date();
         List<ServiceAccount> serviceAccounts = serviceAccountRepository.findAll();
         for (ServiceAccount serviceAccount : serviceAccounts) {
@@ -124,18 +170,19 @@ public class EmailService {
                 long diffInMillies = Math.abs(serviceAccount.getPaymentDate().getTime() - today.getTime());
                 long diff = TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
                 if (diff <= 3) { // Notify if payment date is within 3 days
-                    sendNotificationEmail(serviceAccount);
+                    EmailRequest request = EmailRequest.builder()
+                            .to("maboukarl2@gmail.com")
+                            .cc(List.of("yvanos510@gmail.com"))
+                            .subject("Upcoming Subscription Payment Reminder")
+                            .headerText("Upcoming Subscription Payment Reminder")
+                            .body("<p>This is a reminder that your subscription for " + serviceAccount.getMyService().getName() + "on the account " + serviceAccount.getLogin() + "is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.</p>")
+                            .companyName("MabsPlace")
+                            .build();
+                    sendEmail(request);
                 }
             }
         }
     }
 
-    private void sendNotificationEmail(ServiceAccount serviceAccount) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo("mabsplace2024@gmail.com"); // Replace with actual user email
-        message.setSubject("Upcoming Subscription Payment Reminder");
-        message.setText("This is a reminder that your subscription for " + serviceAccount.getMyService().getName() + " is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.");
-        mailSender.send(message);
-    }
-
 }
+

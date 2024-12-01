@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.controllers.TransactionController;
+import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
@@ -10,6 +11,7 @@ import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.PaymentMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,9 +38,11 @@ public class PaymentService {
 
     private final DiscountService discountService;
 
+    private final EmailService emailService;
+
     private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
-    public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, SubscriptionService subscriptionService, DiscountService discountService) {
+    public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, SubscriptionService subscriptionService, DiscountService discountService, EmailService emailService) {
         this.paymentRepository = paymentRepository;
         this.paymentMapper = paymentMapper;
         this.userRepository = userRepository;
@@ -48,9 +52,10 @@ public class PaymentService {
         this.walletService = walletService;
         this.subscriptionService = subscriptionService;
         this.discountService = discountService;
+        this.emailService = emailService;
     }
 
-    public Payment createPayment(PaymentRequestDto paymentRequestDto) throws RuntimeException {
+    public Payment createPayment(PaymentRequestDto paymentRequestDto) throws RuntimeException, MessagingException {
 
         logger.info("Creating payment for user with id: " + paymentRequestDto.getUserId());
 
@@ -103,6 +108,16 @@ public class PaymentService {
         subscriptionService.createSubscription(subscriptionDto);
 
         logger.info("Subscription created");
+
+        EmailRequest advancedRequest = new EmailRequest(
+                "maboukarl2@gmail.com",
+                List.of("yvanos510@gmail.com"),
+                "Payment Confirmation",
+                "Payment Confirmation",
+                "<p>A user has made a payment and needs to be confirmed in the admin panel</p>",
+                "MabsPlace");
+
+        emailService.sendEmail(advancedRequest);
 
         return savedPayment;
     }

@@ -1,11 +1,14 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,7 +33,16 @@ public class EmailVerificationService {
     public void sendVerificationCode(String email) throws MessagingException {
         String code = generateVerificationCode();
         verificationCodes.put(email, new VerificationEntry(code, Instant.now()));
-        emailService.sendEmail(email, "Verification Code", code);
+
+        EmailRequest emailRequest = EmailRequest.builder()
+                .to(email)
+                .subject("MabsPlace Verification Code")
+                .headerText("MabsPlace Verification Code")
+                .body("<h1>Your verification code is: " + code + "</h1>")
+                .companyName("MabsPlace")
+                .build();
+
+        emailService.sendEmail(emailRequest);
     }
 
     public boolean verifyCode(String userEmail, String userEnteredCode) {

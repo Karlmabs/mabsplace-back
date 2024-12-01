@@ -6,6 +6,7 @@ import com.mabsplace.mabsplaceback.domain.entities.Payment;
 import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.PaymentMapper;
 import com.mabsplace.mabsplaceback.domain.services.PaymentService;
+import jakarta.mail.MessagingException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +28,7 @@ public class PaymentController {
 
   @PostMapping
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-  public ResponseEntity<PaymentResponseDto> createPayment(@RequestBody PaymentRequestDto paymentRequestDto) {
+  public ResponseEntity<PaymentResponseDto> createPayment(@RequestBody PaymentRequestDto paymentRequestDto) throws MessagingException {
     Payment createdPayment = paymentService.createPayment(paymentRequestDto);
     return new ResponseEntity<>(mapper.toDto(createdPayment), HttpStatus.CREATED);
   }
