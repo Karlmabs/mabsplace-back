@@ -30,8 +30,8 @@ public class MabsplaceBackApplication {
         mailSender.setHost("smtp.gmail.com");
         mailSender.setPort(587);
 
-        mailSender.setUsername("maboukarl2@gmail.com");
-        mailSender.setPassword("pwdp yksa qees lbuf");
+        mailSender.setUsername("mabsplace2024@gmail.com");
+        mailSender.setPassword("hofq zhhw anvf bzro");
 
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");

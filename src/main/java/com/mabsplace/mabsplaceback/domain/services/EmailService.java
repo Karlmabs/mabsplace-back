@@ -175,7 +175,7 @@ public class EmailService {
                             .cc(List.of("yvanos510@gmail.com"))
                             .subject("Upcoming Subscription Payment Reminder")
                             .headerText("Upcoming Subscription Payment Reminder")
-                            .body("<p>This is a reminder that your subscription for " + serviceAccount.getMyService().getName() + "on the account " + serviceAccount.getLogin() + "is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.</p>")
+                            .body("<p>This is a reminder that your subscription for " + serviceAccount.getMyService().getName() + " on the account " + serviceAccount.getLogin() + " is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.</p>")
                             .companyName("MabsPlace")
                             .build();
                     sendEmail(request);
