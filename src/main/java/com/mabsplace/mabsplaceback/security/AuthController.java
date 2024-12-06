@@ -91,7 +91,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest, @RequestHeader(value = "User-Agent") String userAgent) throws MessagingException {
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) throws MessagingException {
 
 //    Optional<User> userOptional = userRepository.findByPhoneNumber(loginRequest.getPhoneNumber());
         userRepository.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new RuntimeException("User doesn't exist !!!!"));
@@ -109,9 +109,8 @@ public class AuthController {
             throw new RuntimeException("User not verified");
         }
 
-        if (!userAgent.contains("Mobile")) {
-            emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
-        }
+        emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
+
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -238,13 +237,13 @@ public class AuthController {
     }
 
     @GetMapping("/sendVerificationCode/{email}")
-    public ResponseEntity<?> sendVerificationCode(@PathVariable ("email") String email) throws MessagingException {
+    public ResponseEntity<?> sendVerificationCode(@PathVariable("email") String email) throws MessagingException {
         emailVerificationService.sendVerificationCode(email);
         return ResponseEntity.ok().body(new MessageResponse("Verification code sent successfully."));
     }
 
     @GetMapping("/verifyCode/{email}/{code}")
-    public ResponseEntity<?> verifyCode(@PathVariable ("email") String email, @PathVariable ("code") String code) {
+    public ResponseEntity<?> verifyCode(@PathVariable("email") String email, @PathVariable("code") String code) {
         if (emailVerificationService.verifyCode(email, code))
             return ResponseEntity.ok().body(new MessageResponse("User verified successfully."));
         else
