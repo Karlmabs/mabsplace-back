@@ -12,39 +12,40 @@ import java.util.List;
 @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = MappingConstants.ComponentModel.SPRING, uses = {SubscriptionMapper.class})
 public interface ProfileMapper {
 
-  Profile toEntity(ProfileRequestDto profileRequestDto);
+    Profile toEntity(ProfileRequestDto profileRequestDto);
 
-  @Mapping(target = "subscriptionId", expression = "java(mapSubscription(profile.getSubscription()))")
-  @Mapping(target = "serviceAccountId", expression = "java(mapServiceAccount(profile.getServiceAccount()))")
-  @Mapping(target = "account", expression = "java(mapServiceAccountName(profile.getServiceAccount()))")
-  @Mapping(target = "serviceName", expression = "java(profile.getServiceAccount().getMyService().getName())")
-  ProfileResponseDto toDto(Profile profile);
+    @Mapping(target = "subscriptionId", expression = "java(mapSubscription(profile.getSubscription()))")
+    @Mapping(target = "serviceAccountId", expression = "java(mapServiceAccount(profile.getServiceAccount()))")
+    @Mapping(target = "account", expression = "java(mapServiceAccountName(profile.getServiceAccount()))")
+    @Mapping(target = "serviceName", expression = "java(profile.getServiceAccount().getMyService().getName())")
+    @Mapping(target = "serviceId", expression = "java(profile.getServiceAccount().getMyService().getId())")
+    ProfileResponseDto toDto(Profile profile);
 
-  default Long mapSubscription(Subscription subscription) {
-    if (subscription == null) {
-      return 0L;
+    default Long mapSubscription(Subscription subscription) {
+        if (subscription == null) {
+            return 0L;
+        }
+        return subscription.getId();
     }
-    return subscription.getId();
-  }
 
-  default Long mapServiceAccount(ServiceAccount serviceAccount) {
-    if (serviceAccount == null) {
-      return 0L;
+    default Long mapServiceAccount(ServiceAccount serviceAccount) {
+        if (serviceAccount == null) {
+            return 0L;
+        }
+        return serviceAccount.getId();
     }
-    return serviceAccount.getId();
-  }
 
-  default String mapServiceAccountName(ServiceAccount serviceAccount) {
-    if (serviceAccount == null) {
-      return "";
+    default String mapServiceAccountName(ServiceAccount serviceAccount) {
+        if (serviceAccount == null) {
+            return "";
+        }
+        return serviceAccount.getLogin();
     }
-    return serviceAccount.getLogin();
-  }
 
 
-  List<ProfileResponseDto> toDtoList(List<Profile> profiles);
+    List<ProfileResponseDto> toDtoList(List<Profile> profiles);
 
-  @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-  Profile partialUpdate(ProfileRequestDto profileRequestDto, @MappingTarget Profile profile);
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    Profile partialUpdate(ProfileRequestDto profileRequestDto, @MappingTarget Profile profile);
 
 }
