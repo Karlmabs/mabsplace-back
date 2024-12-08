@@ -169,7 +169,7 @@ public class TransactionService {
 
         logger.info("Transaction status is {}", status);
 
-        if (status.equals("SUCCESS") && transaction.getTransactionType().equals(TransactionType.TOPUP)) {
+        if (status.equals("SUCCESS") && transaction.getTransactionType().equals(TransactionType.TOPUP) && transaction.getTransactionStatus().equals(TransactionStatus.PENDING)) {
             walletService.credit(transaction.getReceiverWallet().getId(), transaction.getAmount());
             transaction.setTransactionStatus(TransactionStatus.COMPLETED);
         } else
