@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 public class WalletResponseDto implements Serializable {
   private long id;
   private long userId;
+  private String username;
   private BigDecimal balance;
   private CurrencyResponseDto currency;
 }

@@ -14,6 +14,7 @@ public interface WalletMapper {
   Wallet toEntity(WalletRequestDto walletRequestDto);
 
   @Mapping(target = "userId", expression = "java(mapUser(wallet.getUser()))")
+  @Mapping(target = "username", expression = "java(wallet.getUser().getUsername())")
   WalletResponseDto toDto(Wallet wallet);
 
   default Long mapUser(User user) {
