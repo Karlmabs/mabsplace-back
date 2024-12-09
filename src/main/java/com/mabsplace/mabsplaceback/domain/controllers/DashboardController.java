@@ -61,16 +61,32 @@ public class DashboardController {
 
     @GetMapping("/revenue-trend")
     public List<MonthlyRevenue> getRevenueAndSubscriptionsTrend() {
-        return jdbcTemplate.query(
-                "SELECT DATE_FORMAT(p.payment_date, '%b') as month, " +
-                        "SUM(p.amount) as revenue, " +
-                        "COUNT(DISTINCT s.id) as subscriptions " +
-                        "FROM payments p " +
-                        "LEFT JOIN subscriptions s ON MONTH(p.payment_date) = MONTH(s.start_date) " +
-                        "WHERE p.status = 'PAID' " +
-                        "AND p.payment_date >= DATE_SUB(CURRENT_DATE, INTERVAL 6 MONTH) " +
-                        "GROUP BY MONTH(p.payment_date) " +
-                        "ORDER BY p.payment_date",
+        String sql = """
+        WITH RECURSIVE Months AS (
+            SELECT DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH) as date
+            UNION ALL
+            SELECT DATE_ADD(date, INTERVAL 1 MONTH)
+            FROM Months
+            WHERE date < CURRENT_DATE
+        )
+        SELECT 
+            DATE_FORMAT(m.date, '%b') as month,
+            COALESCE(SUM(p.amount), 0) as revenue,
+            COALESCE(COUNT(DISTINCT s.id), 0) as subscriptions
+        FROM Months m
+        LEFT JOIN payments p ON 
+            MONTH(p.payment_date) = MONTH(m.date) 
+            AND YEAR(p.payment_date) = YEAR(m.date)
+            AND p.status = 'PAID'
+        LEFT JOIN subscriptions s ON 
+            MONTH(s.start_date) = MONTH(m.date)
+            AND YEAR(s.start_date) = YEAR(m.date)
+            AND s.status = 'ACTIVE'
+        GROUP BY m.date
+        ORDER BY m.date
+    """;
+
+        return jdbcTemplate.query(sql,
                 (rs, rowNum) -> new MonthlyRevenue(
                         rs.getString("month"),
                         rs.getDouble("revenue"),
@@ -97,17 +113,45 @@ public class DashboardController {
 
     @GetMapping("/top-services")
     public List<TopService> getTopServices() {
-        return jdbcTemplate.query(
-                "SELECT s.name, " +
-                        "COUNT(sub.id) as subscribers, " +
-                        "((COUNT(sub.id) - LAG(COUNT(sub.id)) OVER (PARTITION BY s.id ORDER BY MONTH(sub.start_date))) " +
-                        "/ LAG(COUNT(sub.id)) OVER (PARTITION BY s.id ORDER BY MONTH(sub.start_date)) * 100) as growth " +
-                        "FROM services s " +
-                        "LEFT JOIN subscriptions sub ON s.id = sub.service_id " +
-                        "WHERE sub.status = 'ACTIVE' " +
-                        "GROUP BY s.id, s.name " +
-                        "ORDER BY subscribers DESC " +
-                        "LIMIT 4",
+        String sql = """
+        WITH CurrentMonthStats AS (
+            SELECT 
+                s.id,
+                s.name,
+                COUNT(DISTINCT sub.id) as current_subscribers
+            FROM services s
+            LEFT JOIN subscriptions sub ON s.id = sub.service_id
+            WHERE sub.status = 'ACTIVE'
+            AND MONTH(sub.start_date) = MONTH(CURRENT_DATE)
+            AND YEAR(sub.start_date) = YEAR(CURRENT_DATE)
+            GROUP BY s.id, s.name
+        ),
+        LastMonthStats AS (
+            SELECT 
+                s.id,
+                COUNT(DISTINCT sub.id) as last_month_subscribers
+            FROM services s
+            LEFT JOIN subscriptions sub ON s.id = sub.service_id
+            WHERE sub.status = 'ACTIVE'
+            AND MONTH(sub.start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+            AND YEAR(sub.start_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+            GROUP BY s.id
+        )
+        SELECT 
+            cms.name,
+            cms.current_subscribers as subscribers,
+            CASE 
+                WHEN lms.last_month_subscribers > 0 
+                THEN ((cms.current_subscribers - lms.last_month_subscribers) / lms.last_month_subscribers * 100)
+                ELSE 0 
+            END as growth
+        FROM CurrentMonthStats cms
+        LEFT JOIN LastMonthStats lms ON cms.id = lms.id
+        ORDER BY cms.current_subscribers DESC
+        LIMIT 4
+    """;
+
+        return jdbcTemplate.query(sql,
                 (rs, rowNum) -> new TopService(
                         rs.getString("name"),
                         rs.getInt("subscribers"),
