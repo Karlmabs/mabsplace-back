@@ -95,10 +95,11 @@ public class DashboardController {
         );
     }
 
+
     @GetMapping("/service-distribution")
     public List<ServiceDistribution> getServiceDistribution() {
         return jdbcTemplate.query(
-                "SELECT s.name, COUNT(sub.id) as value, s.logo as color " +
+                "SELECT s.name, COUNT(sub.id) as value " +
                         "FROM services s " +
                         "LEFT JOIN subscriptions sub ON s.id = sub.service_id " +
                         "WHERE sub.status = 'ACTIVE' " +
@@ -106,9 +107,17 @@ public class DashboardController {
                 (rs, rowNum) -> new ServiceDistribution(
                         rs.getString("name"),
                         rs.getInt("value"),
-                        rs.getString("color")
+                        getRandomColor()
                 )
         );
+    }
+
+    private String getRandomColor() {
+        Random random = new Random();
+        int r = random.nextInt(256);
+        int g = random.nextInt(256);
+        int b = random.nextInt(256);
+        return String.format("#%02x%02x%02x", r, g, b);
     }
 
     @GetMapping("/top-services")
@@ -164,14 +173,18 @@ public class DashboardController {
         String query = "";
         if (table.equals("subscriptions")) {
             query = "SELECT " +
+                    "CASE WHEN (SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
+                    "THEN 0 ELSE " +
                     "((SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(CURRENT_DATE)) - " +
                     "(SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
-                    "(SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100";
+                    "(SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
         } else {
             query = "SELECT " +
+                    "CASE WHEN (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
+                    "THEN 0 ELSE " +
                     "((SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(CURRENT_DATE)) - " +
                     "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
-                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100";
+                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
         }
         return jdbcTemplate.queryForObject(query, Double.class);
     }
