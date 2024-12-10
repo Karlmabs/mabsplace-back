@@ -169,15 +169,19 @@ public class TransactionService {
 
         logger.info("Transaction status is {}", status);
 
-        if (status.equals("SUCCESS") && transaction.getTransactionType().equals(TransactionType.TOPUP) && transaction.getTransactionStatus().equals(TransactionStatus.PENDING)) {
-            walletService.credit(transaction.getReceiverWallet().getId(), transaction.getAmount());
-            transaction.setTransactionStatus(TransactionStatus.COMPLETED);
-        } else
-            transaction.setTransactionStatus(TransactionStatus.CANCELLED);
-
-        logger.info("Transaction status updated to {}", transaction.getTransactionStatus());
-
-        return transactionRepository.save(transaction);
+        if (transaction.getTransactionStatus().equals(TransactionStatus.PENDING)) {
+            if (status.equals("SUCCESS") && transaction.getTransactionType().equals(TransactionType.TOPUP)) {
+                walletService.credit(transaction.getReceiverWallet().getId(), transaction.getAmount());
+                transaction.setTransactionStatus(TransactionStatus.COMPLETED);
+            } else {
+                transaction.setTransactionStatus(TransactionStatus.CANCELLED);
+            }
+            logger.info("Transaction status updated to {}", transaction.getTransactionStatus());
+            return transactionRepository.save(transaction);
+        } else {
+            logger.info("Transaction status is not PENDING, no update performed.");
+            return transaction;
+        }
     }
 
     // Runs every hour
