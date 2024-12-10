@@ -105,9 +105,9 @@ public class AuthController {
 
         Optional<User> loggedIn = userRepository.findByUsername(loginRequest.getUsername());
 
-        if (loggedIn.isPresent() && !loggedIn.get().getEmailVerified()) {
+        /*if (loggedIn.isPresent() && !loggedIn.get().getEmailVerified()) {
             throw new RuntimeException("User not verified");
-        }
+        }*/
 
         emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
 
