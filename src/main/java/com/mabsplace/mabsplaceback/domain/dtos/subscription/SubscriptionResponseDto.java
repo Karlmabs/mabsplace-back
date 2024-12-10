@@ -23,6 +23,8 @@ public class SubscriptionResponseDto implements Serializable {
 
     private long profileId;
 
+    private long accountId;
+
     private String profilePin;
 
     private String login;
