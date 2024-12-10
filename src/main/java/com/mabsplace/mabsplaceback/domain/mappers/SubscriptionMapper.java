@@ -83,7 +83,7 @@ public interface SubscriptionMapper {
     return profile.getId();
   }
 
-  default mapAccount(Profile profile) {
+  default Long mapAccount(Profile profile) {
     if (profile == null) {
       return 0L;
     }
