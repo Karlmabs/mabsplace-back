@@ -42,4 +42,14 @@ public class Subscription {
   @Enumerated(EnumType.STRING)
   private SubscriptionStatus status = SubscriptionStatus.ACTIVE;
 
+  private boolean autoRenew = true;
+
+  private Integer renewalAttempts = 0;
+
+  private Date lastRenewalAttempt;
+
+  @ManyToOne
+  @JoinColumn(name = "next_subscription_plan_id", referencedColumnName = "id")
+  private SubscriptionPlan nextSubscriptionPlan;
+
 }

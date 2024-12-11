@@ -22,7 +22,7 @@ public class WalletService {
   private final UserRepository userRepository;
   private final CurrencyRepository currencyRepository;
 
-  private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+  private static final Logger logger = LoggerFactory.getLogger(WalletService.class);
 
   public WalletService(WalletRepository walletRepository, WalletMapper mapper, UserRepository userRepository, CurrencyRepository currencyRepository) {
     this.walletRepository = walletRepository;

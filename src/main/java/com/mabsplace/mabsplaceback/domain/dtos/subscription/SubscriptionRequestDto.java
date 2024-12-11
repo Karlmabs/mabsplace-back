@@ -25,4 +25,12 @@ public class SubscriptionRequestDto implements Serializable {
 
     private SubscriptionStatus status;
 
+    private boolean autoRenew = true;
+
+    private Integer renewalAttempts = 0;
+
+    private Date lastRenewalAttempt;
+
+    private long nextSubscriptionPlanId;
+
 }

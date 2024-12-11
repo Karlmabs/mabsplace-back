@@ -34,15 +34,17 @@ public class PaymentService {
     private final SubscriptionPlanRepository subscriptionPlanRepository;
 
     private final WalletService walletService;
-    private final SubscriptionService subscriptionService;
 
     private final DiscountService discountService;
 
     private final EmailService emailService;
 
-    private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+    private final SubscriptionPaymentOrchestrator orchestrator;
 
-    public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, SubscriptionService subscriptionService, DiscountService discountService, EmailService emailService) {
+    private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+    private final SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator;
+
+    public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, DiscountService discountService, EmailService emailService, SubscriptionPaymentOrchestrator orchestrator, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
         this.paymentRepository = paymentRepository;
         this.paymentMapper = paymentMapper;
         this.userRepository = userRepository;
@@ -50,76 +52,14 @@ public class PaymentService {
         this.myServiceRepository = myServiceRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
         this.walletService = walletService;
-        this.subscriptionService = subscriptionService;
         this.discountService = discountService;
         this.emailService = emailService;
+        this.orchestrator = orchestrator;
+        this.subscriptionPaymentOrchestrator = subscriptionPaymentOrchestrator;
     }
 
-    public Payment createPayment(PaymentRequestDto paymentRequestDto) throws RuntimeException, MessagingException {
-
-        logger.info("Creating payment for user with id: " + paymentRequestDto.getUserId());
-
-        Payment entity = paymentMapper.toEntity(paymentRequestDto);
-        User user = userRepository.findById(paymentRequestDto.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequestDto.getUserId()));
-
-        logger.info("User found: " + user.toString());
-        logger.info("User balance: " + user.getWallet().getBalance());
-
-        double discount = discountService.getDiscountForUser(user.getId());
-        BigDecimal amountAfterDiscount = paymentRequestDto.getAmount().subtract(BigDecimal.valueOf(discount));
-
-        logger.info("Amount after discount: " + amountAfterDiscount);
-
-        boolean checkBalance = walletService.checkBalance(user.getWallet().getBalance(), amountAfterDiscount);
-
-        logger.info("Checking balance: " + checkBalance);
-
-        if (!checkBalance) throw new RuntimeException("Insufficient funds");
-
-        logger.info("Sufficient funds");
-
-        entity.setUser(user);
-        entity.setCurrency(currencyRepository.findById(paymentRequestDto.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", paymentRequestDto.getCurrencyId())));
-        entity.setService(myServiceRepository.findById(paymentRequestDto.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("MyService", "id", paymentRequestDto.getServiceId())));
-        entity.setSubscriptionPlan(subscriptionPlanRepository.findById(paymentRequestDto.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", paymentRequestDto.getSubscriptionPlanId())));
-        entity.setAmount(amountAfterDiscount);
-        entity.setStatus(PaymentStatus.PAID);
-
-        logger.info("Debiting wallet");
-
-        walletService.debit(user.getWallet().getId(), amountAfterDiscount);
-
-        Payment savedPayment = paymentRepository.save(entity);
-
-        logger.info("Payment saved");
-
-        // Create a subscription without a profile or an account associated to it
-        SubscriptionRequestDto subscriptionDto = SubscriptionRequestDto.builder()
-                .userId(savedPayment.getUser().getId())
-                .serviceId(savedPayment.getService().getId())
-                .subscriptionPlanId(savedPayment.getSubscriptionPlan().getId())
-                .startDate(new Date()) // Assuming immediate start date
-                .profileId(0L) // No profile associated
-                .status(SubscriptionStatus.INACTIVE) // Subscription is inactive until payment is confirmed
-                .build();
-
-        logger.info("Creating subscription");
-
-        subscriptionService.createSubscription(subscriptionDto);
-
-        logger.info("Subscription created");
-
-        EmailRequest advancedRequest = new EmailRequest(
-                "maboukarl2@gmail.com",
-                List.of("yvanos510@gmail.com"),
-                "Payment Confirmation",
-                "Payment Confirmation",
-                "<p>A user has made a payment and needs to be confirmed in the admin panel</p>",
-                "MabsPlace");
-
-        emailService.sendEmail(advancedRequest);
-
-        return savedPayment;
+    public Payment createPayment(PaymentRequestDto paymentRequestDto) {
+        return orchestrator.processPaymentAndCreateSubscription(paymentRequestDto);
     }
 
     public Payment changePaymentStatus(Long id, PaymentStatus status) {
@@ -135,7 +75,7 @@ public class PaymentService {
                     .startDate(new Date())
                     .build();
 
-            subscriptionService.createSubscription(subscription);
+            subscriptionPaymentOrchestrator.createSubscription(subscription);
         }
         payment.setStatus(status);
         return paymentRepository.save(payment);
@@ -168,7 +108,7 @@ public class PaymentService {
                     .status(SubscriptionStatus.ACTIVE) // Assuming the subscription should be active
                     .build();
 
-            subscriptionService.createSubscription(subscriptionDto);
+            subscriptionPaymentOrchestrator.createSubscription(subscriptionDto);
         }
 
         return paymentRepository.save(updated);

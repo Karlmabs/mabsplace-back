@@ -1,8 +1,10 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
+import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
+import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
@@ -10,9 +12,12 @@ import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.utils.Utils;
 import jakarta.mail.MessagingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -30,8 +35,13 @@ public class SubscriptionService {
     private final MyServiceRepository myServiceRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final WalletService walletService;
+    private final SubscriptionPaymentOrchestrator orchestrator;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, EmailService emailService) {
+    private static final Logger log = LoggerFactory.getLogger(SubscriptionService.class);
+    private final SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator;
+
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, EmailService emailService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -42,6 +52,112 @@ public class SubscriptionService {
         this.myServiceRepository = myServiceRepository;
         this.notificationService = notificationService;
         this.emailService = emailService;
+        this.walletService = walletService;
+        this.orchestrator = orchestrator;
+        this.subscriptionPaymentOrchestrator = subscriptionPaymentOrchestrator;
+    }
+
+    @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
+    public void processSubscriptionRenewals() throws MessagingException {
+        Date today = new Date();
+        List<Subscription> subscriptionsToRenew = subscriptionRepository
+                .findByStatusAndEndDateBeforeAndAutoRenewTrue(
+                        SubscriptionStatus.ACTIVE,
+                        today
+                );
+
+        for (Subscription subscription : subscriptionsToRenew) {
+            processRenewal(subscription);
+        }
+    }
+
+    private void processRenewal(Subscription subscription) throws MessagingException {
+        if (subscription.getRenewalAttempts() >= 3) {
+            cancelSubscription(subscription);
+            return;
+        }
+
+        SubscriptionPlan planToUse = subscription.getNextSubscriptionPlan() != null ?
+                subscription.getNextSubscriptionPlan() :
+                subscription.getSubscriptionPlan();
+
+        boolean renewalSuccess = orchestrator.processSubscriptionRenewal(subscription, planToUse);
+
+        if (renewalSuccess) {
+            renewSubscription(subscription, planToUse);
+        } else {
+            handleFailedRenewal(subscription);
+        }
+
+    }
+
+    private void renewSubscription(Subscription subscription, SubscriptionPlan plan) {
+
+        // Create new subscription period
+        Date newStartDate = subscription.getEndDate();
+        Date newEndDate = Utils.addPeriod(newStartDate, plan.getPeriod());
+
+        subscription.setStartDate(newStartDate);
+        subscription.setEndDate(newEndDate);
+        subscription.setRenewalAttempts(0);
+        subscription.setLastRenewalAttempt(null);
+        subscription.setSubscriptionPlan(plan);
+        subscription.setNextSubscriptionPlan(null);
+
+        subscriptionRepository.save(subscription);
+
+        // Trigger notification or event for successful renewal
+    }
+
+    private void handleFailedRenewal(Subscription subscription) throws MessagingException {
+        subscription.setRenewalAttempts(subscription.getRenewalAttempts() + 1);
+        subscription.setLastRenewalAttempt(new Date());
+
+        if (subscription.getRenewalAttempts() >= 3) {
+            cancelSubscription(subscription);
+        } else {
+            subscriptionRepository.save(subscription);
+        }
+    }
+
+    private void cancelSubscription(Subscription subscription) throws MessagingException {
+        Profile profile = subscription.getProfile();
+        if (profile != null) {
+            profile.setStatus(ProfileStatus.INACTIVE);
+            profileRepository.save(profile);
+        }
+
+        subscription.setStatus(SubscriptionStatus.EXPIRED);
+        subscription.setAutoRenew(false);
+        subscriptionRepository.save(subscription);
+
+        EmailRequest emailRequest = EmailRequest.builder()
+                .to("maboukarl2@gmail.com")
+                .cc(List.of("yvanos510@gmail.com"))
+                .subject("Subscription Expired")
+                .headerText("Subscription Expired")
+                .body(String.format(
+                        "<p>The subscription of %s has now expired. The Account he was using for %s is %s on the profile %s. You need to change its pin or account password. </p>",
+                        subscription.getUser().getUsername(),
+                        subscription.getService().getName(),
+                        subscription.getProfile().getServiceAccount().getLogin(),
+                        subscription.getProfile().getProfileName()
+                ))
+                .companyName("MabsPlace")
+                .build();
+
+        emailService.sendEmail(emailRequest);
+    }
+
+    public void updateRenewalPlan(Long subscriptionId, Long newPlanId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", subscriptionId));
+
+        SubscriptionPlan newPlan = subscriptionPlanRepository.findById(newPlanId)
+                .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", newPlanId));
+
+        subscription.setNextSubscriptionPlan(newPlan);
+        subscriptionRepository.save(subscription);
     }
 
 
@@ -68,6 +184,14 @@ public class SubscriptionService {
             profile.setStatus(ProfileStatus.ACTIVE);
             profile = profileRepository.save(profile);
             newSubscription.setProfile(profile);
+        }
+
+        // check if there is already a subscription with the same profile if that subscription is expired or inactive delete it first
+        List<Subscription> subscriptions = subscriptionRepository.findByProfileId(newSubscription.getProfile().getId());
+        for (Subscription sub : subscriptions) {
+            if (sub.getStatus() == SubscriptionStatus.EXPIRED || sub.getStatus() == SubscriptionStatus.INACTIVE) {
+                subscriptionRepository.delete(sub);
+            }
         }
 
         notificationService.sendNotificationToUser(newSubscription.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());
@@ -105,7 +229,16 @@ public class SubscriptionService {
         updated.setStatus(updatedSubscription.getStatus());
         updated.setEndDate(Utils.addPeriod(updatedSubscription.getStartDate(), updated.getSubscriptionPlan().getPeriod()));
 
+
         if (updatedSubscription.getProfileId() != 0L) {
+
+            List<Subscription> subscriptions = subscriptionRepository.findByProfileId(updatedSubscription.getProfileId());
+            for (Subscription sub : subscriptions) {
+                if (sub.getStatus() == SubscriptionStatus.EXPIRED || sub.getStatus() == SubscriptionStatus.INACTIVE) {
+                    subscriptionRepository.delete(sub);
+                }
+            }
+
             Profile newProfile = profileRepository.findById(updatedSubscription.getProfileId())
                     .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", updatedSubscription.getProfileId()));
 
@@ -163,45 +296,37 @@ public class SubscriptionService {
     }
 
     // Update Subscription Status
-    public Subscription updateSubscriptionStatus(Long id, SubscriptionStatus newStatus){
+    public Subscription updateSubscriptionStatus(Long id, SubscriptionStatus newStatus) {
         Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
         subscription.setStatus(newStatus);
         return subscriptionRepository.save(subscription);
     }
 
     // Extend Subscription
-    public Subscription extendSubscription(Long id, int additionalDays){
+    public Subscription extendSubscription(Long id, int additionalDays) {
         Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
         subscription.setEndDate(Utils.addDays(subscription.getEndDate(), additionalDays));
         return subscriptionRepository.save(subscription);
     }
 
     // Find Subscriptions by User
-    public List<Subscription> findSubscriptionsByUser(Long userId){
+    public List<Subscription> findSubscriptionsByUser(Long userId) {
         return subscriptionRepository.findByUserId(userId);
     }
 
     // Find Subscriptions by Status
-    public List<Subscription> findSubscriptionsByStatus(SubscriptionStatus status){
+    public List<Subscription> findSubscriptionsByStatus(SubscriptionStatus status) {
         return subscriptionRepository.findByStatus(status);
     }
 
     // Bulk Update Subscriptions
-    public List<Subscription> bulkUpdateSubscriptions(List<Long> subscriptionIds, SubscriptionRequestDto updatedData){
+    public List<Subscription> bulkUpdateSubscriptions(List<Long> subscriptionIds, SubscriptionRequestDto updatedData) {
         List<Subscription> subscriptions = subscriptionRepository.findAllById(subscriptionIds);
         for (Subscription subscription : subscriptions) {
             mapper.partialUpdate(updatedData, subscription);
             subscriptionRepository.save(subscription);
         }
         return subscriptions;
-    }
-
-    // Renew Subscription
-    public Subscription renewSubscription(Long id){
-        Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
-        subscription.setStartDate(Utils.getCurrentDate());
-        subscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscription.getSubscriptionPlan().getPeriod()));
-        return subscriptionRepository.save(subscription);
     }
 
     public List<Subscription> getSubscriptionsByUserId(Long userId) {

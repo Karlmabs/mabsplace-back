@@ -81,4 +81,5 @@ public class SubscriptionController {
         List<Subscription> Subscriptions = subscriptionService.getSubscriptionsByUserId(userId);
         return new ResponseEntity<>(mapper.toDtoList(Subscriptions), HttpStatus.OK);
     }
+
 }
