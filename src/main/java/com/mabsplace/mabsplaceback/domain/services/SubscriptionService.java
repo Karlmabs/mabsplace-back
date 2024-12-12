@@ -222,7 +222,7 @@ public class SubscriptionService {
         Subscription updated = mapper.partialUpdate(updatedSubscription, target);
         updated.setUser(userRepository.findById(updatedSubscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedSubscription.getUserId())));
         updated.setSubscriptionPlan(subscriptionPlanRepository.findById(updatedSubscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getSubscriptionPlanId())));
-
+        updated.setNextSubscriptionPlan(subscriptionPlanRepository.findById(updatedSubscription.getNextSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getNextSubscriptionPlanId())));
         MyService service = myServiceRepository.findById(updatedSubscription.getServiceId()).orElseThrow(() -> new ResourceNotFoundException("Service", "id", updatedSubscription.getServiceId()));
 
         updated.setService(service);
