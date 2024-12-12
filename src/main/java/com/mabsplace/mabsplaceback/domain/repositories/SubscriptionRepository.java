@@ -19,4 +19,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findByStatusAndEndDateBeforeAndAutoRenewTrue(SubscriptionStatus subscriptionStatus, Date today);
 
     List<Subscription> findByProfileId(Long id);
+
+    List<Subscription> findByEndDateBeforeAndStatusNotAndAutoRenewFalse(Date date, SubscriptionStatus subscriptionStatus);
 }

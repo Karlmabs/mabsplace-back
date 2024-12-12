@@ -91,7 +91,7 @@ public class SubscriptionService {
 
     }
 
-    private void renewSubscription(Subscription subscription, SubscriptionPlan plan) {
+    private void renewSubscription(Subscription subscription, SubscriptionPlan plan) throws MessagingException {
 
         // Create new subscription period
         Date newStartDate = subscription.getEndDate();
@@ -106,7 +106,21 @@ public class SubscriptionService {
 
         subscriptionRepository.save(subscription);
 
-        // Trigger notification or event for successful renewal
+        EmailRequest emailRequest = EmailRequest.builder()
+                .to("maboukarl2@gmail.com")
+                .cc(List.of("yvanos510@gmail.com"))
+                .subject("Subscription Renewed")
+                .headerText("Subscription Renewed")
+                .body(String.format(
+                        "<p>The subscription for %s of %s has been successfully renewed. The new end date is %s.</p>",
+                        subscription.getService().getName(),
+                        subscription.getUser().getUsername(),
+                        newEndDate
+                ))
+                .companyName("MabsPlace")
+                .build();
+
+        emailService.sendEmail(emailRequest);
     }
 
     private void handleFailedRenewal(Subscription subscription) throws MessagingException {
@@ -117,6 +131,21 @@ public class SubscriptionService {
             cancelSubscription(subscription);
         } else {
             subscriptionRepository.save(subscription);
+
+            EmailRequest emailRequest = EmailRequest.builder()
+                    .to("maboukarl2@gmail.com")
+                    .cc(List.of("yvanos510@gmail.com"))
+                    .subject("Subscription Renewal Failed")
+                    .headerText("Subscription Renewal Failed")
+                    .body(String.format(
+                            "<p>There was an issue renewing the subscription for %s of %s. The subscription will be automatically renewed again in the next 24 hours.</p>",
+                            subscription.getService().getName(),
+                            subscription.getUser().getUsername()
+                    ))
+                    .companyName("MabsPlace")
+                    .build();
+
+            emailService.sendEmail(emailRequest);
         }
     }
 
@@ -266,7 +295,7 @@ public class SubscriptionService {
 
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
     public void expireSubscriptions() throws MessagingException {
-        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNot(new Date(), SubscriptionStatus.EXPIRED);
+        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNotAndAutoRenewFalse(new Date(), SubscriptionStatus.EXPIRED);
         for (Subscription subscription : subscriptions) {
             subscription.setStatus(SubscriptionStatus.EXPIRED);
             Profile profile = subscription.getProfile();
