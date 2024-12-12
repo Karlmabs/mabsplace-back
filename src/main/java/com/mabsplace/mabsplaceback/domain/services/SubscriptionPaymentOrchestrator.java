@@ -134,6 +134,8 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     private Subscription createSubscriptionFromDto(SubscriptionRequestDto subscription) {
+        log.info("Creating subscription from DTO: {}", subscription);
+
         Subscription newSubscription = mapper.toEntity(subscription);
         newSubscription.setUser(userRepository.findById(subscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", subscription.getUserId())));
 
@@ -145,21 +147,20 @@ public class SubscriptionPaymentOrchestrator {
         newSubscription.setStatus(subscription.getStatus());
         newSubscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscriptionPlan.getPeriod()));
 
-
-
         if (subscription.getProfileId() != 0L) {
-            // check if there is already a subscription with the same profile if that subscription is expired or inactive delete it first
+            log.info("Checking existing subscriptions for profile ID: {}", subscription.getProfileId());
             List<Subscription> subscriptions = subscriptionRepository.findByProfileId(subscription.getProfileId());
             for (Subscription sub : subscriptions) {
                 if (sub.getStatus() == SubscriptionStatus.EXPIRED || sub.getStatus() == SubscriptionStatus.INACTIVE) {
+                    log.info("Deleting expired or inactive subscription with ID: {}", sub.getId());
                     subscriptionRepository.delete(sub);
                 }
             }
 
             Profile profile = profileRepository.findById(subscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", subscription.getProfileId()));
 
-            // Check if the profile is already active
             if (profile.getStatus() == ProfileStatus.ACTIVE) {
+                log.error("Profile with ID: {} is already active", subscription.getProfileId());
                 throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
             }
 
@@ -168,8 +169,7 @@ public class SubscriptionPaymentOrchestrator {
             newSubscription.setProfile(profile);
         }
 
-
-
+        log.info("Sending notification to user ID: {}", newSubscription.getUser().getId());
         notificationService.sendNotificationToUser(newSubscription.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());
         return subscriptionRepository.save(newSubscription);
     }
