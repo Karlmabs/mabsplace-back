@@ -1,6 +1,12 @@
 package com.mabsplace.mabsplaceback.security;
 
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.mabsplace.mabsplaceback.domain.dtos.auth.OAuth2AuthRequest;
 import com.mabsplace.mabsplaceback.domain.entities.Role;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.entities.VerificationToken;
@@ -15,17 +21,21 @@ import com.mabsplace.mabsplaceback.domain.services.PromoCodeService;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.security.events.OnRegistrationCompleteEvent;
 import com.mabsplace.mabsplaceback.security.jwt.JwtUtils;
+import com.mabsplace.mabsplaceback.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import com.mabsplace.mabsplaceback.security.request.AuthResponse;
 import com.mabsplace.mabsplaceback.security.request.LoginRequest;
 import com.mabsplace.mabsplaceback.security.request.SignupRequest;
 import com.mabsplace.mabsplaceback.security.request.VerifyCodeRequest;
 import com.mabsplace.mabsplaceback.security.response.MessageResponse;
 import com.mabsplace.mabsplaceback.security.services.UserServiceSec;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -48,6 +58,10 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    @Value("${mabsplace.google.clientId}")
+    private static final String CLIENT_ID = "";
+
     @Autowired
     AuthenticationManager authenticationManager;
 
@@ -80,6 +94,9 @@ public class AuthController {
 
     @Autowired
     UserServiceSec service;
+
+    @Autowired
+    private OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
     private final UserMapper userMapper;
 
@@ -150,6 +167,7 @@ public class AuthController {
                 .emailVerified(true)
                 .firstname(signUpRequest.getFirstname())
                 .lastname(signUpRequest.getLastname())
+                .authType(AuthenticationType.DATABASE)
                 .build();
 
         Set<String> strRoles = signUpRequest.getRole();
@@ -248,6 +266,129 @@ public class AuthController {
             return ResponseEntity.ok().body(new MessageResponse("User verified successfully."));
         else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Invalid verification code."));
+    }
+
+    @PostMapping("/oauth2/google")
+    public ResponseEntity<?> authenticateGoogle(@RequestBody OAuth2AuthRequest authRequest) {
+        try {
+            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+
+            // Configurer le transport HTTP
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(GoogleNetHttpTransport.newTrustedTransport(), jsonFactory)
+                    .setAudience(Collections.singletonList(CLIENT_ID))
+                    .build();
+
+            GoogleIdToken idToken = verifier.verify(authRequest.getToken());
+            if (idToken != null) {
+                GoogleIdToken.Payload payload = idToken.getPayload();
+
+                // Check if user exists
+                Optional<User> userOptional = userRepository.findByEmail(payload.getEmail());
+                User user;
+
+                // generate random phone number
+                String phoneNumber = String.valueOf((int) (Math.random() * 1000000000));
+
+                if (userOptional.isEmpty()) {
+                    // Create new user
+                    user = User.builder()
+                            .email(payload.getEmail())
+                            .emailVerified(true)
+                            .password(encoder.encode("password"))
+                            .phonenumber(phoneNumber)
+                            .username(payload.getEmail())
+                            .firstname((String) payload.get("given_name"))
+                            .lastname((String) payload.get("family_name"))
+                            .authType(AuthenticationType.GOOGLE)
+                            .build();
+
+                    // Add default role
+                    Set<Role> roles = new HashSet<>();
+                    Role userRole = roleRepository.findByName("ROLE_USER")
+                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                    roles.add(userRole);
+                    user.setRoles(roles);
+
+                    user = userRepository.save(user);
+
+                    // Initialize wallet
+                    user.setWallet(
+                            Wallet.builder()
+                                    .user(user)
+                                    .balance(BigDecimal.ZERO)
+                                    .currency(currencyRepository.findAll().getFirst())
+                                    .build()
+                    );
+
+                    user = userRepository.save(user);
+                } else {
+                    user = userOptional.get();
+                }
+
+                String token = tokenProvider.createToken(user.getEmail());
+                return ResponseEntity.ok(new AuthResponse(token, userMapper.toDto(user)));
+            }
+
+            return ResponseEntity.badRequest().body(new MessageResponse("Invalid ID token."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Authentication failed."));
+        }
+    }
+
+    @PostMapping("/oauth2/apple")
+    public ResponseEntity<?> authenticateApple(@RequestBody OAuth2AuthRequest authRequest) {
+        try {
+            // Verify Apple ID token
+            SignedJWT signedJWT = SignedJWT.parse(authRequest.getToken());
+            JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
+
+            String email = claims.getSubject();
+
+            // Check if user exists
+            Optional<User> userOptional = userRepository.findByEmail(email);
+            User user;
+
+            if (userOptional.isEmpty()) {
+                // Create new user
+                user = User.builder()
+                        .email(email)
+                        .emailVerified(true)
+                        .password(encoder.encode("password"))
+                        .phonenumber(String.valueOf((int) (Math.random() * 1000000000)))
+                        .username(email)
+                        .firstname((String) claims.getClaim("first_name"))
+                        .lastname((String) claims.getClaim("last_name"))
+                        .authType(AuthenticationType.APPLE)
+                        .build();
+
+                // Add default role
+                Set<Role> roles = new HashSet<>();
+                Role userRole = roleRepository.findByName("ROLE_USER")
+                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                roles.add(userRole);
+                user.setRoles(roles);
+
+                user = userRepository.save(user);
+
+                // Initialize wallet
+                user.setWallet(
+                        Wallet.builder()
+                                .user(user)
+                                .balance(BigDecimal.ZERO)
+                                .currency(currencyRepository.findAll().getFirst())
+                                .build()
+                );
+
+                user = userRepository.save(user);
+            } else {
+                user = userOptional.get();
+            }
+
+            String token = tokenProvider.createToken(user.getEmail());
+            return ResponseEntity.ok(new AuthResponse(token, userMapper.toDto(user)));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Authentication failed."));
+        }
     }
 
 

@@ -6,8 +6,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-#  liquibase:
-#    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+
+  #  liquibase:
+  #    change-log: classpath:db/changelog/db.changelog-master.yaml
+
 
   mail:
     host: smtp.gmail.com
@@ -62,6 +65,9 @@ mabsplace:
   openapi:
     dev-url: http://localhost:8080
     prod-url: http://mabsplace.com:8080
+  google:
+    clientId: 497027706625-6l43ei9kjs5dc5hrskn94uqq2qcc5roo.apps.googleusercontent.com
+    clientSecret: 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
 
 app:
   auth:
