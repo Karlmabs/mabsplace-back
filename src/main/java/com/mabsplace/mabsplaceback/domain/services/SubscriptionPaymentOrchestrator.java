@@ -61,6 +61,23 @@ public class SubscriptionPaymentOrchestrator {
         this.profileRepository = profileRepository;
     }
 
+    public Payment processPaymentWithoutSubscription(PaymentRequestDto paymentRequest) {
+        // Handle payment processing
+        User user = userRepository.findById(paymentRequest.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequest.getUserId()));
+        double discount = discountService.getDiscountForUser(user.getId());
+        BigDecimal amountAfterDiscount = paymentRequest.getAmount().subtract(BigDecimal.valueOf(discount));
+
+        log.info("Amount after discount: " + amountAfterDiscount);
+
+        if (!walletService.checkBalance(user.getWallet().getBalance(), amountAfterDiscount)) {
+            throw new RuntimeException("Insufficient funds");
+        }
+
+        Payment payment = createPayment(user, paymentRequest, amountAfterDiscount);
+
+        return payment;
+    }
+
     public Payment processPaymentAndCreateSubscription(PaymentRequestDto paymentRequest) {
         // Handle payment processing
         User user = userRepository.findById(paymentRequest.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequest.getUserId()));
@@ -94,7 +111,7 @@ public class SubscriptionPaymentOrchestrator {
                 .build();
 
         try {
-            Payment payment = processPaymentAndCreateSubscription(renewalPayment);
+            Payment payment = processPaymentWithoutSubscription(renewalPayment);
             return payment.getStatus() == PaymentStatus.PAID;
         } catch (Exception e) {
             log.error("Renewal payment failed for subscription {}", subscription.getId(), e);

@@ -59,20 +59,28 @@ public class SubscriptionService {
 
     @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
     public void processSubscriptionRenewals() throws MessagingException {
+        log.info("Starting daily subscription renewal process");
         Date today = new Date();
         List<Subscription> subscriptionsToRenew = subscriptionRepository
                 .findByStatusAndEndDateBeforeAndAutoRenewTrue(
                         SubscriptionStatus.ACTIVE,
                         today
                 );
+        log.info("Found {} subscriptions to renew", subscriptionsToRenew.size());
 
         for (Subscription subscription : subscriptionsToRenew) {
+            log.debug("Processing renewal for subscription ID: {}", subscription.getId());
             processRenewal(subscription);
         }
+        log.info("Completed daily subscription renewal process");
     }
 
     private void processRenewal(Subscription subscription) throws MessagingException {
+        log.info("Processing renewal for subscription ID: {} - Attempt #{}",
+                subscription.getId(), subscription.getRenewalAttempts() + 1);
+
         if (subscription.getRenewalAttempts() >= 3) {
+            log.warn("Maximum renewal attempts reached for subscription ID: {}", subscription.getId());
             cancelSubscription(subscription);
             return;
         }
@@ -80,22 +88,28 @@ public class SubscriptionService {
         SubscriptionPlan planToUse = subscription.getNextSubscriptionPlan() != null ?
                 subscription.getNextSubscriptionPlan() :
                 subscription.getSubscriptionPlan();
+        log.debug("Using plan ID: {} for renewal", planToUse.getId());
 
         boolean renewalSuccess = orchestrator.processSubscriptionRenewal(subscription, planToUse);
 
         if (renewalSuccess) {
+            log.info("Renewal successful for subscription ID: {}", subscription.getId());
             renewSubscription(subscription, planToUse);
         } else {
+            log.warn("Renewal failed for subscription ID: {}", subscription.getId());
             handleFailedRenewal(subscription);
         }
 
     }
 
     private void renewSubscription(Subscription subscription, SubscriptionPlan plan) throws MessagingException {
+        log.info("Renewing subscription ID: {} with plan ID: {}", subscription.getId(), plan.getId());
 
         // Create new subscription period
         Date newStartDate = subscription.getEndDate();
         Date newEndDate = Utils.addPeriod(newStartDate, plan.getPeriod());
+
+        log.debug("New subscription period: {} to {}", newStartDate, newEndDate);
 
         subscription.setStartDate(newStartDate);
         subscription.setEndDate(newEndDate);
@@ -105,6 +119,7 @@ public class SubscriptionService {
         subscription.setNextSubscriptionPlan(null);
 
         subscriptionRepository.save(subscription);
+        log.info("Successfully updated subscription details for ID: {}", subscription.getId());
 
         EmailRequest emailRequest = EmailRequest.builder()
                 .to("maboukarl2@gmail.com")
@@ -121,6 +136,7 @@ public class SubscriptionService {
                 .build();
 
         emailService.sendEmail(emailRequest);
+        log.info("Sent renewal confirmation email for subscription ID: {}", subscription.getId());
     }
 
     private void handleFailedRenewal(Subscription subscription) throws MessagingException {
