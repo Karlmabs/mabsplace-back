@@ -15,19 +15,25 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 public class SubscriptionPlanResponseDto implements Serializable {
-  private Long id;
+    private Long id;
 
-  private String name; // e.g., "Monthly", "Yearly"
+    private String name; // e.g., "Monthly", "Yearly"
 
-  private BigDecimal price;
+    private BigDecimal originalPrice;
 
-  private Period period;
+    private BigDecimal finalPrice;
 
-  private String description;
+    private BigDecimal discountPercentage;
 
-  private long myServiceId;
+    private boolean hasActiveDiscount;
 
-  private String serviceName;
+    private Period period;
 
-  private CurrencyResponseDto currency;
+    private String description;
+
+    private long myServiceId;
+
+    private String serviceName;
+
+    private CurrencyResponseDto currency;
 }

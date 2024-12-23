@@ -5,6 +5,7 @@ import com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan.SubscriptionPlan
 import com.mabsplace.mabsplaceback.domain.entities.SubscriptionPlan;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionPlanMapper;
 import com.mabsplace.mabsplaceback.domain.services.SubscriptionPlanService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class SubscriptionPlanController {
     private final SubscriptionPlanService subscriptionPlanService;
     private final SubscriptionPlanMapper mapper;
 
-    public SubscriptionPlanController(SubscriptionPlanService subscriptionPlanService, SubscriptionPlanMapper mapper) {
+    public SubscriptionPlanController(SubscriptionPlanService subscriptionPlanService, @Qualifier("customSubscriptionPlanMapper") SubscriptionPlanMapper mapper) {
         this.subscriptionPlanService = subscriptionPlanService;
         this.mapper = mapper;
     }
