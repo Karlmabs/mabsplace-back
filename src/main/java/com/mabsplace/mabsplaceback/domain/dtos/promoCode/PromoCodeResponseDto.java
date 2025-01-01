@@ -1,21 +1,24 @@
 package com.mabsplace.mabsplaceback.domain.dtos.promoCode;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.mabsplace.mabsplaceback.domain.enums.PromoCodeStatus;
+import lombok.*;
 
-@AllArgsConstructor
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Data
+@Builder
 @NoArgsConstructor
-@Getter
-@Setter
+@AllArgsConstructor
 public class PromoCodeResponseDto {
-
     private Long id;
     private String code;
-    private String expirationDate;
+    private LocalDateTime expirationDate;
     private int maxUsage;
     private int usedCount;
-    private Long ownerId;
-
+    private BigDecimal discountAmount;
+    private PromoCodeStatus status;
+    private boolean isValid;
+    private boolean isExpired;
+    private boolean isExhausted;
 }

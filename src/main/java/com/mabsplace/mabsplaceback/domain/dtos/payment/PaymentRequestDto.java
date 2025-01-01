@@ -16,5 +16,6 @@ public class PaymentRequestDto {
   private Date paymentDate;
   private long currencyId;
   private long serviceId;
+  private String promoCode;
   private long subscriptionPlanId;
 }

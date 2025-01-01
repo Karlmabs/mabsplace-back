@@ -28,6 +28,15 @@ public interface PaymentMapper {
     return user.getId();
   }
 
+  default PromoCode map(String promoCode) {
+    if (promoCode == null || promoCode.isEmpty()) {
+      return null;
+    }
+    PromoCode code = new PromoCode();
+    code.setCode(promoCode);
+    return code;
+  }
+
   default Long mapCurrency(Currency currency) {
     if (currency == null) {
       return 0L;

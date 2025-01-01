@@ -197,11 +197,6 @@ public class AuthController {
                         .build()
         );
 
-        promoCodeService.generatePromoCode(result);
-
-        if (signUpRequest.getPromoCode() != null && !signUpRequest.getPromoCode().isEmpty())
-            promoCodeService.registerUserWithPromoCode(signUpRequest.getPromoCode(), result);
-
         result = userRepository.save(result);
 
         URI location = ServletUriComponentsBuilder

@@ -45,8 +45,6 @@ public class SubscriptionDiscountService {
                 .findByServiceIdAndEndDateAfterAndStartDateBefore(
                         plan.getMyService().getId(), now, now);
 
-        System.out.println("Service discounts: " + serviceDiscounts);
-
         // Check for global discounts
         List<ServiceDiscount> globalDiscounts = discountRepository
                 .findByIsGlobalTrueAndEndDateAfterAndStartDateBefore(now, now);

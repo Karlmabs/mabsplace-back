@@ -31,6 +31,10 @@ public class Payment {
   private Date paymentDate = new Date();
 
   @ManyToOne
+  @JoinColumn(name = "promo_code_id")
+  private PromoCode promoCode;
+
+  @ManyToOne
   @JoinColumn(name = "service_id", referencedColumnName = "id")
   private MyService service;
 

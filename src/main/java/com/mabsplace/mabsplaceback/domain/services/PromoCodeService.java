@@ -1,102 +1,149 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
-import com.mabsplace.mabsplaceback.domain.entities.Discount;
+import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeRequestDto;
+import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
+import com.mabsplace.mabsplaceback.domain.entities.Payment;
 import com.mabsplace.mabsplaceback.domain.entities.PromoCode;
-import com.mabsplace.mabsplaceback.domain.entities.User;
-import com.mabsplace.mabsplaceback.domain.repositories.DiscountRepository;
+import com.mabsplace.mabsplaceback.domain.enums.PromoCodeStatus;
+import com.mabsplace.mabsplaceback.domain.mappers.PromoCodeMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.PromoCodeRepository;
-import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
-import com.mabsplace.mabsplaceback.utils.Utils;
+import com.mabsplace.mabsplaceback.utils.PromoCodeGenerator;
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
+@Transactional
+@Slf4j
 public class PromoCodeService {
-
     private final PromoCodeRepository promoCodeRepository;
-    private final DiscountRepository discountRepository;
+    private final PromoCodeMapper promoCodeMapper;
+    private final PromoCodeGenerator promoCodeGenerator;
 
-    private final UserRepository userRepository; // Assume this repository is defined
-
-    public PromoCodeService(PromoCodeRepository promoCodeRepository, DiscountRepository discountRepository, UserRepository userRepository) {
+    @Autowired
+    public PromoCodeService(
+            PromoCodeRepository promoCodeRepository,
+            PromoCodeMapper promoCodeMapper,
+            PromoCodeGenerator promoCodeGenerator) {
         this.promoCodeRepository = promoCodeRepository;
-        this.discountRepository = discountRepository;
-        this.userRepository = userRepository;
+        this.promoCodeMapper = promoCodeMapper;
+        this.promoCodeGenerator = promoCodeGenerator;
     }
 
-    public void generatePromoCode(User owner) {
-        // Generate a random code
-        String code = Utils.generateUniquePromoCode();
+    public List<PromoCodeResponseDto> generatePromoCodes(PromoCodeRequestDto request) {
+        List<PromoCode> generatedCodes = new ArrayList<>();
+        int quantity = request.getQuantity() != null ? request.getQuantity() : 1;
 
-        //check if the code already exists
-        if(promoCodeRepository.findByCode(code).isPresent()){
-            generatePromoCode(owner);
+        for (int i = 0; i < quantity; i++) {
+            String code = generateUniqueCode();
+            PromoCode promoCode = PromoCode.builder()
+                    .code(code)
+                    .discountAmount(request.getDiscountAmount())
+                    .expirationDate(request.getExpirationDate())
+                    .maxUsage(request.getMaxUsage())
+                    .usedCount(0)
+                    .status(request.getStatus())
+                    .build();
+
+            generatedCodes.add(promoCodeRepository.save(promoCode));
         }
 
-        // Create a new promo code
-        PromoCode promoCode = new PromoCode();
-        promoCode.setCode(code);
-        promoCode.setOwner(owner);
-        promoCode.setUsedCount(0);
+        return promoCodeMapper.toDtoList(generatedCodes);
+    }
 
-        // Save the promo code
+    private String generateUniqueCode() {
+        String code;
+        do {
+            code = promoCodeGenerator.generateCode();
+        } while (promoCodeRepository.existsByCodeIgnoreCase(code));
+        return code;
+    }
+
+    public PromoCodeResponseDto validatePromoCode(String code) {
+        PromoCode promoCode = promoCodeRepository.findByCodeIgnoreCase(code)
+                .orElseThrow(() -> new RuntimeException("Invalid promo code: " + code));
+
+        if (!promoCode.isValid()) {
+            throw new IllegalStateException("Promo code is not valid");
+        }
+
+        return promoCodeMapper.toDto(promoCode);
+    }
+
+    @Transactional
+    public void applyPromoCode(String code, Payment payment) {
+        PromoCode promoCode = promoCodeRepository.findByCodeIgnoreCase(code)
+                .orElseThrow(() -> new RuntimeException("Invalid promo code: " + code));
+
+        if (!promoCode.isValid()) {
+            throw new IllegalStateException("Promo code is not valid");
+        }
+
+        // Calculate discount
+        BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                promoCode.getDiscountAmount().divide(BigDecimal.valueOf(100)));
+        BigDecimal discountedAmount = payment.getAmount().multiply(discountMultiplier)
+                .setScale(2, RoundingMode.HALF_UP);
+
+        // Apply discount to payment
+        payment.setAmount(discountedAmount);
+        payment.setPromoCode(promoCode);
+
+        // Increment usage count
+        promoCode.setUsedCount(promoCode.getUsedCount() + 1);
+
+        // Update status if exhausted
+        if (promoCode.isExhausted()) {
+            promoCode.setStatus(PromoCodeStatus.INACTIVE);
+        }
+
         promoCodeRepository.save(promoCode);
-
     }
 
-    public void registerUserWithPromoCode(String code, User newUser) {
-        promoCodeRepository.findByCode(code).ifPresent(promoCode -> {
-            // Increment used count
-            promoCode.setUsedCount(promoCode.getUsedCount() + 1);
-            promoCodeRepository.save(promoCode);
-
-            // Apply discount logic for the owner based on usedCount
-            applyDiscountToOwner(promoCode);
-
-            // Link the new user to other relevant data as needed
-            // For example, setting the newUser's referring promo code
-            // Not shown here for brevity
-
-        });
+    public PromoCodeResponseDto getPromoCode(Long id) {
+        PromoCode promoCode = promoCodeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promo code not found: " + id));
+        return promoCodeMapper.toDto(promoCode);
     }
 
-    private void applyDiscountToOwner(PromoCode promoCode) {
-        User owner = promoCode.getOwner();
-        int referralCount = promoCode.getUsedCount();
+    public List<PromoCodeResponseDto> getAllPromoCodes() {
+        List<PromoCode> promoCodes = promoCodeRepository.findAll();
+        return promoCodeMapper.toDtoList(promoCodes);
+    }
 
-        // Determine the discount amount based on referralCount
-        // For simplicity, let's say 5% discount per referral, max 20%
-        double discountPercentage = Math.min(5.0 * referralCount, 20.0);
+    public void deletePromoCode(Long id) {
+        PromoCode promoCode = promoCodeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promo code not found: " + id));
+        promoCodeRepository.delete(promoCode);
+    }
 
-        // Check if the user already has a discount, update it or create a new one
-        Optional<Discount> existingDiscount = discountRepository.findByUser(owner);
-        Discount discount;
-        if (existingDiscount.isPresent()) {
-            discount = existingDiscount.get();
-            discount.setAmount(discountPercentage);
-        } else {
-            discount = new Discount();
-            discount.setUser(owner);
-            discount.setAmount(discountPercentage);
+    public List<PromoCodeResponseDto> getActivePromoCodes() {
+        List<PromoCode> promoCodes = promoCodeRepository.findAll();
+        List<PromoCodeResponseDto> activePromoCodes = new ArrayList<>();
+        for (PromoCode promoCode : promoCodes) {
+            if (promoCode.isValid()) {
+                activePromoCodes.add(promoCodeMapper.toDto(promoCode));
+            }
         }
-
-        // Set the expiration date for the discount
-        discount.setExpirationDate(LocalDateTime.now().plusDays(30)); // 30 days from now
-
-        discountRepository.save(discount);
+        return activePromoCodes;
     }
 
-    public List<PromoCode> getAllPromoCodes() {
-        return promoCodeRepository.findAll();
-    }
+    public PromoCodeResponseDto updatePromoCode(Long id, PromoCodeRequestDto request) {
+        PromoCode promoCode = promoCodeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promo code not found: " + id));
 
-    public PromoCode getPromoCode(Long id) {
-        return promoCodeRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("PromoCode", "id", id));
-    }
+        promoCode.setDiscountAmount(request.getDiscountAmount());
+        promoCode.setExpirationDate(request.getExpirationDate());
+        promoCode.setMaxUsage(request.getMaxUsage());
+        promoCode.setStatus(request.getStatus());
 
-    // Other methods
+        return promoCodeMapper.toDto(promoCodeRepository.save(promoCode));
+    }
 }

@@ -37,6 +37,7 @@ public class SubscriptionPaymentOrchestrator {
     private final MyServiceRepository myServiceRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final ProfileRepository profileRepository;
+    private final PromoCodeService promoCodeService;
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionPaymentOrchestrator.class);
 
@@ -45,7 +46,7 @@ public class SubscriptionPaymentOrchestrator {
             SubscriptionRepository subscriptionRepository,
             PaymentRepository paymentRepository,
             EmailService emailService,
-            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository) {
+            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, PromoCodeService promoCodeService) {
         this.walletService = walletService;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
@@ -59,6 +60,7 @@ public class SubscriptionPaymentOrchestrator {
         this.myServiceRepository = myServiceRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
         this.profileRepository = profileRepository;
+        this.promoCodeService = promoCodeService;
     }
 
     public Payment processPaymentWithoutSubscription(PaymentRequestDto paymentRequest) {
@@ -129,9 +131,14 @@ public class SubscriptionPaymentOrchestrator {
         entity.setAmount(amountAfterDiscount);
         entity.setStatus(PaymentStatus.PAID);
 
+        // Apply promo code if provided
+        if (paymentRequestDto.getPromoCode() != null && !paymentRequestDto.getPromoCode().isEmpty()) {
+            promoCodeService.applyPromoCode(paymentRequestDto.getPromoCode(), entity);
+        }
+
         log.info("Debiting wallet");
 
-        walletService.debit(user.getWallet().getId(), amountAfterDiscount);
+        walletService.debit(user.getWallet().getId(), entity.getAmount());
 
         return paymentRepository.save(entity);
     }

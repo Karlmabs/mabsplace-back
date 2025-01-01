@@ -1,22 +1,34 @@
 package com.mabsplace.mabsplaceback.domain.dtos.promoCode;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.mabsplace.mabsplaceback.domain.enums.PromoCodeStatus;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@AllArgsConstructor
+@Data
+@Builder
 @NoArgsConstructor
-@Getter
-@Setter
+@AllArgsConstructor
 public class PromoCodeRequestDto {
+    @DecimalMin("0.0")
+    @DecimalMax("100.0")
+    @NotNull
+    private BigDecimal discountAmount;
 
-    private String code;
+    @NotNull
     private LocalDateTime expirationDate;
-    private int maxUsage;
-    private int usedCount = 0;
 
-    private Long ownerId;
+    @NotNull
+    @Min(1)
+    private Integer maxUsage;
+
+    @NotNull
+    private PromoCodeStatus status;
+
+    // Optional: number of codes to generate
+    @Min(1)
+    @Max(100)
+    private Integer quantity = 1;
 }

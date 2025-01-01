@@ -12,7 +12,6 @@ public interface PromoCodeMapper {
 
     PromoCode toEntity(PromoCodeRequestDto promoCodeRequestDto);
 
-    @Mapping(target = "ownerId", expression = "java(promoCode.getOwner().getId())")
     PromoCodeResponseDto toDto(PromoCode promoCode);
 
     List<PromoCodeResponseDto> toDtoList(List<PromoCode> promoCodes);
