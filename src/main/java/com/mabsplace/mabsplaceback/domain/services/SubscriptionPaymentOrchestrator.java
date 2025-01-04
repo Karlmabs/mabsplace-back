@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 import static com.mysql.cj.conf.PropertyKey.logger;
 
@@ -144,6 +145,21 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     private void createInitialSubscription(Payment payment) {
+        SubscriptionPlan subscriptionPlan = subscriptionPlanRepository.findById(payment.getSubscriptionPlan().getId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", payment.getSubscriptionPlan().getId()));
+
+        if (Objects.equals(subscriptionPlan.getName(), "Trial")) {
+            log.info("Creating trial subscription");
+            if (subscriptionRepository.existsByUserIdAndServiceIdAndIsTrial(payment.getUser().getId(), payment.getService().getId(), true)) {
+                throw new RuntimeException("You have already used the trial for this service");
+            }
+            createTrialSubscription(payment);
+        } else {
+            log.info("Creating regular subscription");
+            createRegularSubscription(payment);
+        }
+    }
+
+    private void createRegularSubscription(Payment payment) {
         SubscriptionRequestDto subscriptionDto = SubscriptionRequestDto.builder()
                 .userId(payment.getUser().getId())
                 .serviceId(payment.getService().getId())
@@ -155,6 +171,21 @@ public class SubscriptionPaymentOrchestrator {
         // Create subscription
         Subscription subscription = createSubscriptionFromDto(subscriptionDto);
         subscriptionRepository.save(subscription);
+    }
+
+    private void createTrialSubscription(Payment payment) {
+        SubscriptionRequestDto subscriptionDto = SubscriptionRequestDto.builder()
+                .userId(payment.getUser().getId())
+                .serviceId(payment.getService().getId())
+                .subscriptionPlanId(payment.getSubscriptionPlan().getId())
+                .startDate(new Date())
+                .status(SubscriptionStatus.INACTIVE)
+                .autoRenew(false)
+                .isTrial(true)
+                .build();
+
+        // Create subscription
+        createSubscriptionFromDto(subscriptionDto);
     }
 
     private Subscription createSubscriptionFromDto(SubscriptionRequestDto subscription) {
@@ -170,6 +201,10 @@ public class SubscriptionPaymentOrchestrator {
         newSubscription.setService(service);
         newSubscription.setStatus(subscription.getStatus());
         newSubscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscriptionPlan.getPeriod()));
+
+        if (subscription.isTrial()) {
+            newSubscription.setIsTrial(true);
+        }
 
         if (subscription.getProfileId() != 0L) {
             log.info("Checking existing subscriptions for profile ID: {}", subscription.getProfileId());

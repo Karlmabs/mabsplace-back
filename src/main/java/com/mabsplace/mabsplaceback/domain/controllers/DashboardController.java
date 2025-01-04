@@ -298,6 +298,161 @@ public class DashboardController {
         }
         return jdbcTemplate.queryForObject(query, Double.class);
     }
+
+    @GetMapping("/historical-metrics")
+    public HistoricalMetrics getHistoricalMetrics() {
+        // Get yearly data
+        List<YearlyMetric> yearlyMetrics = jdbcTemplate.query(
+                """
+                WITH YearlyData AS (
+                    SELECT 
+                        YEAR(payment_date) as year,
+                        SUM(amount) as revenue
+                    FROM payments
+                    WHERE status = 'PAID'
+                    GROUP BY YEAR(payment_date)
+                ),
+                YearlyExpenses AS (
+                    SELECT 
+                        YEAR(expense_date) as year,
+                        SUM(amount) as expenses
+                    FROM expenses
+                    GROUP BY YEAR(expense_date)
+                )
+                SELECT 
+                    yd.year,
+                    yd.revenue,
+                    COALESCE(ye.expenses, 0) as expenses,
+                    (yd.revenue - COALESCE(ye.expenses, 0)) as net_profit
+                FROM YearlyData yd
+                LEFT JOIN YearlyExpenses ye ON yd.year = ye.year
+                ORDER BY yd.year DESC
+                LIMIT 3
+                """,
+                (rs, rowNum) -> new YearlyMetric(
+                        rs.getInt("year"),
+                        rs.getDouble("revenue"),
+                        rs.getDouble("expenses"),
+                        rs.getDouble("net_profit")
+                )
+        );
+
+        // Get service performance history
+        List<ServiceHistoricalMetric> serviceMetrics = jdbcTemplate.query(
+                """
+                WITH RECURSIVE MonthSeries AS (
+                    SELECT DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH) as date
+                    UNION ALL
+                    SELECT DATE_ADD(date, INTERVAL 1 MONTH)
+                    FROM MonthSeries
+                    WHERE date < CURRENT_DATE
+                ),
+                ServiceData AS (
+                    SELECT 
+                        s.id,
+                        s.name,
+                        DATE_FORMAT(sub.start_date, '%Y%m') as month,
+                        COUNT(DISTINCT sub.id) as subscriptions,
+                        SUM(p.amount) as revenue
+                    FROM services s
+                    LEFT JOIN subscriptions sub ON s.id = sub.service_id
+                    LEFT JOIN payments p ON sub.user_id = p.user_id 
+                        AND DATE_FORMAT(p.payment_date, '%Y%m') = DATE_FORMAT(sub.start_date, '%Y%m')
+                    WHERE sub.status = 'ACTIVE'
+                    GROUP BY s.id, s.name, DATE_FORMAT(sub.start_date, '%Y%m')
+                )
+                SELECT 
+                    s.name,
+                    DATE_FORMAT(ms.date, '%M %Y') as month,
+                    COALESCE(sd.subscriptions, 0) as subscriptions,
+                    COALESCE(sd.revenue, 0) as revenue
+                FROM MonthSeries ms
+                CROSS JOIN services s
+                LEFT JOIN ServiceData sd ON 
+                    s.name = sd.name AND 
+                    DATE_FORMAT(ms.date, '%Y%m') = sd.month
+                ORDER BY s.name, ms.date
+                """,
+                (rs, rowNum) -> new ServiceHistoricalMetric(
+                        rs.getString("name"),
+                        rs.getString("month"),
+                        rs.getInt("subscriptions"),
+                        rs.getDouble("revenue")
+                )
+        );
+
+        // Get top performing months
+        List<TopPerformingMonth> topMonths = jdbcTemplate.query(
+                """
+                WITH ActiveSubscribers AS (
+                    SELECT
+                        DATE_FORMAT(start_date, '%Y%m') AS month_key,
+                        COUNT(DISTINCT user_id) AS active_subscribers
+                    FROM subscriptions
+                    WHERE status = 'ACTIVE'
+                    GROUP BY DATE_FORMAT(start_date, '%Y%m')
+                )
+                SELECT
+                    DATE_FORMAT(p.payment_date, '%M %Y') AS month,
+                    COUNT(DISTINCT s.id) AS new_subscriptions,
+                    SUM(p.amount) AS revenue,
+                    COALESCE(SUM(asub.active_subscribers), 0) AS active_subscribers
+                FROM payments p
+                         JOIN subscriptions s
+                              ON p.user_id = s.user_id
+                                  AND DATE_FORMAT(p.payment_date, '%Y%m') = DATE_FORMAT(s.start_date, '%Y%m')
+                         LEFT JOIN ActiveSubscribers asub
+                                   ON DATE_FORMAT(p.payment_date, '%Y%m') = asub.month_key
+                WHERE p.status = 'PAID'
+                GROUP BY DATE_FORMAT(p.payment_date, '%M %Y')
+                ORDER BY revenue DESC
+                LIMIT 5;
+                """,
+                (rs, rowNum) -> new TopPerformingMonth(
+                        rs.getString("month"),
+                        rs.getInt("new_subscriptions"),
+                        rs.getDouble("revenue"),
+                        rs.getInt("active_subscribers")
+                )
+        );
+
+        return new HistoricalMetrics(yearlyMetrics, serviceMetrics, topMonths);
+    }
+}
+
+@Data
+@AllArgsConstructor
+class HistoricalMetrics {
+    private List<YearlyMetric> yearlyMetrics;
+    private List<ServiceHistoricalMetric> serviceMetrics;
+    private List<TopPerformingMonth> topMonths;
+}
+
+@Data
+@AllArgsConstructor
+class YearlyMetric {
+    private Integer year;
+    private Double revenue;
+    private Double expenses;
+    private Double netProfit;
+}
+
+@Data
+@AllArgsConstructor
+class ServiceHistoricalMetric {
+    private String serviceName;
+    private String month;
+    private Integer subscriptions;
+    private Double revenue;
+}
+
+@Data
+@AllArgsConstructor
+class TopPerformingMonth {
+    private String month;
+    private Integer newSubscriptions;
+    private Double revenue;
+    private Integer activeSubscribers;
 }
 
 // Data Transfer Objects

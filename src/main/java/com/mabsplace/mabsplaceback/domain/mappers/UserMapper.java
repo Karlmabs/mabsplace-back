@@ -11,6 +11,7 @@ import java.util.List;
 public interface UserMapper {
   User toEntity(UserRequestDto userRequestDto);
 
+  @Mapping(target = "userProfile", source = "userProfile")
   UserResponseDto toDto(User user);
 
   List<UserResponseDto> toDtoList(List<User> users);

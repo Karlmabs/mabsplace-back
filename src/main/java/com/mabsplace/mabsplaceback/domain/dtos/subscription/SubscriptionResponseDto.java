@@ -59,4 +59,6 @@ public class SubscriptionResponseDto implements Serializable {
     private Date lastRenewalAttempt;
 
     private long nextSubscriptionPlanId;
+
+    private boolean isTrial = false;
 }

@@ -85,4 +85,8 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Discount> discounts;
 
+    @ManyToOne
+    @JoinColumn(name = "profile_id")
+    private UserProfile userProfile;
+
 }

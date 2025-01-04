@@ -7,14 +7,12 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.mabsplace.mabsplaceback.domain.dtos.auth.OAuth2AuthRequest;
-import com.mabsplace.mabsplaceback.domain.entities.Role;
-import com.mabsplace.mabsplaceback.domain.entities.User;
-import com.mabsplace.mabsplaceback.domain.entities.VerificationToken;
-import com.mabsplace.mabsplaceback.domain.entities.Wallet;
+import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.RoleRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.UserProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.domain.services.EmailVerificationService;
 import com.mabsplace.mabsplaceback.domain.services.PromoCodeService;
@@ -102,9 +100,13 @@ public class AuthController {
 
     private final PromoCodeService promoCodeService;
 
-    public AuthController(UserMapper userMapper, PromoCodeService promoCodeService) {
+    private final UserProfileRepository userProfileRepository;
+
+
+    public AuthController(UserMapper userMapper, PromoCodeService promoCodeService, UserProfileRepository userProfileRepository) {
         this.userMapper = userMapper;
         this.promoCodeService = promoCodeService;
+        this.userProfileRepository = userProfileRepository;
     }
 
     @PostMapping("/login")
@@ -170,20 +172,21 @@ public class AuthController {
                 .authType(AuthenticationType.DATABASE)
                 .build();
 
-        Set<String> strRoles = signUpRequest.getRole();
-        Set<Role> roles = new HashSet<>();
+        // Find default user profile or create if doesn't exist
+        UserProfile defaultProfile = userProfileRepository.findByName("USER_PROFILE")
+                .orElseGet(() -> {
+                    UserProfile newProfile = new UserProfile();
+                    newProfile.setName("USER_PROFILE");
+                    newProfile.setDescription("Default user profile");
+                    Role userRole = roleRepository.findByName("ROLE_USER")
+                            .orElseThrow(() -> new RuntimeException("Error: Default role not found."));
+                    newProfile.setRoles(Collections.singleton(userRole));
+                    return userProfileRepository.save(newProfile);
+                });
 
-        if (strRoles == null) {
-            throw new BadRequestException("Role is not found.");
-        } else {
-            strRoles.forEach(role -> {
-                Role adminRole = roleRepository.findByName(role)
-                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                roles.add(adminRole);
-            });
-        }
+        // Assign default profile
+        user.setUserProfile(defaultProfile);
 
-        user.setRoles(roles);
         user.setEmailVerified(true);
         user.setAuthType(AuthenticationType.DATABASE);
 
@@ -285,6 +288,18 @@ public class AuthController {
                 String phoneNumber = String.valueOf((int) (Math.random() * 1000000000));
 
                 if (userOptional.isEmpty()) {
+                    // Find or create default user profile
+                    UserProfile defaultProfile = userProfileRepository.findByName("USER_PROFILE")
+                            .orElseGet(() -> {
+                                UserProfile newProfile = new UserProfile();
+                                newProfile.setName("USER_PROFILE");
+                                newProfile.setDescription("Default user profile");
+                                Role userRole = roleRepository.findByName("ROLE_USER")
+                                        .orElseThrow(() -> new RuntimeException("Error: Default role not found."));
+                                newProfile.setRoles(Collections.singleton(userRole));
+                                return userProfileRepository.save(newProfile);
+                            });
+
                     // Create new user
                     user = User.builder()
                             .email(payload.getEmail())
@@ -295,14 +310,9 @@ public class AuthController {
                             .firstname((String) payload.get("given_name"))
                             .lastname((String) payload.get("family_name"))
                             .authType(AuthenticationType.GOOGLE)
+                            .userProfile(defaultProfile)
                             .build();
 
-                    // Add default role
-                    Set<Role> roles = new HashSet<>();
-                    Role userRole = roleRepository.findByName("ROLE_USER")
-                            .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                    roles.add(userRole);
-                    user.setRoles(roles);
 
                     user = userRepository.save(user);
 
@@ -344,6 +354,18 @@ public class AuthController {
             User user;
 
             if (userOptional.isEmpty()) {
+                // Find or create default user profile
+                UserProfile defaultProfile = userProfileRepository.findByName("USER_PROFILE")
+                        .orElseGet(() -> {
+                            UserProfile newProfile = new UserProfile();
+                            newProfile.setName("USER_PROFILE");
+                            newProfile.setDescription("Default user profile");
+                            Role userRole = roleRepository.findByName("ROLE_USER")
+                                    .orElseThrow(() -> new RuntimeException("Error: Default role not found."));
+                            newProfile.setRoles(Collections.singleton(userRole));
+                            return userProfileRepository.save(newProfile);
+                        });
+
                 // Create new user
                 user = User.builder()
                         .email(email)
@@ -354,14 +376,8 @@ public class AuthController {
                         .firstname((String) claims.getClaim("first_name"))
                         .lastname((String) claims.getClaim("last_name"))
                         .authType(AuthenticationType.APPLE)
+                        .userProfile(defaultProfile)
                         .build();
-
-                // Add default role
-                Set<Role> roles = new HashSet<>();
-                Role userRole = roleRepository.findByName("ROLE_USER")
-                        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                roles.add(userRole);
-                user.setRoles(roles);
 
                 user = userRepository.save(user);
 

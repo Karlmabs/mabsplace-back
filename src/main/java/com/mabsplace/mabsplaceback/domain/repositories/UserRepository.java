@@ -2,6 +2,7 @@ package com.mabsplace.mabsplaceback.domain.repositories;
 
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.entities.UserProfile;
 import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -27,4 +28,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   @Query("SELECT u.subscriptions FROM User u WHERE u.id = ?1")
   List<Subscription> getSubscriptionsByUserId(Long id);
+
+    List<User> findByUserProfile(UserProfile profile);
+
+  List<User> findByUserProfileIsNull();
+
+  long countByUserProfileIsNotNull();
 }

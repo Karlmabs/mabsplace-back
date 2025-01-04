@@ -4,10 +4,13 @@ import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
-@Table(name = "subscriptions")
+@Table(name = "subscriptions", uniqueConstraints = {
+@UniqueConstraint(columnNames = {"user_id", "service_id", "is_trial"})
+})
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -51,5 +54,25 @@ public class Subscription {
   @ManyToOne
   @JoinColumn(name = "next_subscription_plan_id", referencedColumnName = "id")
   private SubscriptionPlan nextSubscriptionPlan;
+
+  // New field for trial tracking
+  @Column(name = "is_trial")
+  private Boolean isTrial = false;
+
+  @PrePersist
+  protected void onCreate() {
+    if (renewalAttempts == null) {
+      renewalAttempts = 0;
+    }
+  }
+
+  // Helper methods
+  public boolean isExpired() {
+    return endDate != null && endDate.before(new Date());
+  }
+
+  public boolean isActive() {
+    return status == SubscriptionStatus.ACTIVE && !isExpired();
+  }
 
 }
