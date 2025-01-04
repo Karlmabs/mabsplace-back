@@ -152,6 +152,14 @@ public class SubscriptionPaymentOrchestrator {
             if (subscriptionRepository.existsByUserIdAndServiceIdAndIsTrial(payment.getUser().getId(), payment.getService().getId(), true)) {
                 throw new RuntimeException("You have already used the trial for this service");
             }
+            // Check if user has any active subscription (trial or paid) for this service
+            boolean hasActiveSubscription = subscriptionRepository
+                    .existsByUserIdAndServiceIdAndStatusAndEndDateAfter(
+                            payment.getUser().getId(), payment.getService().getId(), SubscriptionStatus.ACTIVE, new Date());
+
+            if (hasActiveSubscription) {
+                throw new RuntimeException("You already have an active subscription for this service");
+            }
             createTrialSubscription(payment);
         } else {
             log.info("Creating regular subscription");
