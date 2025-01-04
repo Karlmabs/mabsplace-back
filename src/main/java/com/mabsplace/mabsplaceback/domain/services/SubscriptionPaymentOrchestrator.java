@@ -173,6 +173,7 @@ public class SubscriptionPaymentOrchestrator {
                 .serviceId(payment.getService().getId())
                 .subscriptionPlanId(payment.getSubscriptionPlan().getId())
                 .startDate(new Date())
+                .isTrial(false)
                 .status(SubscriptionStatus.INACTIVE)
                 .build();
 
@@ -212,6 +213,8 @@ public class SubscriptionPaymentOrchestrator {
 
         if (subscription.isTrial()) {
             newSubscription.setIsTrial(true);
+        } else {
+            newSubscription.setIsTrial(false);
         }
 
         if (subscription.getProfileId() != 0L) {
