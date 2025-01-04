@@ -211,7 +211,7 @@ public class SubscriptionPaymentOrchestrator {
         newSubscription.setStatus(subscription.getStatus());
         newSubscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscriptionPlan.getPeriod()));
 
-        if (subscription.isTrial()) {
+        if (subscription.getIsTrial()) {
             newSubscription.setIsTrial(true);
         } else {
             newSubscription.setIsTrial(false);

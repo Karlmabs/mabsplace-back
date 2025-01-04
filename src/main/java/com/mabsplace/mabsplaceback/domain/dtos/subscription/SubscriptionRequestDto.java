@@ -33,6 +33,6 @@ public class SubscriptionRequestDto implements Serializable {
 
     private long nextSubscriptionPlanId;
 
-    private boolean isTrial = false;
+    private Boolean isTrial = false;
 
 }
