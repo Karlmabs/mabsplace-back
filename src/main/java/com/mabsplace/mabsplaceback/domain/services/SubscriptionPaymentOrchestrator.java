@@ -70,19 +70,21 @@ public class SubscriptionPaymentOrchestrator {
         // Handle payment processing
         User user = userRepository.findById(paymentRequest.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequest.getUserId()));
         double discount = discountService.getDiscountForUser(user.getId());
+
         BigDecimal amountAfterDiscount = paymentRequest.getAmount().subtract(BigDecimal.valueOf(discount));
+        BigDecimal amountWithPromo = BigDecimal.ZERO;
 
         if (paymentRequest.getPromoCode() != null && !paymentRequest.getPromoCode().isEmpty()) {
             PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode());
             BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
                     promoCodeResponseDto.getDiscountAmount().divide(BigDecimal.valueOf(100)));
-            amountAfterDiscount = amountAfterDiscount.multiply(discountMultiplier)
+            amountWithPromo = amountAfterDiscount.multiply(discountMultiplier)
                     .setScale(2, RoundingMode.HALF_UP);
         }
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
-        if (!walletService.checkBalance(user.getWallet().getBalance(), amountAfterDiscount)) {
+        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo)) {
             throw new RuntimeException("Insufficient funds");
         }
 
@@ -97,18 +99,19 @@ public class SubscriptionPaymentOrchestrator {
         double discount = discountService.getDiscountForUser(user.getId());
 
         BigDecimal amountAfterDiscount = paymentRequest.getAmount().subtract(BigDecimal.valueOf(discount));
+        BigDecimal amountWithPromo = BigDecimal.ZERO;
 
         if (paymentRequest.getPromoCode() != null && !paymentRequest.getPromoCode().isEmpty()) {
             PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode());
             BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
                     promoCodeResponseDto.getDiscountAmount().divide(BigDecimal.valueOf(100)));
-            amountAfterDiscount = amountAfterDiscount.multiply(discountMultiplier)
+            amountWithPromo = amountAfterDiscount.multiply(discountMultiplier)
                     .setScale(2, RoundingMode.HALF_UP);
         }
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
-        if (!walletService.checkBalance(user.getWallet().getBalance(), amountAfterDiscount)) {
+        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo)) {
             throw new RuntimeException("Insufficient funds");
         }
 
