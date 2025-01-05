@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
+import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -70,6 +72,14 @@ public class SubscriptionPaymentOrchestrator {
         double discount = discountService.getDiscountForUser(user.getId());
         BigDecimal amountAfterDiscount = paymentRequest.getAmount().subtract(BigDecimal.valueOf(discount));
 
+        if (paymentRequest.getPromoCode() != null && !paymentRequest.getPromoCode().isEmpty()) {
+            PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode());
+            BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                    promoCodeResponseDto.getDiscountAmount().divide(BigDecimal.valueOf(100)));
+            amountAfterDiscount = amountAfterDiscount.multiply(discountMultiplier)
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
+
         log.info("Amount after discount: " + amountAfterDiscount);
 
         if (!walletService.checkBalance(user.getWallet().getBalance(), amountAfterDiscount)) {
@@ -85,7 +95,16 @@ public class SubscriptionPaymentOrchestrator {
         // Handle payment processing
         User user = userRepository.findById(paymentRequest.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequest.getUserId()));
         double discount = discountService.getDiscountForUser(user.getId());
+
         BigDecimal amountAfterDiscount = paymentRequest.getAmount().subtract(BigDecimal.valueOf(discount));
+
+        if (paymentRequest.getPromoCode() != null && !paymentRequest.getPromoCode().isEmpty()) {
+            PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode());
+            BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                    promoCodeResponseDto.getDiscountAmount().divide(BigDecimal.valueOf(100)));
+            amountAfterDiscount = amountAfterDiscount.multiply(discountMultiplier)
+                    .setScale(2, RoundingMode.HALF_UP);
+        }
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
