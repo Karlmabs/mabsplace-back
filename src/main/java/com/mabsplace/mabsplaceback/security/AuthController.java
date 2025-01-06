@@ -173,7 +173,7 @@ public class AuthController {
                 .build();
 
         // Find default user profile or create if doesn't exist
-        UserProfile defaultProfile = userProfileRepository.findByName("USER_PROFILE")
+        UserProfile defaultProfile = userProfileRepository.findByName(signUpRequest.getProfileName())
                 .orElseGet(() -> {
                     UserProfile newProfile = new UserProfile();
                     newProfile.setName("USER_PROFILE");
@@ -256,6 +256,14 @@ public class AuthController {
     public ResponseEntity<?> sendVerificationCode(@PathVariable("email") String email) throws MessagingException {
         emailVerificationService.sendVerificationCode(email);
         return ResponseEntity.ok().body(new MessageResponse("Verification code sent successfully."));
+    }
+
+    @GetMapping("/sendVerificationCode2/{username}")
+    public ResponseEntity<?> sendVerificationCode2(@PathVariable("username") String username) throws MessagingException {
+        User user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("User not found"));
+        String email = user.getEmail();
+        emailVerificationService.sendVerificationCode(email);
+        return ResponseEntity.ok().body(new MessageResponse(email));
     }
 
     @GetMapping("/verifyCode/{email}/{code}")

@@ -1,29 +1,30 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
+import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class EmailVerificationService {
 
     private final EmailService emailService;
+    private final UserRepository userRepository;
     private final Map<String, VerificationEntry> verificationCodes = new ConcurrentHashMap<>();
 
     @Value("${verification.code.expiration.minutes:15}")
     private long expirationMinutes;
 
-    public EmailVerificationService(EmailService emailService) {
+    public EmailVerificationService(EmailService emailService, UserRepository userRepository) {
         this.emailService = emailService;
+        this.userRepository = userRepository;
     }
 
     public String generateVerificationCode() {
@@ -31,6 +32,12 @@ public class EmailVerificationService {
     }
 
     public void sendVerificationCode(String email) throws MessagingException {
+        // Check if the email matches a user in the database
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            throw new MessagingException("Email not found in the database.");
+        }
+
         String code = generateVerificationCode();
         verificationCodes.put(email, new VerificationEntry(code, Instant.now()));
 

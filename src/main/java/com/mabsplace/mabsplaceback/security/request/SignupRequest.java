@@ -16,6 +16,8 @@ public class SignupRequest implements Serializable {
 
   private String email;
 
+  private String profileName;
+
   private Set<String> role;
 
   private String password;

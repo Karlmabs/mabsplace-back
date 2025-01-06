@@ -4,8 +4,10 @@ package com.mabsplace.mabsplaceback.domain.services;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.entities.UserProfile;
 import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
+import com.mabsplace.mabsplaceback.domain.repositories.UserProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.minio.MinioService;
@@ -26,14 +28,16 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper mapper;
     private final MinioService minioService;
+    private final UserProfileRepository userProfileRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, UserMapper mapper, MinioService minioService) {
+    public UserService(UserRepository userRepository, UserMapper mapper, MinioService minioService, UserProfileRepository userProfileRepository) {
         this.userRepository = userRepository;
         this.mapper = mapper;
         this.minioService = minioService;
+        this.userProfileRepository = userProfileRepository;
     }
 
 
@@ -48,7 +52,10 @@ public class UserService {
     public User updateUser(Long id, UserRequestDto updatedUser) throws EntityNotFoundException {
         User target = userRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("User not found"));
         User updated = mapper.partialUpdate(updatedUser, target);
-//        updated.setAdditionalFields(updatedUser.getAdditionalFields());
+        if (updatedUser.getProfileName() != null && !updatedUser.getProfileName().isEmpty()) {
+            UserProfile defaultProfile = userProfileRepository.findByName(updatedUser.getProfileName()).orElseThrow(() -> new EntityNotFoundException("Profile not found"));
+            updated.setUserProfile(defaultProfile);
+        }
         return userRepository.save(updated);
     }
 
