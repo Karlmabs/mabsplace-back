@@ -27,10 +27,10 @@ public class ExpenseController {
     private final ExpenseService expenseService;
 
     @GetMapping
-    @Operation(summary = "Get all expenses with pagination")
+    @Operation(summary = "Get all expenses")
     @ApiResponse(responseCode = "200", description = "List of expenses retrieved successfully")
-    public ResponseEntity<Page<ExpenseResponseDto>> getAllExpenses(Pageable pageable) {
-        return ResponseEntity.ok(expenseService.getAllExpenses(pageable));
+    public ResponseEntity<List<ExpenseResponseDto>> getAllExpenses() {
+        return ResponseEntity.ok(expenseService.getAllExpenses());
     }
 
     @GetMapping("/{id}")

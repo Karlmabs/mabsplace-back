@@ -31,9 +31,10 @@ public class ExpenseService {
     private final ExpenseCategoryRepository categoryRepository;
     private final CurrencyRepository currencyRepository;
 
-    public Page<ExpenseResponseDto> getAllExpenses(Pageable pageable) {
-        return expenseRepository.findAll(pageable)
-                .map(expenseMapper::toResponseDTO);
+    public List<ExpenseResponseDto> getAllExpenses() {
+        return expenseRepository.findAll().stream()
+                .map(expenseMapper::toResponseDTO)
+                .collect(Collectors.toList());
     }
 
     public List<ExpenseResponseDto> getExpensesByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
