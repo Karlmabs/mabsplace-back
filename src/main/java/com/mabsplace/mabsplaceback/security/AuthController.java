@@ -128,9 +128,6 @@ public class AuthController {
             throw new RuntimeException("User not verified");
         }*/
 
-        emailVerificationService.sendVerificationCode(loggedIn.get().getEmail());
-
-
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String token = tokenProvider.createToken(authentication);
