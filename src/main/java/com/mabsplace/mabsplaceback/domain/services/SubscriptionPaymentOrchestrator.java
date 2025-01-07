@@ -84,7 +84,7 @@ public class SubscriptionPaymentOrchestrator {
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
-        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo)) {
+        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount)) {
             throw new RuntimeException("Insufficient funds");
         }
 
@@ -111,7 +111,7 @@ public class SubscriptionPaymentOrchestrator {
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
-        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo)) {
+       if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount)) {
             throw new RuntimeException("Insufficient funds");
         }
 
