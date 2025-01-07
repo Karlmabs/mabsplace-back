@@ -41,6 +41,7 @@ public class SubscriptionPaymentOrchestrator {
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final ProfileRepository profileRepository;
     private final PromoCodeService promoCodeService;
+    private final SubscriptionDiscountService subscriptionDiscountService;
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionPaymentOrchestrator.class);
 
@@ -49,7 +50,7 @@ public class SubscriptionPaymentOrchestrator {
             SubscriptionRepository subscriptionRepository,
             PaymentRepository paymentRepository,
             EmailService emailService,
-            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, PromoCodeService promoCodeService) {
+            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, PromoCodeService promoCodeService, SubscriptionDiscountService subscriptionDiscountService) {
         this.walletService = walletService;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
@@ -64,6 +65,7 @@ public class SubscriptionPaymentOrchestrator {
         this.subscriptionPlanRepository = subscriptionPlanRepository;
         this.profileRepository = profileRepository;
         this.promoCodeService = promoCodeService;
+        this.subscriptionDiscountService = subscriptionDiscountService;
     }
 
     public Payment processPaymentWithoutSubscription(PaymentRequestDto paymentRequest) {
@@ -127,7 +129,7 @@ public class SubscriptionPaymentOrchestrator {
 
     public boolean processSubscriptionRenewal(Subscription subscription, SubscriptionPlan nextPlan) {
         PaymentRequestDto renewalPayment = PaymentRequestDto.builder()
-                .amount(nextPlan.getPrice())
+                .amount(subscriptionDiscountService.getDiscountedPrice(nextPlan))
                 .userId(subscription.getUser().getId())
                 .currencyId(nextPlan.getCurrency().getId())
                 .serviceId(subscription.getService().getId())
