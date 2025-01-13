@@ -79,7 +79,7 @@ public class SubscriptionService {
         log.info("Processing renewal for subscription ID: {} - Attempt #{}",
                 subscription.getId(), subscription.getRenewalAttempts() + 1);
 
-        if (subscription.getRenewalAttempts() >= 3) {
+        if (subscription.getRenewalAttempts() >= 4) {
             log.warn("Maximum renewal attempts reached for subscription ID: {}", subscription.getId());
             cancelSubscription(subscription);
             return;
