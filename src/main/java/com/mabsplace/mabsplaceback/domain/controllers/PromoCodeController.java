@@ -3,11 +3,14 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.PromoCode;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.mappers.PromoCodeMapper;
+import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.domain.services.PromoCodeService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,11 +21,13 @@ public class PromoCodeController {
 
     private final PromoCodeService promoCodeService;
     private final PromoCodeMapper mapper;
+    private final UserRepository userRepository;
 
 
-    public PromoCodeController(PromoCodeService promoCodeService, PromoCodeMapper mapper) {
+    public PromoCodeController(PromoCodeService promoCodeService, PromoCodeMapper mapper, UserRepository userRepository) {
         this.promoCodeService = promoCodeService;
         this.mapper = mapper;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/generate")
@@ -32,8 +37,12 @@ public class PromoCodeController {
     }
 
     @PostMapping("/validate/{code}")
-    public ResponseEntity<PromoCodeResponseDto> validateCode(@PathVariable String code) {
-        return ResponseEntity.ok(promoCodeService.validatePromoCode(code));
+    public ResponseEntity<PromoCodeResponseDto> validateCode(@PathVariable String code,  @RequestParam(required = false) Long userId) {
+        User user = null;
+        if (userId != null) {
+            user = userRepository.findById(userId).orElse(null);
+        }
+        return ResponseEntity.ok(promoCodeService.validatePromoCode(code, user));
     }
 
     @GetMapping("/active")
@@ -55,5 +64,11 @@ public class PromoCodeController {
     @PutMapping("/{id}")
     public ResponseEntity<PromoCodeResponseDto> updatePromoCode(@PathVariable Long id, @RequestBody PromoCodeRequestDto request) {
         return ResponseEntity.ok(promoCodeService.updatePromoCode(id, request));
+    }
+
+    // get promo codes specific to a user
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<PromoCodeResponseDto>> getPromoCodesByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(promoCodeService.getPromoCodesByUserId(userId));
     }
 }

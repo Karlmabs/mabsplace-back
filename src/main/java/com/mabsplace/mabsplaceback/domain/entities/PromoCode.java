@@ -36,6 +36,15 @@ public class PromoCode {
     @Enumerated(EnumType.STRING)
     private PromoCodeStatus status = PromoCodeStatus.ACTIVE;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = true)
+    private User assignedUser;
+
+    // Modify the validation method
+    public boolean isAssignedToUser(User user) {
+        return assignedUser == null || (user != null && assignedUser.equals(user));
+    }
+
     // Remove owner-related fields since codes are public
 
     public boolean isValid() {

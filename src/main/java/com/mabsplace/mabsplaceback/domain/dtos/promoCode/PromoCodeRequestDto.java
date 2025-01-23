@@ -31,4 +31,6 @@ public class PromoCodeRequestDto {
     @Min(1)
     @Max(100)
     private Integer quantity = 1;
+
+    private long userId;
 }

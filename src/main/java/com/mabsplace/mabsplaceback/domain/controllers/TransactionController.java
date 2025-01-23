@@ -47,6 +47,14 @@ public class TransactionController {
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
+    @PostMapping("/transfer")
+//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
+    public ResponseEntity<TransactionResponseDto> transferToWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
+        TransactionResponseDto createdTransaction = transactionService.transferMoney(transactionRequestDto);
+        return new ResponseEntity<>(createdTransaction, HttpStatus.OK);
+    }
+
+
     @PostMapping("/transaction-callback")
     public ResponseEntity<String> handlePaymentCallback(HttpServletRequest request, @RequestBody Map<String, Object> callbackData) {
         logger.info("Handling payment callback with data: {}", callbackData);
@@ -86,14 +94,12 @@ public class TransactionController {
     public ResponseEntity<Object> withdrawFromWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
         Object createdTransaction = transactionService.withdrawFromWallet(transactionRequestDto);
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
-//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
     }
 
     @PostMapping
 //  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<Object> createTransaction(@RequestBody TransactionRequestDto transactionRequestDto) {
         Object createdTransaction = transactionService.createTransaction(transactionRequestDto);
-//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 

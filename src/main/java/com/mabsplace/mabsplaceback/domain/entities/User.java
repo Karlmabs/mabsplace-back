@@ -89,4 +89,11 @@ public class User {
     @JoinColumn(name = "profile_id")
     private UserProfile userProfile;
 
+    @ManyToOne
+    @JoinColumn(name = "referrer_id")
+    private User referrer;
+
+    @OneToMany(mappedBy = "referrer")
+    private List<User> referrals;
+
 }

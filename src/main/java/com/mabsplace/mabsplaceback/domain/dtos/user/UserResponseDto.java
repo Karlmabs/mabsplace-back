@@ -39,5 +39,7 @@ public class UserResponseDto implements Serializable{
     private List<PaymentResponseDto> payments;
     private PromoCodeResponseDto promoCode;
     private Set<DiscountResponseDto> discounts;
+    private Long referrerId;
+    private List<UserResponseDto> referrals;
 
 }

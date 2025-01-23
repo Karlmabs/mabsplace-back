@@ -30,4 +30,6 @@ public class SignupRequest implements Serializable {
 
   private String promoCode;
 
+  private Long referrerId;
+
 }

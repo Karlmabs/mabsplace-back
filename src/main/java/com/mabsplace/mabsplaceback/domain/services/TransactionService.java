@@ -65,6 +65,9 @@ public class TransactionService {
                 walletService.credit(target.getReceiverWallet().getId(), target.getAmount());
             } else if (target.getTransactionType().equals(TransactionType.WITHDRAWAL)) {
                 walletService.debit(target.getSenderWallet().getId(), target.getAmount());
+            } else if (target.getTransactionType().equals(TransactionType.TRANSFER)) {
+                walletService.debit(target.getSenderWallet().getId(), target.getAmount());
+                walletService.credit(target.getReceiverWallet().getId(), target.getAmount());
             }
         }
         return transactionRepository.save(target);
@@ -126,6 +129,22 @@ public class TransactionService {
                 .build();
 
         executorService.submit(() -> coolPayService.makePayment(build));
+
+        return mapper.toDto(save);
+    }
+
+    // implement to transfer money from one wallet to another
+    public TransactionResponseDto transferMoney(TransactionRequestDto transaction) throws ResourceNotFoundException {
+        Transaction newTransaction = mapper.toEntity(transaction);
+        newTransaction.setSenderWallet(walletRepository.findById(transaction .getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
+        newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
+        newTransaction.setCurrency(currencyRepository.findById(transaction.getCurrencyId()).orElseThrow(() -> new ResourceNotFoundException("Currency", "id", transaction.getCurrencyId())));
+        newTransaction.setTransactionType(TransactionType.TRANSFER);
+        newTransaction.setTransactionDate(new Date());
+        newTransaction.setTransactionStatus(TransactionStatus.PENDING);
+        Transaction save = transactionRepository.save(newTransaction);
+
+        changeTransactionStatus(save.getId(), TransactionStatus.COMPLETED);
 
         return mapper.toDto(save);
     }

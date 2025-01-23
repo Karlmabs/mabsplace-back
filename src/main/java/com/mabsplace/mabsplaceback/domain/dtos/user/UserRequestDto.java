@@ -20,4 +20,5 @@ public class UserRequestDto implements Serializable {
     private String password;
     private String contact;
     private String profileName;
+    private Long referrerId;
 }

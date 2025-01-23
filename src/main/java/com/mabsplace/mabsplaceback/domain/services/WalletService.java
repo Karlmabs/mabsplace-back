@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.wallet.WalletRequestDto;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.entities.Wallet;
 import com.mabsplace.mabsplaceback.domain.mappers.WalletMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
@@ -90,4 +91,11 @@ public class WalletService {
     wallet.setBalance(wallet.getBalance().add(amount));
     return walletRepository.save(wallet);
   }
+
+  public void rewardReferrer(User referrer, BigDecimal rewardAmount) {
+    Wallet wallet = walletRepository.findByUserId(referrer.getId());
+    wallet.setBalance(wallet.getBalance().add(rewardAmount));
+    walletRepository.save(wallet);
+  }
+
 }

@@ -21,4 +21,5 @@ public class PromoCodeResponseDto {
     private boolean isValid;
     private boolean isExpired;
     private boolean isExhausted;
+    private long userId;
 }

@@ -181,6 +181,13 @@ public class AuthController {
                     return userProfileRepository.save(newProfile);
                 });
 
+        // Set Referrer
+        if (signUpRequest.getReferrerId() != null) {
+            User referrer = userRepository.findById(signUpRequest.getReferrerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", signUpRequest.getReferrerId()));
+            user.setReferrer(referrer);
+        }
+
         // Assign default profile
         user.setUserProfile(defaultProfile);
 

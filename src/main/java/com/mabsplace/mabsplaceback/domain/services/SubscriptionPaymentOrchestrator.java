@@ -4,9 +4,7 @@ import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
-import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
-import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
-import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
+import com.mabsplace.mabsplaceback.domain.enums.*;
 import com.mabsplace.mabsplaceback.domain.mappers.PaymentMapper;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
@@ -42,6 +40,7 @@ public class SubscriptionPaymentOrchestrator {
     private final ProfileRepository profileRepository;
     private final PromoCodeService promoCodeService;
     private final SubscriptionDiscountService subscriptionDiscountService;
+    private final TransactionRepository transactionRepository;
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionPaymentOrchestrator.class);
 
@@ -50,7 +49,7 @@ public class SubscriptionPaymentOrchestrator {
             SubscriptionRepository subscriptionRepository,
             PaymentRepository paymentRepository,
             EmailService emailService,
-            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, PromoCodeService promoCodeService, SubscriptionDiscountService subscriptionDiscountService) {
+            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, PromoCodeService promoCodeService, SubscriptionDiscountService subscriptionDiscountService, TransactionRepository transactionRepository) {
         this.walletService = walletService;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
@@ -66,6 +65,7 @@ public class SubscriptionPaymentOrchestrator {
         this.profileRepository = profileRepository;
         this.promoCodeService = promoCodeService;
         this.subscriptionDiscountService = subscriptionDiscountService;
+        this.transactionRepository = transactionRepository;
     }
 
     public Payment processPaymentWithoutSubscription(PaymentRequestDto paymentRequest) {
@@ -77,7 +77,7 @@ public class SubscriptionPaymentOrchestrator {
         BigDecimal amountWithPromo = BigDecimal.ZERO;
 
         if (paymentRequest.getPromoCode() != null && !paymentRequest.getPromoCode().isEmpty()) {
-            PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode());
+            PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode(), user);
             BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
                     promoCodeResponseDto.getDiscountAmount().divide(BigDecimal.valueOf(100)));
             amountWithPromo = amountAfterDiscount.multiply(discountMultiplier)
@@ -92,6 +92,13 @@ public class SubscriptionPaymentOrchestrator {
 
         Payment payment = createPayment(user, paymentRequest, amountAfterDiscount);
 
+        if (payment.getStatus() == PaymentStatus.PAID && user.getReferrer() != null) {
+            User referrer = user.getReferrer();
+
+            String promoCode = promoCodeService.generatePromoCodeForReferrer(referrer, getReferralDiscountRate());
+            notificationService.notifyReferrerOfPromoCode(referrer, promoCode);
+        }
+
         return payment;
     }
 
@@ -104,7 +111,7 @@ public class SubscriptionPaymentOrchestrator {
         BigDecimal amountWithPromo = BigDecimal.ZERO;
 
         if (paymentRequest.getPromoCode() != null && !paymentRequest.getPromoCode().isEmpty()) {
-            PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode());
+            PromoCodeResponseDto promoCodeResponseDto = promoCodeService.validatePromoCode(paymentRequest.getPromoCode(), user);
             BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
                     promoCodeResponseDto.getDiscountAmount().divide(BigDecimal.valueOf(100)));
             amountWithPromo = amountAfterDiscount.multiply(discountMultiplier)
@@ -113,7 +120,7 @@ public class SubscriptionPaymentOrchestrator {
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
-       if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount)) {
+        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount)) {
             throw new RuntimeException("Insufficient funds");
         }
 
@@ -122,9 +129,44 @@ public class SubscriptionPaymentOrchestrator {
         // Create subscription if payment successful
         if (payment.getStatus() == PaymentStatus.PAID) {
             createInitialSubscription(payment);
+
+            if (user.getReferrer() != null) {
+                User referrer = user.getReferrer();
+
+                // Check if this is the user's first payment
+                boolean isFirstPayment = paymentRepository.countByUserId(user.getId()) == 1;
+
+                if (isFirstPayment) {
+                    BigDecimal rewardAmount = getReferralRewardAmount(); // Fetch reward configuration
+                    walletService.credit(referrer.getWallet().getId(), rewardAmount);
+                    Transaction transaction = Transaction.builder()
+                            .amount(rewardAmount)
+                            .currency(payment.getCurrency())
+                            .receiverWallet(referrer.getWallet())
+                            .senderWallet(user.getWallet())
+                            .transactionDate(new Date())
+                            .transactionRef(null)
+                            .transactionStatus(TransactionStatus.COMPLETED)
+                            .transactionType(TransactionType.TRANSFER)
+                            .build();
+                    transactionRepository.save(transaction);
+                } else {
+                    String promoCode = promoCodeService.generatePromoCodeForReferrer(referrer, getReferralDiscountRate());
+                    notificationService.notifyReferrerOfPromoCode(referrer, promoCode);
+                }
+            }
         }
 
         return payment;
+    }
+
+    // Utility Methods for Configurations
+    private BigDecimal getReferralRewardAmount() {
+        return BigDecimal.valueOf(500);
+    }
+
+    private BigDecimal getReferralDiscountRate() {
+        return BigDecimal.valueOf(5);
     }
 
     public boolean processSubscriptionRenewal(Subscription subscription, SubscriptionPlan nextPlan) {

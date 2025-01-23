@@ -15,7 +15,23 @@ public interface UserMapper {
     User toEntity(UserRequestDto userRequestDto);
 
     @Mapping(target = "userProfile", expression = "java(mapUserProfile(user))")
+    @Mapping(target = "referrerId", expression = "java(mapReferrer(user))")
+    @Mapping(target = "referrals", expression = "java(mapReferrals(user.getReferrals()))")
     UserResponseDto toDto(User user);
+
+    default List<UserResponseDto> mapReferrals(List<User> referrals) {
+        if (referrals == null) {
+            return null;
+        }
+        return referrals.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    default Long mapReferrer(User user) {
+        if (user == null || user.getReferrer() == null) {
+            return null;
+        }
+        return user.getReferrer().getId();
+    }
 
     default UserProfileDTO mapUserProfile(User user) {
         if (user == null) {

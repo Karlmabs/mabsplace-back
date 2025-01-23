@@ -50,11 +50,22 @@ public class UserService {
     }
 
     public User updateUser(Long id, UserRequestDto updatedUser) throws EntityNotFoundException {
+        System.out.println("referrerId: " + updatedUser.getReferrerId());
         User target = userRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("User not found"));
         User updated = mapper.partialUpdate(updatedUser, target);
         if (updatedUser.getProfileName() != null && !updatedUser.getProfileName().isEmpty()) {
             UserProfile defaultProfile = userProfileRepository.findByName(updatedUser.getProfileName()).orElseThrow(() -> new EntityNotFoundException("Profile not found"));
             updated.setUserProfile(defaultProfile);
+        }
+        if (updatedUser.getReferrerId() != null) {
+            User referrer = userRepository.findById(updatedUser.getReferrerId()).orElseThrow(() -> new EntityNotFoundException("Referrer not found"));
+
+            // Check if the user already has a referrer and remove from the referrer's referrals
+            if (updated.getReferrer() != null) {
+                updated.getReferrer().getReferrals().remove(updated);
+            }
+
+            updated.setReferrer(referrer);
         }
         return userRepository.save(updated);
     }

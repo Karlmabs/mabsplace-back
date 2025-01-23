@@ -225,4 +225,12 @@ public class NotificationService {
         LOGGER.info("Sending notification to all users");
         sendPushNotification(allUserIds, title, body, data);
     }
+
+    public void notifyReferrerOfPromoCode(User referrer, String promoCode) {
+        LOGGER.info("Notifying referrer of promo code: " + promoCode);
+        Map<String, Object> data = new HashMap<>();
+        data.put("type", "PROMO_CODE");
+        data.put("promoCode", promoCode);
+        sendNotificationToUser(referrer.getId(), "Promo Code", "You have received a promo code", data);
+    }
 }

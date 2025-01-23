@@ -4,9 +4,11 @@ import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
 import com.mabsplace.mabsplaceback.domain.entities.PromoCode;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.PromoCodeStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.PromoCodeMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.PromoCodeRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.utils.PromoCodeGenerator;
 import jakarta.transaction.Transactional;
@@ -16,8 +18,11 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -26,18 +31,26 @@ public class PromoCodeService {
     private final PromoCodeRepository promoCodeRepository;
     private final PromoCodeMapper promoCodeMapper;
     private final PromoCodeGenerator promoCodeGenerator;
+    private final UserRepository userRepository;
 
     @Autowired
     public PromoCodeService(
             PromoCodeRepository promoCodeRepository,
             PromoCodeMapper promoCodeMapper,
-            PromoCodeGenerator promoCodeGenerator) {
+            PromoCodeGenerator promoCodeGenerator, UserRepository userRepository) {
         this.promoCodeRepository = promoCodeRepository;
         this.promoCodeMapper = promoCodeMapper;
         this.promoCodeGenerator = promoCodeGenerator;
+        this.userRepository = userRepository;
     }
 
     public List<PromoCodeResponseDto> generatePromoCodes(PromoCodeRequestDto request) {
+        User user = null;
+        if (request.getUserId() != 0) {
+            user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
+        }
+
         List<PromoCode> generatedCodes = new ArrayList<>();
         int quantity = request.getQuantity() != null ? request.getQuantity() : 1;
 
@@ -49,6 +62,7 @@ public class PromoCodeService {
                     .expirationDate(request.getExpirationDate())
                     .maxUsage(request.getMaxUsage())
                     .usedCount(0)
+                    .assignedUser(user)
                     .status(request.getStatus())
                     .build();
 
@@ -66,12 +80,12 @@ public class PromoCodeService {
         return code;
     }
 
-    public PromoCodeResponseDto validatePromoCode(String code) {
+    public PromoCodeResponseDto validatePromoCode(String code, User user) {
         PromoCode promoCode = promoCodeRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new RuntimeException("Invalid promo code: " + code));
 
-        if (!promoCode.isValid()) {
-            throw new IllegalStateException("Promo code is not valid");
+        if (!promoCode.isValid() || !promoCode.isAssignedToUser(user)) {
+            throw new IllegalStateException("Promo code is not valid or not assigned to this user");
         }
 
         return promoCodeMapper.toDto(promoCode);
@@ -82,8 +96,8 @@ public class PromoCodeService {
         PromoCode promoCode = promoCodeRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new RuntimeException("Invalid promo code: " + code));
 
-        if (!promoCode.isValid()) {
-            throw new IllegalStateException("Promo code is not valid");
+        if (!promoCode.isValid() || !promoCode.isAssignedToUser(payment.getUser())) {
+            throw new IllegalStateException("Promo code is not valid or not assigned to this user");
         }
 
         // Calculate discount
@@ -145,5 +159,30 @@ public class PromoCodeService {
         promoCode.setStatus(request.getStatus());
 
         return promoCodeMapper.toDto(promoCodeRepository.save(promoCode));
+    }
+
+    public String generatePromoCodeForReferrer(User referrer, BigDecimal referralDiscountRate) {
+        String code = generateUniqueCode();
+        PromoCode promoCode = PromoCode.builder()
+                .code(code)
+                .discountAmount(referralDiscountRate)
+                .expirationDate(LocalDateTime.of(LocalDate.now().plusMonths(1), LocalDate.now().atStartOfDay().toLocalTime()))
+                .maxUsage(1)
+                .assignedUser(referrer)
+                .usedCount(0)
+                .status(PromoCodeStatus.ACTIVE)
+                .build();
+
+        promoCodeRepository.save(promoCode);
+        return code;
+    }
+
+    public List<PromoCodeResponseDto> getPromoCodesByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        List<PromoCode> promoCodes = promoCodeRepository.findByAssignedUser(user).stream()
+                .filter(PromoCode::isValid)
+                .collect(Collectors.toList());
+        return promoCodeMapper.toDtoList(promoCodes);
     }
 }
