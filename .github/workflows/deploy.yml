@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Build, Push, and Deploy
 
 on:
   push:
@@ -22,39 +22,43 @@ jobs:
       - name: Build with Maven
         run: mvn clean install -DskipTests
 
-      - name: Copy JAR to VPS
-        uses: appleboy/scp-action@master
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          source: "target/mabsplace-back-0.0.1.jar"  # Adjust the path according to your project structure
-          target: "/root/mabsplace/backend"  # Change to the directory where you want to place the JAR on your VPS
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Deploy on VPS
-        uses: appleboy/ssh-action@master
+      - name: Build and Tag Docker Image
+        run: |
+          docker build -t karlmabs/spring-app:latest .
+          docker tag karlmabs/spring-app:latest karlmabs/spring-app:${{ github.sha }}
+
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push karlmabs/spring-app:latest
+          docker push karlmabs/spring-app:${{ github.sha }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          script: |
-            cd /root/mabsplace/backend
-            docker compose down
-            docker compose up -d --build
+          version: 'latest'
 
-#      - name: Deploy to VPS
-#        uses: appleboy/ssh-action@master
-#        with:
-#          host: ${{ secrets.VPS_HOST }}
-#          username: ${{ secrets.VPS_USERNAME }}
-#          password: ${{ secrets.VPS_PASSWORD }}
-#          script: |
-#            # Replace the following with your deployment commands
-#            echo "Copying JAR to VPS..."
-#            scp target/mabsplace-back-0.0.1.jar ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }}:/root/mabsplace/backend
-#            echo "Deploying to VPS..."
-#            cd /root/mabsplace/backend
-#            docker compose down
-#            docker compose up -d --build
+      - name: Authenticate with Kubernetes
+        run: |
+          echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+          export KUBECONFIG=kubeconfig
+
+      - name: Apply ConfigMap
+        run: |
+          kubectl apply -f k8s/configmap.yaml
+
+      - name: Create or Update Deployment
+        run: |
+          kubectl set image deployment/spring-app spring-app=karlmabs/spring-app:${{ github.sha }}
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+
+      - name: Verify Deployment
+        run: |
+          kubectl rollout status deployment spring-app
+          kubectl get pods
