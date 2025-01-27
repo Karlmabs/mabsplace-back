@@ -47,19 +47,18 @@ jobs:
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
           export KUBECONFIG=kubeconfig
-          
 
       - name: Apply ConfigMap
         run: |
-          kubectl apply -f k8s/spring-config.yaml
+          kubectl --kubeconfig=/kubeconfig apply -f k8s/spring-config.yaml
 
       - name: Create or Update Deployment
         run: |
-          kubectl set image deployment/spring-app spring-app=karlmabs/spring-app:${{ github.sha }}
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
+          kubectl --kubeconfig=/kubeconfig set image deployment/spring-app spring-app=karlmabs/spring-app:${{ github.sha }}
+          kubectl --kubeconfig=/kubeconfig apply -f k8s/deployment.yaml
+          kubectl --kubeconfig=/kubeconfig apply -f k8s/service.yaml
 
       - name: Verify Deployment
         run: |
-          kubectl rollout status deployment spring-app
-          kubectl get pods
+          kubectl --kubeconfig=/kubeconfig rollout status deployment spring-app
+          kubectl --kubeconfig=/kubeconfig get pods
