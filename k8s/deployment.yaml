@@ -17,10 +17,19 @@ spec:
           image: karlmabs/spring-app:latest
           ports:
             - containerPort: 8080
-          volumeMounts:
-            - name: config-volume
-              mountPath: /config
-      volumes:
-        - name: config-volume
-          configMap:
-            name: spring-config
+          env: # Setting Environmental Variables
+            - name: DB_HOST   # Setting Database host address
+              value: mysql
+            - name: DB_NAME  # Setting Database name
+              value: mabsplace
+            - name: DB_USERNAME  # Setting Database username
+              value: karlmabs
+            - name: DB_PASSWORD # Setting Database password
+              value: password
+#          volumeMounts:
+#            - name: config-volume
+#              mountPath: /config
+#      volumes:
+#        - name: config-volume
+#          configMap:
+#            name: spring-config
