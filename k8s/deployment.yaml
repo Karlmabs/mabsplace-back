@@ -15,6 +15,7 @@ spec:
       containers:
         - name: spring-app
           image: karlmabs/spring-app:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env: # Setting Environmental Variables
