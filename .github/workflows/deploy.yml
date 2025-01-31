@@ -38,6 +38,11 @@ jobs:
           docker push karlmabs/spring-app:latest
           docker push karlmabs/spring-app:${{ github.sha }}
 
+      - name: Ensure Image is Available
+        run: |
+          sleep 30  # Allow time for Docker push
+          docker pull karlmabs/spring-app:${{ github.sha }}
+
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
@@ -50,15 +55,22 @@ jobs:
 
       - name: Apply ConfigMap
         run: |
-          kubectl --kubeconfig=k8s/kubeconfig apply -f k8s/spring-config.yaml
+          kubectl --kubeconfig=kubeconfig apply -f k8s/spring-config.yaml --force
 
-      - name: Create or Update Deployment
+      - name: Update Deployment Image
         run: |
-          kubectl --kubeconfig=k8s/kubeconfig set image deployment/spring-app spring-app=karlmabs/spring-app:${{ github.sha }}
-          kubectl --kubeconfig=k8s/kubeconfig apply -f k8s/deployment.yaml
-          kubectl --kubeconfig=k8s/kubeconfig apply -f k8s/service.yaml
+          kubectl --kubeconfig=kubeconfig set image deployment/spring-app spring-app=karlmabs/spring-app:${{ github.sha }} --record
+
+      - name: Restart Deployment
+        run: |
+          kubectl --kubeconfig=kubeconfig rollout restart deployment/spring-app
+
+      - name: Apply Kubernetes Configurations
+        run: |
+          kubectl --kubeconfig=kubeconfig apply -f k8s/deployment.yaml
+          kubectl --kubeconfig=kubeconfig apply -f k8s/service.yaml
 
       - name: Verify Deployment
         run: |
-          kubectl --kubeconfig=k8s/kubeconfig rollout status deployment spring-app
-          kubectl --kubeconfig=k8s/kubeconfig get pods
+          kubectl --kubeconfig=kubeconfig rollout status deployment spring-app
+          kubectl --kubeconfig=kubeconfig get pods
