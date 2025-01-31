@@ -86,7 +86,7 @@ app:
       - myiosapp://oauth2/redirect
 
 minio:
-  url: http://minio
+  url: http://minio:9000
   access-key: minio
   secret-key: minio123
   bucket-name: mabsplace
