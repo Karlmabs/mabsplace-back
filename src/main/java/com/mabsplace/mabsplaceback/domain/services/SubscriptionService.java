@@ -143,7 +143,7 @@ public class SubscriptionService {
         subscription.setRenewalAttempts(subscription.getRenewalAttempts() + 1);
         subscription.setLastRenewalAttempt(new Date());
 
-        if (subscription.getRenewalAttempts() >= 3) {
+        if (subscription.getRenewalAttempts() >= 4) {
             cancelSubscription(subscription);
         } else {
             subscriptionRepository.save(subscription);

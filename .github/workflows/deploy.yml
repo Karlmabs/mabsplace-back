@@ -55,6 +55,7 @@ jobs:
 
       - name: Create or Update Deployment
         run: |
+          kubectl --kubeconfig=k8s/kubeconfig set image deployment/spring-app spring-app=karlmabs/spring-app:${{ github.sha }}
           kubectl --kubeconfig=k8s/kubeconfig apply -f k8s/deployment.yaml
           kubectl --kubeconfig=k8s/kubeconfig apply -f k8s/service.yaml
 
