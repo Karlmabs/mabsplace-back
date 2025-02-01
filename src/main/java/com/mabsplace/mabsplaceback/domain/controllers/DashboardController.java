@@ -418,6 +418,156 @@ public class DashboardController {
 
         return new HistoricalMetrics(yearlyMetrics, serviceMetrics, topMonths);
     }
+
+    @GetMapping("/monthly-performance")
+    public MonthlyPerformance getMonthlyPerformance() {
+        // Get current month overview
+        MonthlyOverview currentMonth = jdbcTemplate.queryForObject(
+                """
+                SELECT 
+                    DATE_FORMAT(CURRENT_DATE, '%M %Y') as month,
+                    COALESCE(SUM(p.amount), 0) as revenue,
+                    COUNT(DISTINCT s.id) as new_subscriptions,
+                    (SELECT COALESCE(SUM(amount), 0) 
+                     FROM expenses 
+                     WHERE MONTH(expense_date) = MONTH(CURRENT_DATE)
+                     AND YEAR(expense_date) = YEAR(CURRENT_DATE)) as expenses,
+                    (SELECT COUNT(DISTINCT user_id) 
+                     FROM subscriptions 
+                     WHERE status = 'ACTIVE'
+                     AND MONTH(start_date) = MONTH(CURRENT_DATE)
+                     AND YEAR(start_date) = YEAR(CURRENT_DATE)) as active_subscribers
+                FROM payments p
+                LEFT JOIN subscriptions s ON p.user_id = s.user_id 
+                    AND MONTH(s.start_date) = MONTH(CURRENT_DATE)
+                    AND YEAR(s.start_date) = YEAR(CURRENT_DATE)
+                WHERE p.status = 'PAID'
+                    AND MONTH(p.payment_date) = MONTH(CURRENT_DATE)
+                    AND YEAR(p.payment_date) = YEAR(CURRENT_DATE)
+                """,
+                (rs, rowNum) -> new MonthlyOverview(
+                        rs.getString("month"),
+                        rs.getDouble("revenue"),
+                        rs.getInt("new_subscriptions"),
+                        rs.getDouble("expenses"),
+                        rs.getDouble("revenue") - rs.getDouble("expenses"),
+                        rs.getInt("active_subscribers")
+                )
+        );
+
+        // Get previous month overview
+        MonthlyOverview previousMonth = jdbcTemplate.queryForObject(
+                """
+                SELECT 
+                    DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH), '%M %Y') as month,
+                    COALESCE(SUM(p.amount), 0) as revenue,
+                    COUNT(DISTINCT s.id) as new_subscriptions,
+                    (SELECT COALESCE(SUM(amount), 0) 
+                     FROM expenses 
+                     WHERE MONTH(expense_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                     AND YEAR(expense_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) as expenses,
+                    (SELECT COUNT(DISTINCT user_id) 
+                     FROM subscriptions 
+                     WHERE status = 'ACTIVE'
+                     AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                     AND YEAR(start_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) as active_subscribers
+                FROM payments p
+                LEFT JOIN subscriptions s ON p.user_id = s.user_id 
+                    AND MONTH(s.start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                    AND YEAR(s.start_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                WHERE p.status = 'PAID'
+                    AND MONTH(p.payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                    AND YEAR(p.payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                """,
+                (rs, rowNum) -> new MonthlyOverview(
+                        rs.getString("month"),
+                        rs.getDouble("revenue"),
+                        rs.getInt("new_subscriptions"),
+                        rs.getDouble("expenses"),
+                        rs.getDouble("revenue") - rs.getDouble("expenses"),
+                        rs.getInt("active_subscribers")
+                )
+        );
+
+        // Get 6-month trend
+        List<MonthlyTrend> trends = jdbcTemplate.query(
+                """
+                WITH RECURSIVE Months AS (
+                    SELECT DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH) as date
+                    UNION ALL
+                    SELECT DATE_ADD(date, INTERVAL 1 MONTH)
+                    FROM Months
+                    WHERE date < CURRENT_DATE
+                )
+                SELECT 
+                    DATE_FORMAT(m.date, '%M %Y') as month,
+                    COALESCE(SUM(p.amount), 0) as revenue,
+                    COUNT(DISTINCT s.id) as new_subscriptions,
+                    COALESCE((
+                        SELECT SUM(e.amount)
+                        FROM expenses e
+                        WHERE MONTH(e.expense_date) = MONTH(m.date)
+                        AND YEAR(e.expense_date) = YEAR(m.date)
+                    ), 0) as expenses,
+                    COALESCE((
+                        SELECT COUNT(DISTINCT user_id)
+                        FROM subscriptions
+                        WHERE status = 'ACTIVE'
+                        AND MONTH(start_date) = MONTH(m.date)
+                        AND YEAR(start_date) = YEAR(m.date)
+                    ), 0) as active_subscribers
+                FROM Months m
+                LEFT JOIN payments p ON 
+                    MONTH(p.payment_date) = MONTH(m.date)
+                    AND YEAR(p.payment_date) = YEAR(m.date)
+                    AND p.status = 'PAID'
+                LEFT JOIN subscriptions s ON 
+                    p.user_id = s.user_id
+                    AND MONTH(s.start_date) = MONTH(m.date)
+                    AND YEAR(s.start_date) = YEAR(m.date)
+                GROUP BY m.date
+                ORDER BY m.date
+                """,
+                (rs, rowNum) -> new MonthlyTrend(
+                        rs.getString("month"),
+                        rs.getDouble("revenue"),
+                        rs.getInt("new_subscriptions"),
+                        rs.getDouble("expenses"),
+                        rs.getInt("active_subscribers")
+                )
+        );
+
+        return new MonthlyPerformance(currentMonth, previousMonth, trends);
+    }
+}
+
+@Data
+@AllArgsConstructor
+class MonthlyPerformance {
+    private MonthlyOverview currentMonth;
+    private MonthlyOverview previousMonth;
+    private List<MonthlyTrend> trends;
+}
+
+@Data
+@AllArgsConstructor
+class MonthlyOverview {
+    private String month;
+    private Double revenue;
+    private Integer newSubscriptions;
+    private Double expenses;
+    private Double netProfit;
+    private Integer activeSubscribers;
+}
+
+@Data
+@AllArgsConstructor
+class MonthlyTrend {
+    private String month;
+    private Double revenue;
+    private Integer newSubscriptions;
+    private Double expenses;
+    private Integer activeSubscribers;
 }
 
 @Data
