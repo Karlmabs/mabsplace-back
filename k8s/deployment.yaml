@@ -20,7 +20,7 @@ spec:
             - containerPort: 8080
           env: # Setting Environmental Variables
             - name: DB_HOST   # Setting Database host address
-              value: mysql:3306
+              value: mysql
             - name: DB_NAME  # Setting Database name
               value: mabsplace
             - name: DB_USERNAME  # Setting Database username
