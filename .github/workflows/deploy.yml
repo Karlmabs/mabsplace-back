@@ -52,6 +52,7 @@ jobs:
         run: |
           echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
           export KUBECONFIG=kubeconfig
+          
 
       - name: Apply ConfigMap
         run: |
