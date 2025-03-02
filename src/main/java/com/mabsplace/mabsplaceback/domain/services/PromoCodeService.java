@@ -177,6 +177,38 @@ public class PromoCodeService {
         return code;
     }
 
+    public String generatePromoCodeForReferrer2(User referrer, BigDecimal referralDiscountRate) {
+        LocalDateTime startOfCurrentMonth = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfNextMonth = LocalDate.now().plusMonths(1).atStartOfDay();
+
+        List<PromoCode> existingValidCodes = promoCodeRepository.findByAssignedUser(referrer).stream()
+                .filter(code -> code.isValid() &&
+                        code.getExpirationDate().isAfter(startOfCurrentMonth) &&
+                        code.getExpirationDate().isBefore(endOfNextMonth))
+                .toList();
+
+        if (!existingValidCodes.isEmpty()) {
+            PromoCode existingCode = existingValidCodes.get(0);
+            existingCode.setDiscountAmount(existingCode.getDiscountAmount().add(referralDiscountRate));
+            promoCodeRepository.save(existingCode);
+            return existingCode.getCode();
+        }
+
+        String code = generateUniqueCode();
+        PromoCode promoCode = PromoCode.builder()
+                .code(code)
+                .discountAmount(referralDiscountRate)
+                .expirationDate(endOfNextMonth)
+                .maxUsage(1)
+                .assignedUser(referrer)
+                .usedCount(0)
+                .status(PromoCodeStatus.ACTIVE)
+                .build();
+
+        promoCodeRepository.save(promoCode);
+        return code;
+    }
+
     public List<PromoCodeResponseDto> getPromoCodesByUserId(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));

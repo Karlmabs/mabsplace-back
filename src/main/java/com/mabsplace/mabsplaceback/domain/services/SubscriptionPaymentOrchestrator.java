@@ -95,7 +95,7 @@ public class SubscriptionPaymentOrchestrator {
         if (payment.getStatus() == PaymentStatus.PAID && user.getReferrer() != null) {
             User referrer = user.getReferrer();
 
-            String promoCode = promoCodeService.generatePromoCodeForReferrer(referrer, getReferralDiscountRate());
+            String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
             notificationService.notifyReferrerOfPromoCode(referrer, promoCode);
         }
 
@@ -151,7 +151,7 @@ public class SubscriptionPaymentOrchestrator {
                             .build();
                     transactionRepository.save(transaction);
                 } else {
-                    String promoCode = promoCodeService.generatePromoCodeForReferrer(referrer, getReferralDiscountRate());
+                    String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
                     notificationService.notifyReferrerOfPromoCode(referrer, promoCode);
                 }
             }
