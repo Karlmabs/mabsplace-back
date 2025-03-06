@@ -60,7 +60,7 @@ public class OpenAPIConfig {
 
     return new OpenAPI()
             .info(info)
-            .servers(List.of(devServer, prodServer))
+            .servers(List.of(prodServer))
             .components(new Components().addSecuritySchemes("bearerAuth", securityScheme))
             .addSecurityItem(new SecurityRequirement().addList("bearerAuth"));
   }
