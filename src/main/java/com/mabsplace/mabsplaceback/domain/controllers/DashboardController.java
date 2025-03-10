@@ -17,7 +17,7 @@ public class DashboardController {
     private JdbcTemplate jdbcTemplate;
 
     @GetMapping("/stats")
-    public DashboardStats getStats() {
+    public DashboardStats getStats() {         
         // Get total subscribers (count of active subscriptions)
         Integer totalSubscribers = jdbcTemplate.queryForObject(
                 "SELECT COUNT(DISTINCT user_id) FROM subscriptions WHERE status = 'ACTIVE'",
@@ -35,7 +35,7 @@ public class DashboardController {
 
         // Get average subscription value
         Double avgValue = jdbcTemplate.queryForObject(
-                "SELECT AVG(amount) FROM payments WHERE status = 'PAID'",
+                "SELECT COALESCE(AVG(amount), 0) FROM payments WHERE status = 'PAID'",
                 Double.class
         );
 
@@ -172,28 +172,23 @@ public class DashboardController {
     @GetMapping("/revenue-trend")
     public List<MonthlyRevenue> getRevenueAndSubscriptionsTrend() {
         String sql = """
-                    WITH RECURSIVE Months AS (
-                        SELECT DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH) as date
-                        UNION ALL
-                        SELECT DATE_ADD(date, INTERVAL 1 MONTH)
-                        FROM Months
-                        WHERE date < CURRENT_DATE
-                    )
-                    SELECT 
-                        DATE_FORMAT(m.date, '%b') as month,
-                        COALESCE(SUM(p.amount), 0) as revenue,
-                        COALESCE(COUNT(DISTINCT s.id), 0) as subscriptions
-                    FROM Months m
-                    LEFT JOIN payments p ON 
-                        MONTH(p.payment_date) = MONTH(m.date) 
-                        AND YEAR(p.payment_date) = YEAR(m.date)
-                        AND p.status = 'PAID'
-                    LEFT JOIN subscriptions s ON 
-                        MONTH(s.start_date) = MONTH(m.date)
-                        AND YEAR(s.start_date) = YEAR(m.date)
-                        AND s.status = 'ACTIVE'
-                    GROUP BY m.date
-                    ORDER BY m.date
+                WITH RECURSIVE Months AS (
+                                       SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01') AS month_start
+                                       UNION ALL
+                                       SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
+                                       FROM Months
+                                       WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+                                   )
+                                   SELECT DATE_FORMAT(month_start, '%b') AS month,
+                                       COALESCE((SELECT SUM(amount) FROM payments\s
+                                           WHERE status = 'PAID'\s
+                                           AND payment_date BETWEEN month_start AND LAST_DAY(month_start)), 0) AS revenue,
+                                       COALESCE((SELECT COUNT(DISTINCT id) FROM subscriptions
+                                                 WHERE status = 'ACTIVE'\s
+                                                 AND MONTH(start_date) = MONTH(month_start)
+                                                 AND YEAR(start_date) = YEAR(month_start)), 0) AS subscriptions
+                                   FROM Months
+                                   ORDER BY month_start;
                 """;
 
         return jdbcTemplate.query(sql,
@@ -211,8 +206,7 @@ public class DashboardController {
         return jdbcTemplate.query(
                 "SELECT s.name, COUNT(sub.id) as value " +
                         "FROM services s " +
-                        "LEFT JOIN subscriptions sub ON s.id = sub.service_id " +
-                        "WHERE sub.status = 'ACTIVE' " +
+                        "LEFT JOIN subscriptions sub ON s.id = sub.service_id AND sub.status = 'ACTIVE' " +
                         "GROUP BY s.id, s.name",
                 (rs, rowNum) -> new ServiceDistribution(
                         rs.getString("name"),
