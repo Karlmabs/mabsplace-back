@@ -420,24 +420,21 @@ public class DashboardController {
                 """
                 SELECT 
                     DATE_FORMAT(CURRENT_DATE, '%M %Y') as month,
-                    COALESCE(SUM(p.amount), 0) as revenue,
-                    COUNT(DISTINCT s.id) as new_subscriptions,
-                    (SELECT COALESCE(SUM(amount), 0) 
-                     FROM expenses 
-                     WHERE MONTH(expense_date) = MONTH(CURRENT_DATE)
-                     AND YEAR(expense_date) = YEAR(CURRENT_DATE)) as expenses,
-                    (SELECT COUNT(DISTINCT user_id) 
-                     FROM subscriptions 
+                    (SELECT COALESCE(SUM(amount), 0) FROM payments
+                     WHERE status = 'PAID'
+                     AND MONTH(payment_date) = MONTH(CURRENT_DATE)
+                     AND YEAR(payment_date) = YEAR(CURRENT_DATE)) AS revenue,
+                    (SELECT COUNT(DISTINCT id) FROM subscriptions
                      WHERE status = 'ACTIVE'
                      AND MONTH(start_date) = MONTH(CURRENT_DATE)
-                     AND YEAR(start_date) = YEAR(CURRENT_DATE)) as active_subscribers
-                FROM payments p
-                LEFT JOIN subscriptions s ON p.user_id = s.user_id 
-                    AND MONTH(s.start_date) = MONTH(CURRENT_DATE)
-                    AND YEAR(s.start_date) = YEAR(CURRENT_DATE)
-                WHERE p.status = 'PAID'
-                    AND MONTH(p.payment_date) = MONTH(CURRENT_DATE)
-                    AND YEAR(p.payment_date) = YEAR(CURRENT_DATE)
+                     AND YEAR(start_date) = YEAR(CURRENT_DATE)) AS new_subscriptions,
+                    (SELECT COALESCE(SUM(amount), 0) FROM expenses 
+                     WHERE MONTH(expense_date) = MONTH(CURRENT_DATE)
+                     AND YEAR(expense_date) = YEAR(CURRENT_DATE)) AS expenses,
+                    (SELECT COUNT(DISTINCT user_id) FROM subscriptions
+                     WHERE status = 'ACTIVE'
+                     AND MONTH(start_date) = MONTH(CURRENT_DATE)
+                     AND YEAR(start_date) = YEAR(CURRENT_DATE)) AS active_subscribers
                 """,
                 (rs, rowNum) -> new MonthlyOverview(
                         rs.getString("month"),
