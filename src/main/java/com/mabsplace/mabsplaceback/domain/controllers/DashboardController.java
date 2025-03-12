@@ -385,21 +385,31 @@ public class DashboardController {
                     FROM subscriptions
                     WHERE status = 'ACTIVE'
                     GROUP BY DATE_FORMAT(start_date, '%Y%m')
+                ),
+                MonthlyRevenue AS (
+                    SELECT
+                        DATE_FORMAT(payment_date, '%Y%m') AS month_key,
+                        SUM(amount) AS revenue
+                    FROM payments
+                    WHERE status = 'PAID'
+                    GROUP BY month_key
+                ),
+                NewSubscriptions AS (
+                    SELECT
+                        DATE_FORMAT(start_date, '%Y%m') AS month_key,
+                        COUNT(DISTINCT id) AS new_subscriptions
+                    FROM subscriptions
+                    GROUP BY month_key
                 )
                 SELECT
-                    DATE_FORMAT(p.payment_date, '%M %Y') AS month,
-                    COUNT(DISTINCT s.id) AS new_subscriptions,
-                    SUM(p.amount) AS revenue,
-                    COALESCE(SUM(asub.active_subscribers), 0) AS active_subscribers
-                FROM payments p
-                         JOIN subscriptions s
-                              ON p.user_id = s.user_id
-                                  AND DATE_FORMAT(p.payment_date, '%Y%m') = DATE_FORMAT(s.start_date, '%Y%m')
-                         LEFT JOIN ActiveSubscribers asub
-                                   ON DATE_FORMAT(p.payment_date, '%Y%m') = asub.month_key
-                WHERE p.status = 'PAID'
-                GROUP BY DATE_FORMAT(p.payment_date, '%M %Y')
-                ORDER BY revenue DESC
+                    DATE_FORMAT(STR_TO_DATE(mr.month_key, '%Y%m'), '%M %Y') AS month,
+                    COALESCE(ns.new_subscriptions, 0) AS new_subscriptions,
+                    COALESCE(mr.revenue, 0) AS revenue,
+                    COALESCE(asub.active_subscribers, 0) AS active_subscribers
+                FROM MonthlyRevenue mr
+                LEFT JOIN ActiveSubscribers asub ON mr.month_key = asub.month_key
+                LEFT JOIN NewSubscriptions ns ON mr.month_key = ns.month_key
+                ORDER BY mr.revenue DESC
                 LIMIT 5;
                 """,
                 (rs, rowNum) -> new TopPerformingMonth(
