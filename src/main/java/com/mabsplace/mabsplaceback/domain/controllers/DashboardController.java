@@ -335,40 +335,50 @@ public class DashboardController {
         List<ServiceHistoricalMetric> serviceMetrics = jdbcTemplate.query(
                 """
                 WITH RECURSIVE MonthSeries AS (
-                    SELECT DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH) as date
+                    SELECT DATE_SUB(DATE_FORMAT(CURRENT_DATE, '%Y-%m-01'), INTERVAL 11 MONTH) as month_start
                     UNION ALL
-                    SELECT DATE_ADD(date, INTERVAL 1 MONTH)
+                    SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
                     FROM MonthSeries
-                    WHERE date < CURRENT_DATE
+                    WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 ),
-                ServiceData AS (
-                    SELECT 
-                        s.id,
-                        s.name,
-                        DATE_FORMAT(sub.start_date, '%Y%m') as month,
+                ServiceMonth AS (
+                    SELECT
+                        s.id as service_id,
+                        s.name as service_name,
+                        DATE_FORMAT(ms.month_start, '%b %Y') as month,
                         COUNT(DISTINCT sub.id) as subscriptions,
-                        SUM(p.amount) as revenue
-                    FROM services s
-                    LEFT JOIN subscriptions sub ON s.id = sub.service_id
-                    LEFT JOIN payments p ON sub.user_id = p.user_id 
-                        AND DATE_FORMAT(p.payment_date, '%Y%m') = DATE_FORMAT(sub.start_date, '%Y%m')
-                    WHERE sub.status = 'ACTIVE'
-                    GROUP BY s.id, s.name, DATE_FORMAT(sub.start_date, '%Y%m')
+                        COALESCE(SUM(p.amount), 0) as revenue
+                    FROM MonthSeries ms
+                    CROSS JOIN services s
+                    LEFT JOIN subscriptions sub ON s.id = sub.service_id 
+                        AND DATE_FORMAT(sub.start_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
+                    LEFT JOIN payments p ON sub.user_id = p.user_id
+                        AND DATE_FORMAT(p.payment_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
+                        AND p.status = 'PAID'
+                    WHERE sub.status = 'ACTIVE' OR sub.status IS NULL
+                    GROUP BY s.id, ms.month_start
                 )
-                SELECT 
-                    s.name,
-                    DATE_FORMAT(ms.date, '%M %Y') as month,
-                    COALESCE(sd.subscriptions, 0) as subscriptions,
-                    COALESCE(sd.revenue, 0) as revenue
-                FROM MonthSeries ms
-                CROSS JOIN services s
-                LEFT JOIN ServiceData sd ON 
-                    s.name = sd.name AND 
-                    DATE_FORMAT(ms.date, '%Y%m') = sd.month
-                ORDER BY s.name, ms.date
+                SELECT serviceName, month, subscriptions, revenue
+                FROM (
+                    SELECT
+                        s.name AS serviceName,
+                        DATE_FORMAT(ms.month_start, '%M %Y') AS month,
+                        COUNT(DISTINCT sub.id) AS subscriptions,
+                        COALESCE(SUM(p.amount), 0) AS revenue
+                    FROM MonthSeries ms
+                    CROSS JOIN services s
+                    LEFT JOIN subscriptions sub ON s.id = sub.service_id 
+                        AND sub.status = 'ACTIVE'
+                        AND DATE_FORMAT(sub.start_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
+                    LEFT JOIN payments p ON p.user_id = sub.user_id
+                        AND DATE_FORMAT(p.payment_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
+                        AND p.status = 'PAID'
+                    GROUP BY s.name, ms.month_start
+                ) AS metrics
+                ORDER BY serviceName, STR_TO_DATE(month, '%M %Y')
                 """,
                 (rs, rowNum) -> new ServiceHistoricalMetric(
-                        rs.getString("name"),
+                        rs.getString("serviceName"),
                         rs.getString("month"),
                         rs.getInt("subscriptions"),
                         rs.getDouble("revenue")
