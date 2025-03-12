@@ -378,20 +378,13 @@ public class DashboardController {
         // Get top performing months
         List<TopPerformingMonth> topMonths = jdbcTemplate.query(
                 """
-                WITH RECURSIVE MonthSeries AS (
-                    SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH), '%Y%m') AS month_key
-                    UNION ALL
-                    SELECT DATE_FORMAT(DATE_ADD(STR_TO_DATE(month_key, '%Y%m'), INTERVAL 1 MONTH), '%Y%m')
-                    FROM MonthSeries
-                    WHERE month_key < DATE_FORMAT(CURRENT_DATE, '%Y%m')
-                ),
-                ActiveSubscribers AS (
+                WITH ActiveSubscribers AS (
                     SELECT
                         DATE_FORMAT(start_date, '%Y%m') AS month_key,
                         COUNT(DISTINCT user_id) AS active_subscribers
                     FROM subscriptions
                     WHERE status = 'ACTIVE'
-                    GROUP BY month_key
+                    GROUP BY DATE_FORMAT(start_date, '%Y%m')
                 ),
                 MonthlyRevenue AS (
                     SELECT
@@ -409,14 +402,13 @@ public class DashboardController {
                     GROUP BY month_key
                 )
                 SELECT
-                    DATE_FORMAT(STR_TO_DATE(ms.month_key, '%Y%m'), '%M %Y') AS month,
+                    DATE_FORMAT(STR_TO_DATE(mr.month_key, '%Y%m'), '%M %Y') AS month,
                     COALESCE(ns.new_subscriptions, 0) AS new_subscriptions,
                     COALESCE(mr.revenue, 0) AS revenue,
                     COALESCE(asub.active_subscribers, 0) AS active_subscribers
-                FROM MonthSeries ms
-                LEFT JOIN MonthlyRevenue mr ON ms.month_key = mr.month_key
-                LEFT JOIN ActiveSubscribers asub ON ms.month_key = asub.month_key
-                LEFT JOIN NewSubscriptions ns ON ms.month_key = ns.month_key
+                FROM MonthlyRevenue mr
+                LEFT JOIN ActiveSubscribers asub ON mr.month_key = asub.month_key
+                LEFT JOIN NewSubscriptions ns ON mr.month_key = ns.month_key
                 ORDER BY mr.revenue DESC
                 LIMIT 5;
                 """,
