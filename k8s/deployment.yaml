@@ -29,7 +29,7 @@ spec:
               value: password
           volumeMounts:
             - name: spring-logs
-              mountPath: /root/mabsplace/backend/logs
+              mountPath: /app/logs
       volumes:
         - name: spring-logs
           persistentVolumeClaim:
