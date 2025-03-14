@@ -2,6 +2,7 @@ package com.mabsplace.mabsplaceback.domain.repositories;
 
 import com.mabsplace.mabsplaceback.domain.entities.PromoCode;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.enums.PromoCodeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,4 +18,7 @@ public interface PromoCodeRepository extends JpaRepository<PromoCode, Long> {
     boolean existsByCodeIgnoreCase(String code);
 
     List<PromoCode> findByAssignedUser(User user);
+
+    // Add to PromoCodeRepository interface
+    List<PromoCode> findByStatus(PromoCodeStatus status);
 }

@@ -14,6 +14,7 @@ import com.mabsplace.mabsplaceback.utils.PromoCodeGenerator;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -119,6 +120,19 @@ public class PromoCodeService {
         }
 
         promoCodeRepository.save(promoCode);
+    }
+
+    @Scheduled(cron = "0 0 0 * * *") // Run at midnight every day
+    public void deleteInactivePromoCodes() {
+        log.info("Starting scheduled task to delete inactive promo codes");
+        List<PromoCode> inactiveCodes = promoCodeRepository.findByStatus(PromoCodeStatus.INACTIVE);
+        if (!inactiveCodes.isEmpty()) {
+            log.info("Deleting {} inactive promo codes", inactiveCodes.size());
+            promoCodeRepository.deleteAll(inactiveCodes);
+        } else {
+            log.info("No inactive promo codes found");
+        }
+        log.info("Completed scheduled task to delete inactive promo codes");
     }
 
     public PromoCodeResponseDto getPromoCode(Long id) {
