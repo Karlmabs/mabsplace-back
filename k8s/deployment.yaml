@@ -27,10 +27,10 @@ spec:
               value: karlmabs
             - name: DB_PASSWORD # Setting Database password
               value: password
-#          volumeMounts:
-#            - name: config-volume
-#              mountPath: /config
-#      volumes:
-#        - name: config-volume
-#          configMap:
-#            name: spring-config
+          volumeMounts:
+            - name: spring-logs
+              mountPath: /root/mabsplace/backend/logs
+      volumes:
+        - name: spring-logs
+          persistentVolumeClaim:
+            claimName: spring-logs-pvc
