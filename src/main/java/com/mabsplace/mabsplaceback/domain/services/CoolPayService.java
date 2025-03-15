@@ -60,23 +60,32 @@ public class CoolPayService {
     public Object authorizePayment(AuthorizationRequest authorizationRequest) {
         String url = baseUrl + "/payin/authorize";
 
-        logger.info("Authorizing payment request to CoolPay API");
+        logger.info("Authorizing payment for transactionRef: {}", authorizationRequest.getTransactionRef());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
         HttpEntity<AuthorizationRequest> entity = new HttpEntity<>(authorizationRequest, headers);
+        logger.debug("Authorization request entity: {}", entity);
 
-        logger.info("Authorization request: {}", entity);
-
-        return restTemplate.postForObject(url, entity, Object.class);
+        try {
+            Object response = restTemplate.postForObject(url, entity, Object.class);
+            logger.info("Authorization successful for transactionRef: {}", authorizationRequest.getTransactionRef());
+            logger.debug("Authorization response: {}", response);
+            return response;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            logger.error("Error during authorizePayment for transactionRef: {}. Error: {}", authorizationRequest.getTransactionRef(), e.getMessage());
+            throw e;
+        } finally {
+            logger.info("Completed authorizePayment for transactionRef: {}", authorizationRequest.getTransactionRef());
+        }
     }
 
     public Object processPayout(PayoutRequest payoutRequest) {
         String url = baseUrl + "/payout";
 
-        logger.info("Processing payout request to CoolPay API");
+        logger.info("Processing payout for transactionRef: {}", payoutRequest.getApp_transaction_ref());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -84,59 +93,86 @@ public class CoolPayService {
         headers.set("X-PRIVATE-KEY", privateKey);
 
         HttpEntity<PayoutRequest> entity = new HttpEntity<>(payoutRequest, headers);
+        logger.debug("Payout request entity: {}", entity);
 
-        logger.info("Payout request: {}", entity);
-
-        return restTemplate.postForObject(url, entity, Object.class);
+        try {
+            Object response = restTemplate.postForObject(url, entity, Object.class);
+            logger.info("Payout processed successfully for transactionRef: {}", payoutRequest.getApp_transaction_ref());
+            logger.debug("Payout response: {}", response);
+            return response;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            logger.error("Error during processPayout for transactionRef: {}. Error: {}", payoutRequest.getApp_transaction_ref(), e.getMessage());
+            throw e;
+        } finally {
+            logger.info("Completed processPayout for transactionRef: {}", payoutRequest.getApp_transaction_ref());
+        }
     }
 
     public Object checkTransactionStatus(String transactionRef) {
         String url = baseUrl + "/checkStatus/" + transactionRef;
 
-        logger.info("Checking transaction status for transaction ref {}", transactionRef);
+        logger.info("Checking transaction status for transactionRef: {}", transactionRef);
 
-        ResponseEntity<Object> response = restTemplate.getForEntity(url, Object.class);
-
-        logger.info("Transaction status: {}", response.getBody());
-
-        return response.getBody();
+        try {
+            ResponseEntity<Object> response = restTemplate.getForEntity(url, Object.class);
+            logger.info("Transaction status retrieved successfully for transactionRef: {}", transactionRef);
+            logger.debug("Transaction status response: {}", response.getBody());
+            return response.getBody();
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            logger.error("Error during checkTransactionStatus for transactionRef: {}. Error: {}", transactionRef, e.getMessage());
+            throw e;
+        } finally {
+            logger.info("Completed checkTransactionStatus for transactionRef: {}", transactionRef);
+        }
     }
 
     public Object checkBalance() {
         String url = baseUrl + "/balance";
 
-        logger.info("Checking balance");
+        logger.info("Checking account balance");
 
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-PRIVATE-KEY", privateKey);
 
         HttpEntity<?> entity = new HttpEntity<>(headers);
+        logger.debug("Balance check request entity: {}", entity);
 
-        ResponseEntity<Object> response = restTemplate.exchange(url, HttpMethod.GET, entity, Object.class);
-
-        logger.info("Balance: {}", response.getBody());
-
-        return response.getBody();
+        try {
+            ResponseEntity<Object> response = restTemplate.exchange(url, HttpMethod.GET, entity, Object.class);
+            logger.info("Balance retrieved successfully");
+            logger.debug("Balance response: {}", response.getBody());
+            return response.getBody();
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            logger.error("Error during checkBalance. Error: {}", e.getMessage());
+            throw e;
+        } finally {
+            logger.info("Completed checkBalance operation");
+        }
     }
 
     public Object generatePaymentLink(PaymentRequest paymentRequest) {
-        String url = baseUrl + "/paylink?ref="+paymentRequest.getApp_transaction_ref();
+        String url = baseUrl + "/paylink?ref=" + paymentRequest.getApp_transaction_ref();
 
-        logger.info("Generating payment link request to CoolPay API");
+        logger.info("Generating payment link for transactionRef: {}", paymentRequest.getApp_transaction_ref());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
         HttpEntity<PaymentRequest> entity = new HttpEntity<>(paymentRequest, headers);
+        logger.debug("Payment link request entity: {}", entity);
 
-        logger.info("Payment link request: {}", entity);
-
-        return restTemplate.postForObject(url, entity, Object.class);
+        try {
+            Object response = restTemplate.postForObject(url, entity, Object.class);
+            logger.info("Payment link generated successfully for transactionRef: {}", paymentRequest.getApp_transaction_ref());
+            logger.debug("Payment link response: {}", response);
+            return response;
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            logger.error("Error during generatePaymentLink for transactionRef: {}. Error: {}", paymentRequest.getApp_transaction_ref(), e.getMessage());
+            throw e;
+        } finally {
+            logger.info("Completed generatePaymentLink for transactionRef: {}", paymentRequest.getApp_transaction_ref());
+        }
     }
-
-
-
-
 }

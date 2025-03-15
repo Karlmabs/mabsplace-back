@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 
 @Service
 public class TransactionService {
-
+    private static final Logger logger = LoggerFactory.getLogger(TransactionService.class);
     private final TransactionRepository transactionRepository;
     private final TransactionMapper mapper;
     private final WalletRepository walletRepository;
@@ -40,8 +40,6 @@ public class TransactionService {
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     private final CoolPayService coolPayService;
-
-    private static final Logger logger = LoggerFactory.getLogger(TransactionService.class);
 
     @Value("${mabsplace.app.privateKey}")
     private String privateKey;
@@ -57,8 +55,14 @@ public class TransactionService {
 
     // implement method to change a transaction status
     public Transaction changeTransactionStatus(Long id, TransactionStatus transactionStatus) throws ResourceNotFoundException {
-        Transaction target = transactionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Transaction", "id", id));
+        logger.info("Attempting to change transaction status. Transaction ID: {}, New Status: {}", id, transactionStatus);
+
+        Transaction target = transactionRepository.findById(id).orElseThrow(() -> {
+            logger.error("Transaction not found with ID: {}", id);
+            return new ResourceNotFoundException("Transaction", "id", id);
+        });
         target.setTransactionStatus(transactionStatus);
+
         // if the transaction status is completed and the transaction type is topup, credit the receiver wallet and if the transaction status is completed and the transaction type is withdrawal, debit the sender wallet
         if (target.getTransactionStatus().equals(TransactionStatus.COMPLETED)) {
             if (target.getTransactionType().equals(TransactionType.TOPUP)) {
@@ -69,11 +73,16 @@ public class TransactionService {
                 walletService.debit(target.getSenderWallet().getId(), target.getAmount());
                 walletService.credit(target.getReceiverWallet().getId(), target.getAmount());
             }
+            logger.info("Transaction actions completed for Transaction ID: {}", id);
         }
-        return transactionRepository.save(target);
+        Transaction updatedTransaction = transactionRepository.save(target);
+        logger.info("Transaction status updated successfully. Transaction ID: {}", id);
+        return updatedTransaction;
     }
 
     public Object topUpWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {
+        logger.info("Top-up wallet requested with data: {}", transaction);
+
         Transaction newTransaction = mapper.toEntity(transaction);
         newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
         newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
@@ -86,6 +95,7 @@ public class TransactionService {
         Transaction save = transactionRepository.save(newTransaction);
 
         User user = save.getReceiverWallet().getUser();
+        logger.info("Top-up wallet saved successfully. Transaction ID: {}", save.getId());
 
         PaymentRequest build = PaymentRequest.builder()
                 .transaction_amount(save.getAmount().doubleValue())
@@ -98,13 +108,11 @@ public class TransactionService {
                 .build();
 
         return coolPayService.generatePaymentLink(build);
-
-//        executorService.submit(() -> coolPayService.makePayment(build));
-
-//        return save;
     }
 
     public TransactionResponseDto topUpWalletMobile(TransactionRequestDto transaction) throws ResourceNotFoundException {
+        logger.info("Top-up wallet requested with data: {}", transaction);
+
         Transaction newTransaction = mapper.toEntity(transaction);
         newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
         newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
@@ -115,6 +123,7 @@ public class TransactionService {
         newTransaction.setTransactionRef(UUID.randomUUID().toString());
 
         Transaction save = transactionRepository.save(newTransaction);
+        logger.info("Top-up wallet saved successfully. Transaction ID: {}", save.getId());
 
         User user = save.getReceiverWallet().getUser();
 
@@ -206,24 +215,30 @@ public class TransactionService {
     // Runs every hour
     @Scheduled(fixedRate = 3600000)
     public void checkAndCancelPendingTransactions() {
+        logger.info("Scheduled task initiated: Checking and cancelling pending transactions older than one hour.");
         // Calculate the time one hour ago
         Date oneHourAgo = new Date(System.currentTimeMillis() - 3600 * 1000);
 
         // Fetch transactions that are PENDING and were created more than one hour ago
         List<Transaction> transactions = transactionRepository.findByTransactionStatusAndTransactionDateBefore(TransactionStatus.PENDING, oneHourAgo);
 
+        logger.info("Found {} pending transactions to cancel.", transactions.size());
+
         // Update each transaction's status to CANCELLED
         transactions.forEach(transaction -> {
             try {
                 changeTransactionStatus(transaction.getId(), TransactionStatus.CANCELLED);
+                logger.info("Transaction ID {} cancelled successfully.", transaction.getId());
             } catch (ResourceNotFoundException e) {
-                // Log the error or handle it as per your application's requirements
-                logger.error("Error cancelling transaction with id {}", transaction.getId(), e);
+                logger.error("Error cancelling transaction ID {}: {}", transaction.getId(), e.getMessage());
             }
         });
+        logger.info("Scheduled task completed: Pending transaction cancellations processed.");
     }
 
     public Object withdrawFromWallet(TransactionRequestDto transaction) throws ResourceNotFoundException {
+        logger.info("Processing withdrawal request: {}", transaction);
+
         Transaction newTransaction = mapper.toEntity(transaction);
         newTransaction.setSenderWallet(walletRepository.findById(transaction.getSenderWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getSenderWalletId())));
         newTransaction.setReceiverWallet(walletRepository.findById(transaction.getReceiverWalletId()).orElseThrow(() -> new ResourceNotFoundException("Wallet", "id", transaction.getReceiverWalletId())));
@@ -231,7 +246,11 @@ public class TransactionService {
         newTransaction.setTransactionType(TransactionType.WITHDRAWAL);
         newTransaction.setTransactionDate(new Date());
         newTransaction.setTransactionStatus(TransactionStatus.PENDING);
-        return transactionRepository.save(newTransaction);
+
+        Transaction savedTransaction = transactionRepository.save(newTransaction);
+        logger.info("Withdrawal transaction created successfully. Transaction ID: {}", savedTransaction.getId());
+
+        return savedTransaction;
     }
 
     public Object createTransaction(TransactionRequestDto transaction) throws ResourceNotFoundException {

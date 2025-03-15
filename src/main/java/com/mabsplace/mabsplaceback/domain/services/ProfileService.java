@@ -8,13 +8,16 @@ import com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.ServiceAccountRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ProfileService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ProfileService.class);
 
     private final ProfileRepository profileRepository;
 
@@ -49,38 +52,69 @@ public class ProfileService {
         return profileRepository.save(updated);
     }
 
-    public Profile createProfile(ProfileRequestDto profile) throws ResourceNotFoundException {
-        List<Profile> existingProfiles = profileRepository.findByServiceAccountId(profile.getServiceAccountId());
-        boolean nameExists = existingProfiles.stream()
-                .anyMatch(p -> p.getProfileName().equalsIgnoreCase(profile.getProfileName()));
+    public Profile createProfile(ProfileRequestDto profile) {
+        logger.info("Creating profile with data: {}", profile);
+        boolean nameExists = profileRepository.findByServiceAccountId(profile.getServiceAccountId())
+                .stream().anyMatch(p -> p.getProfileName().equalsIgnoreCase(profile.getProfileName()));
+
         if (nameExists) {
+            logger.warn("Attempted to create duplicate profile with name: {} under service account ID: {}", profile.getProfileName(), profile.getServiceAccountId());
             throw new IllegalStateException("A profile with the same name already exists under this ServiceAccount.");
         }
+
         Profile newProfile = mapper.toEntity(profile);
         newProfile.setServiceAccount(serviceAccountRepository.findById(profile.getServiceAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("ServiceAccount", "id", profile.getServiceAccountId())));
+                .orElseThrow(() -> {
+                    logger.error("ServiceAccount not found with ID: {}", profile.getServiceAccountId());
+                    return new ResourceNotFoundException("ServiceAccount", "id", profile.getServiceAccountId());
+                }));
+
         if (profile.getSubscriptionId() != 0) {
             newProfile.setSubscription(subscriptionRepository.findById(profile.getSubscriptionId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", profile.getSubscriptionId())));
+                    .orElseThrow(() -> {
+                        logger.error("Subscription not found with ID: {}", profile.getSubscriptionId());
+                        return new ResourceNotFoundException("Subscription", "id", profile.getSubscriptionId());
+                    }));
         }
-        return profileRepository.save(newProfile);
+
+        Profile savedProfile = profileRepository.save(newProfile);
+        logger.info("Profile created successfully: {}", savedProfile);
+        return savedProfile;
     }
 
     public void deleteProfile(Long id) {
-        // prevent the deletion of a profile that has the status of "active"
-        Profile target = profileRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
-        if (target.getStatus() == ProfileStatus.ACTIVE) {
-            throw new RuntimeException("Cannot delete an active profile.");
+        logger.info("Attempting to delete profile with ID: {}", id);
+        Profile target = profileRepository.findById(id)
+            .orElseThrow(() -> {
+                logger.error("Profile not found with ID: {}", id);
+                return new ResourceNotFoundException("Profile", "id", id);
+            });
+
+        if ("active".equalsIgnoreCase(target.getStatus().toString())) {
+            logger.warn("Cannot delete active profile with ID: {}", id);
+            throw new IllegalStateException("Cannot delete a profile with status 'active'");
         }
+
         profileRepository.deleteById(id);
+        logger.info("Profile deleted successfully with ID: {}", id);
     }
 
     public Profile getProfileById(Long id) throws ResourceNotFoundException {
-        return profileRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", id));
+        logger.info("Fetching profile by ID: {}", id);
+        Profile profile = profileRepository.findById(id)
+                .orElseThrow(() -> {
+                    logger.error("Profile not found with ID: {}", id);
+                    return new ResourceNotFoundException("Profile", "id", id);
+                });
+        logger.info("Retrieved profile: {}", profile);
+        return profile;
     }
 
     public List<Profile> getAllProfiles() {
-        return profileRepository.findAll();
+        logger.info("Fetching all profiles");
+        List<Profile> profiles = profileRepository.findAll();
+        logger.info("Retrieved {} profiles", profiles.size());
+        return profiles;
     }
 
     public List<Profile> getProfilesByServiceAccountId(Long serviceAccountId) {

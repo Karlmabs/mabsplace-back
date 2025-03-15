@@ -9,6 +9,8 @@ import com.mabsplace.mabsplaceback.domain.repositories.ServiceDiscountRepository
 import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionPlanRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +24,7 @@ import java.util.stream.Stream;
 @Transactional
 @Slf4j
 public class SubscriptionDiscountService {
-
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionDiscountService.class);
     private final ServiceDiscountRepository discountRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final MyServiceRepository serviceRepository;
@@ -38,54 +40,52 @@ public class SubscriptionDiscountService {
     }
 
     public BigDecimal getDiscountedPrice(SubscriptionPlan plan) {
+        logger.info("Calculating discounted price for SubscriptionPlan ID: {}", plan.getId());
         LocalDateTime now = LocalDateTime.now();
 
-        // Check for service-specific discounts
         List<ServiceDiscount> serviceDiscounts = discountRepository
-                .findByServiceIdAndEndDateAfterAndStartDateBefore(
-                        plan.getMyService().getId(), now, now);
+                .findByServiceIdAndEndDateAfterAndStartDateBefore(plan.getMyService().getId(), now, now);
 
-        // Check for global discounts
         List<ServiceDiscount> globalDiscounts = discountRepository
                 .findByIsGlobalTrueAndEndDateAfterAndStartDateBefore(now, now);
 
-        // Combine and get the highest discount
-        BigDecimal highestDiscount = Stream.concat(
-                        serviceDiscounts.stream(),
-                        globalDiscounts.stream())
+        BigDecimal highestDiscount = Stream.concat(serviceDiscounts.stream(), globalDiscounts.stream())
                 .map(ServiceDiscount::getDiscountPercentage)
                 .max(BigDecimal::compareTo)
                 .orElse(BigDecimal.ZERO);
 
         if (highestDiscount.equals(BigDecimal.ZERO)) {
+            logger.info("No active discounts found. Returning original price: {}", plan.getPrice());
             return plan.getPrice();
         }
 
-        // Calculate discounted price
-        BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
-                highestDiscount.divide(BigDecimal.valueOf(100)));
-        return plan.getPrice().multiply(discountMultiplier)
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal discountMultiplier = BigDecimal.ONE.subtract(highestDiscount.divide(BigDecimal.valueOf(100)));
+        BigDecimal discountedPrice = plan.getPrice().multiply(discountMultiplier).setScale(2, RoundingMode.HALF_UP);
+        logger.info("Discount applied: {}%, discounted price: {}", highestDiscount, discountedPrice);
+
+        return discountedPrice;
     }
 
     public ServiceDiscountDTO createDiscount(ServiceDiscountDTO discountDTO) {
+        logger.info("Creating new service discount: {}", discountDTO);
         ServiceDiscount discount = new ServiceDiscount();
         discount.setDiscountPercentage(discountDTO.getDiscountPercentage());
         discount.setStartDate(discountDTO.getStartDate());
         discount.setEndDate(discountDTO.getEndDate());
         discount.setService(discountDTO.getServiceId() != null ?
                 serviceRepository.findById(discountDTO.getServiceId()).orElse(null) : null);
-        log.debug("Setting isGlobal to: {}", discountDTO.isGlobal());
-        System.out.println("Setting isGlobal to: " + discountDTO.isGlobal());
         discount.setGlobal(discountDTO.isGlobal());
 
         ServiceDiscount savedDiscount = discountRepository.save(discount);
+        logger.info("Service discount created successfully: {}", savedDiscount);
         return discountMapper.toDTO(savedDiscount);
     }
 
     public ServiceDiscountDTO updateDiscount(ServiceDiscountDTO discountDTO) {
+        logger.info("Updating service discount with ID: {}", discountDTO.getId());
         ServiceDiscount discount = discountRepository.findById(discountDTO.getId()).orElse(null);
         if (discount == null) {
+            logger.warn("Service discount not found for ID: {}", discountDTO.getId());
             return null;
         }
 
@@ -94,24 +94,35 @@ public class SubscriptionDiscountService {
         discount.setEndDate(discountDTO.getEndDate());
         discount.setService(discountDTO.getServiceId() != null ?
                 serviceRepository.findById(discountDTO.getServiceId()).orElse(null) : null);
-        log.debug("Setting isGlobal to: {}", discountDTO.isGlobal());
-        System.out.println("Setting isGlobal to: " + discountDTO.isGlobal());
         discount.setGlobal(discountDTO.isGlobal());
 
         ServiceDiscount savedDiscount = discountRepository.save(discount);
+        logger.info("Service discount updated successfully: {}", savedDiscount);
         return discountMapper.toDTO(savedDiscount);
     }
 
     public void deleteDiscount(Long id) {
+        logger.info("Deleting service discount with ID: {}", id);
         discountRepository.deleteById(id);
+        logger.info("Deleted service discount successfully with ID: {}", id);
     }
 
     public List<ServiceDiscountDTO> getAllDiscounts() {
-        return discountMapper.toDTOs(discountRepository.findAll());
+        logger.info("Fetching all service discounts");
+        List<ServiceDiscountDTO> discounts = discountMapper.toDTOs(discountRepository.findAll());
+        logger.info("Retrieved {} service discounts", discounts.size());
+        return discounts;
     }
 
     public ServiceDiscountDTO getDiscountById(Long id) {
-        return discountMapper.toDTO(discountRepository.findById(id).orElse(null));
+        logger.info("Fetching service discount with ID: {}", id);
+        ServiceDiscount discount = discountRepository.findById(id).orElse(null);
+        if (discount == null) {
+            logger.warn("Service discount not found for ID: {}", id);
+            return null;
+        }
+        logger.info("Retrieved service discount successfully: {}", discount);
+        return discountMapper.toDTO(discount);
     }
 
     public List<ServiceDiscountDTO> getDiscountsByServiceId(Long serviceId) {
@@ -127,16 +138,13 @@ public class SubscriptionDiscountService {
     public BigDecimal getActiveDiscountPercentage(SubscriptionPlan plan) {
         LocalDateTime now = LocalDateTime.now();
 
-        // Check for service-specific discounts
         List<ServiceDiscount> serviceDiscounts = discountRepository
                 .findByServiceIdAndEndDateAfterAndStartDateBefore(
                         plan.getMyService().getId(), now, now);
 
-        // Check for global discounts
         List<ServiceDiscount> globalDiscounts = discountRepository
                 .findByIsGlobalTrueAndEndDateAfterAndStartDateBefore(now, now);
 
-        // Get the highest discount percentage
         return Stream.concat(serviceDiscounts.stream(), globalDiscounts.stream())
                 .map(ServiceDiscount::getDiscountPercentage)
                 .max(BigDecimal::compareTo)
@@ -144,6 +152,9 @@ public class SubscriptionDiscountService {
     }
 
     public boolean hasActiveDiscount(SubscriptionPlan plan) {
-        return getActiveDiscountPercentage(plan).compareTo(BigDecimal.ZERO) > 0;
+        logger.info("Checking for active discounts for SubscriptionPlan ID: {}", plan.getId());
+        boolean hasDiscount = getActiveDiscountPercentage(plan).compareTo(BigDecimal.ZERO) > 0;
+        logger.info("Active discount found: {}", hasDiscount);
+        return hasDiscount;
     }
 }

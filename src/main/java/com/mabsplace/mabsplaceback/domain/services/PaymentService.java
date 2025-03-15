@@ -59,15 +59,25 @@ public class PaymentService {
     }
 
     public Payment createPayment(PaymentRequestDto paymentRequestDto) {
-        return orchestrator.processPaymentAndCreateSubscription(paymentRequestDto);
+        logger.info("Create payment request: {}", paymentRequestDto);
+        Payment payment = orchestrator.processPaymentAndCreateSubscription(paymentRequestDto);
+        logger.info("Payment created: {}", payment);
+        return payment;
     }
 
     public Payment changePaymentStatus(Long id, PaymentStatus status) {
-        Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
+        logger.info("Changing payment status for payment ID: {} to status: {}", id, status);
+        Payment payment = paymentRepository.findById(id).orElseThrow(() -> {
+            logger.error("Payment not found with ID: {}", id);
+            return new ResourceNotFoundException("Payment", "id", id);
+        });
 
-        if (status.equals(PaymentStatus.CANCELLED))
+        if (status.equals(PaymentStatus.CANCELLED)){
+            logger.info("Crediting wallet due to payment cancellation, User ID: {}, Amount: {}", payment.getUser().getId(), payment.getAmount());
             walletService.credit(payment.getUser().getWallet().getId(), payment.getAmount());
+        }
         else if (status.equals(PaymentStatus.PAID)) {
+            logger.info("Debiting wallet due to payment completion, User ID: {}, Amount: {}", payment.getUser().getId(), payment.getAmount());
             SubscriptionRequestDto subscription = SubscriptionRequestDto.builder()
                     .userId(payment.getUser().getId())
                     .serviceId(payment.getService().getId())
@@ -78,11 +88,17 @@ public class PaymentService {
             subscriptionPaymentOrchestrator.createSubscription(subscription);
         }
         payment.setStatus(status);
-        return paymentRepository.save(payment);
+
+        Payment updatedPayment = paymentRepository.save(payment);
+        logger.info("Payment status updated to {} for payment ID: {}", status, id);
+        return updatedPayment;
     }
 
     public List<Payment> getAllPayments() {
-        return paymentRepository.findAll();
+        logger.info("Retrieving all payments");
+        List<Payment> payments = paymentRepository.findAll();
+        logger.info("Retrieved {} payments", payments.size());
+        return payments;
     }
 
     public Payment getPaymentById(Long id) {
@@ -90,6 +106,8 @@ public class PaymentService {
     }
 
     public Payment updatePayment(Long id, PaymentRequestDto updatedPayment) throws ResourceNotFoundException {
+        logger.info("Updating payment with ID: {}, Request: {}", id, updatedPayment);
+
         Payment payment = paymentRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Payment", "id", id));
         Payment updated = paymentMapper.partialUpdate(updatedPayment, payment);
         updated.setUser(userRepository.findById(updatedPayment.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedPayment.getUserId())));
@@ -99,6 +117,8 @@ public class PaymentService {
 
         // If payment status is PAID, create a subscription without a profile or account associated
         if (updated.getStatus().equals(PaymentStatus.PAID) && !payment.getStatus().equals(PaymentStatus.PAID)) {
+            logger.info("Creating subscription for payment ID: {}", updated.getId());
+
             SubscriptionRequestDto subscriptionDto = SubscriptionRequestDto.builder()
                     .userId(updated.getUser().getId())
                     .serviceId(updated.getService().getId())
@@ -109,14 +129,17 @@ public class PaymentService {
                     .build();
 
             subscriptionPaymentOrchestrator.createSubscription(subscriptionDto);
+            logger.info("Subscription created: {}", subscriptionDto);
         }
 
-        return paymentRepository.save(updated);
+        Payment save = paymentRepository.save(updated);
+        logger.info("Updated payment successfully: {}", save.getId());
+        return save;
     }
 
     public void deletePayment(Long id) {
+        logger.info("Deleting payment with ID: {}", id);
         paymentRepository.deleteById(id);
+        logger.info("Deleted payment successfully with ID: {}", id);
     }
-
-
 }

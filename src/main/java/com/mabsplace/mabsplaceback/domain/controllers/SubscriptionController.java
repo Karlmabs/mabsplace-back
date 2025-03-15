@@ -9,6 +9,8 @@ import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionRepository;
 import com.mabsplace.mabsplaceback.domain.services.SubscriptionService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +20,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/subscriptions")
 public class SubscriptionController {
-  
+
+  private static final Logger logger = LoggerFactory.getLogger(SubscriptionController.class);
+
   private final SubscriptionService subscriptionService;
   private final SubscriptionMapper mapper;
   private final SubscriptionRepository subscriptionRepository;
@@ -34,52 +38,60 @@ public class SubscriptionController {
   }
 
   @PostMapping
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
   public ResponseEntity<SubscriptionResponseDto> createSubscription(@RequestBody SubscriptionRequestDto subscriptionRequestDto) {
+    logger.info("Creating subscription with request: {}", subscriptionRequestDto);
     Subscription createdSubscription = subscriptionService.createSubscription(subscriptionRequestDto);
+    logger.info("Created subscription: {}", createdSubscription);
     return new ResponseEntity<>(mapper.toDto(createdSubscription), HttpStatus.CREATED);
   }
 
   @GetMapping("/{id}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
   public ResponseEntity<SubscriptionResponseDto> getSubscriptionById(@PathVariable Long id) {
-    return ResponseEntity.ok(mapper.toDto(subscriptionService.getSubscriptionById(id)));
+    logger.info("Fetching subscription with ID: {}", id);
+    Subscription subscription = subscriptionService.getSubscriptionById(id);
+    logger.info("Fetched subscription: {}", subscription);
+    return ResponseEntity.ok(mapper.toDto(subscription));
   }
 
   @GetMapping
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
   public ResponseEntity<List<SubscriptionResponseDto>> getAllSubscriptions() {
-    List<Subscription> Subscriptions = subscriptionService.getAllSubscriptions();
-    return new ResponseEntity<>(mapper.toDtoList(Subscriptions), HttpStatus.OK);
+    logger.info("Fetching all subscriptions");
+    List<Subscription> subscriptions = subscriptionService.getAllSubscriptions();
+    logger.info("Fetched {} subscriptions", subscriptions.size());
+    return new ResponseEntity<>(mapper.toDtoList(subscriptions), HttpStatus.OK);
   }
 
   @PutMapping("/{id}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
   public ResponseEntity<SubscriptionResponseDto> updateSubscription(@PathVariable Long id, @RequestBody SubscriptionRequestDto updatedSubscription) {
+    logger.info("Updating subscription with ID: {}, Request: {}", id, updatedSubscription);
     Subscription updated = subscriptionService.updateSubscription(id, updatedSubscription);
     if (updated != null) {
+      logger.info("Updated subscription successfully: {}", updated);
       return new ResponseEntity<>(mapper.toDto(updated), HttpStatus.OK);
     }
+    logger.warn("Subscription not found with ID: {}", id);
     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
   }
 
   @DeleteMapping("/{id}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
   public ResponseEntity<Void> deleteSubscription(@PathVariable Long id) {
-    Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new RuntimeException("Subscription not found"));
-    Profile profile = profileRepository.findById(subscription.getProfile().getId()).orElseThrow(() -> new RuntimeException("Profile not found"));
+    logger.info("Deleting subscription with ID: {}", id);
+    Subscription subscription = subscriptionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Subscription not found"));
+    Profile profile = subscription.getProfile();
     profile.setStatus(ProfileStatus.INACTIVE);
     profileRepository.save(profile);
     subscriptionService.deleteSubscription(id);
+    logger.info("Deleted subscription successfully and set profile status to INACTIVE, ID: {}", id);
     return new ResponseEntity<>(HttpStatus.NO_CONTENT);
   }
 
-  // get all subscriptions of a user
-    @GetMapping("/user/{userId}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
-    public ResponseEntity<List<SubscriptionResponseDto>> getSubscriptionsByUserId(@PathVariable Long userId) {
-        List<Subscription> Subscriptions = subscriptionService.getSubscriptionsByUserId(userId);
-        return new ResponseEntity<>(mapper.toDtoList(Subscriptions), HttpStatus.OK);
-    }
+  @GetMapping("/user/{userId}")
+  public ResponseEntity<List<SubscriptionResponseDto>> getSubscriptionsByUserId(@PathVariable Long userId) {
+    logger.info("Fetching subscriptions for user ID: {}", userId);
+    List<Subscription> subscriptions = subscriptionService.getSubscriptionsByUserId(userId);
+    logger.info("Fetched {} subscriptions for user ID: {}", subscriptions.size(), userId);
+    return ResponseEntity.ok(mapper.toDtoList(subscriptions));
+  }
 
 }

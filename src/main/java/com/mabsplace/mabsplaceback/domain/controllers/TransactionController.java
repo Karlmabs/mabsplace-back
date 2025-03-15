@@ -32,46 +32,34 @@ public class TransactionController {
     }
 
     @PostMapping("/top-up")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<Object> topUpWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
+        logger.info("Top-up wallet requested with data: {}", transactionRequestDto);
         Object createdTransaction = transactionService.topUpWallet(transactionRequestDto);
-//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+        logger.info("Wallet top-up successful: {}", createdTransaction);
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
     @PostMapping("/top-up-mobile")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<TransactionResponseDto> topUpWalletMobile(@RequestBody TransactionRequestDto transactionRequestDto) {
+        logger.info("Mobile wallet top-up requested: {}", transactionRequestDto);
         TransactionResponseDto createdTransaction = transactionService.topUpWalletMobile(transactionRequestDto);
-//        return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
+        logger.info("Mobile wallet top-up successful: {}", createdTransaction);
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
     @PostMapping("/transfer")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<TransactionResponseDto> transferToWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
+        logger.info("Transfer to wallet requested: {}", transactionRequestDto);
         TransactionResponseDto createdTransaction = transactionService.transferMoney(transactionRequestDto);
+        logger.info("Wallet transfer successful: {}", createdTransaction);
         return new ResponseEntity<>(createdTransaction, HttpStatus.OK);
     }
-
 
     @PostMapping("/transaction-callback")
     public ResponseEntity<String> handlePaymentCallback(HttpServletRequest request, @RequestBody Map<String, Object> callbackData) {
         logger.info("Handling payment callback with data: {}", callbackData);
 
-        /*if (!request.getRemoteAddr().equals(MY_COOLPAY_IP)) {
-            logger.error("Received callback from unknown IP: {}", request.getRemoteAddr());
-            return ResponseEntity.badRequest().body("KO");
-        }*/
-
         logger.info("Received callback from CoolPay");
-        /*String expectedSignature = callbackData.get("signature").toString();
-        String calculatedSignature = paymentService.calculateMD5Signature(callbackData);
-
-        if (!expectedSignature.equals(calculatedSignature)) {
-            logger.error("Received callback with invalid signature");
-            return ResponseEntity.badRequest().body("KO");
-        }*/
 
         logger.info("Updating payment status for transaction ref: {}", callbackData.get("app_transaction_ref"));
         transactionService.updateTransactionStatus((String) callbackData.get("app_transaction_ref"), (String) callbackData.get("transaction_status"));
@@ -81,63 +69,71 @@ public class TransactionController {
         return ResponseEntity.ok("OK");
     }
 
-    // implement api to change the status of a transaction
     @PutMapping("/{transactionRef}/status/{transactionStatus}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<TransactionResponseDto> changeTransactionStatus(@PathVariable("transactionRef") String transactionRef, @PathVariable("transactionStatus") String transactionStatus) {
+        logger.info("Changing transaction status for ref: {} to {}", transactionRef, transactionStatus);
         Transaction createdTransaction = transactionService.updateTransactionStatus(transactionRef, transactionStatus);
+        logger.info("Transaction status updated: {}", createdTransaction);
         return new ResponseEntity<>(mapper.toDto(createdTransaction), HttpStatus.CREATED);
     }
 
     @PostMapping("/withdraw")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<Object> withdrawFromWallet(@RequestBody TransactionRequestDto transactionRequestDto) {
+        logger.info("Withdraw from wallet requested: {}", transactionRequestDto);
         Object createdTransaction = transactionService.withdrawFromWallet(transactionRequestDto);
+        logger.info("Wallet withdrawal successful: {}", createdTransaction);
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
     @PostMapping
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<Object> createTransaction(@RequestBody TransactionRequestDto transactionRequestDto) {
+        logger.info("Creating transaction: {}", transactionRequestDto);
         Object createdTransaction = transactionService.createTransaction(transactionRequestDto);
+        logger.info("Transaction created: {}", createdTransaction);
         return new ResponseEntity<>(createdTransaction, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<TransactionResponseDto> getTransactionById(@PathVariable Long id) {
-        return ResponseEntity.ok(mapper.toDto(transactionService.getTransactionById(id)));
+        logger.info("Fetching transaction by ID: {}", id);
+        Transaction transaction = transactionService.getTransactionById(id);
+        logger.info("Fetched transaction: {}", transaction);
+        return ResponseEntity.ok(mapper.toDto(transaction));
     }
 
     @GetMapping
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<List<TransactionResponseDto>> getAllTransactions() {
-        List<Transaction> Transactions = transactionService.getAllTransactions();
-        return new ResponseEntity<>(mapper.toDtoList(Transactions), HttpStatus.OK);
+        logger.info("Fetching all transactions");
+        List<Transaction> transactions = transactionService.getAllTransactions();
+        logger.info("Fetched {} transactions", transactions.size());
+        return new ResponseEntity<>(mapper.toDtoList(transactions), HttpStatus.OK);
     }
 
     @PutMapping("/{id}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<TransactionResponseDto> updateTransaction(@PathVariable Long id, @RequestBody TransactionRequestDto updatedTransaction) {
+        logger.info("Updating transaction with ID: {}, Request: {}", id, updatedTransaction);
         Transaction updated = transactionService.updateTransaction(id, updatedTransaction);
         if (updated != null) {
+            logger.info("Transaction updated successfully: {}", updated);
             return new ResponseEntity<>(mapper.toDto(updated), HttpStatus.OK);
         }
+        logger.warn("Transaction not found with ID: {}", id);
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     @DeleteMapping("/{id}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
+        logger.info("Deleting transaction with ID: {}", id);
         transactionService.deleteTransaction(id);
+        logger.info("Transaction deleted successfully with ID: {}", id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    // get all transactions involving a user
     @GetMapping("/user/{userId}")
-//  @PreAuthorize("hasAuthority('ROLE_ADMIN')or hasAuthority('ROLE_USER')")
     public ResponseEntity<List<TransactionResponseDto>> getTransactionsByUserId(@PathVariable Long userId) {
-        List<Transaction> Transactions = transactionService.getTransactionsByUserId(userId);
-        return new ResponseEntity<>(mapper.toDtoList(Transactions), HttpStatus.OK);
+        logger.info("Fetching transactions for user ID: {}", userId);
+        List<Transaction> transactions = transactionService.getTransactionsByUserId(userId);
+        logger.info("Fetched {} transactions for user ID: {}", transactions.size(), userId);
+        return new ResponseEntity<>(mapper.toDtoList(transactions), HttpStatus.OK);
     }
 }

@@ -21,20 +21,26 @@ public class CoolPayController {
 
     @PostMapping("/payin")
     public Object makePayment(@RequestBody PaymentRequest paymentRequest) {
-        logger.info("Making payment with request: {}", paymentRequest);
-        return coolPayService.makePayment(paymentRequest);
+        logger.info("Received payment request: {}", paymentRequest);
+        Object response = coolPayService.makePayment(paymentRequest);
+        logger.info("Payment response: {}", response);
+        return response;
     }
 
     @PostMapping("/payin/authorize")
     public Object authorizePayment(@RequestBody AuthorizationRequest authorizationRequest) {
-        logger.info("Authorizing payment with request: {}", authorizationRequest);
-        return coolPayService.authorizePayment(authorizationRequest);
+        logger.info("Received authorization request: {}", authorizationRequest);
+        Object response = coolPayService.authorizePayment(authorizationRequest);
+        logger.info("Authorization response: {}", response);
+        return response;
     }
 
     @PostMapping("/payout")
     public Object processPayout(@RequestBody PayoutRequest payoutRequest) {
-        logger.info("Processing payout with request: {}", payoutRequest);
-        return coolPayService.processPayout(payoutRequest);
+        logger.info("Received payout request: {}", payoutRequest);
+        Object response = coolPayService.processPayout(payoutRequest);
+        logger.info("Payout response: {}", response);
+        return response;
     }
 
     @GetMapping("/checkTransactionStatus/{transactionRef}")
@@ -45,9 +51,10 @@ public class CoolPayController {
 
     @GetMapping("/checkBalance")
     public Object checkBalance() {
-        logger.info("Checking balance");
-        return coolPayService.checkBalance();
+        logger.info("Balance check requested");
+        Object balance = coolPayService.checkBalance();
+        logger.info("Current balance: {}", balance);
+        return balance;
     }
-
 
 }

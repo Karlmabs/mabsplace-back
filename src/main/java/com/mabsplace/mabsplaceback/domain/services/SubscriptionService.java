@@ -1,10 +1,11 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
-import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
-import com.mabsplace.mabsplaceback.domain.entities.*;
-import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
+import com.mabsplace.mabsplaceback.domain.entities.MyService;
+import com.mabsplace.mabsplaceback.domain.entities.Profile;
+import com.mabsplace.mabsplaceback.domain.entities.Subscription;
+import com.mabsplace.mabsplaceback.domain.entities.SubscriptionPlan;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
@@ -16,15 +17,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
 @Service
 public class SubscriptionService {
-
+    private static final Logger logger = LoggerFactory.getLogger(SubscriptionService.class);
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionMapper mapper;
     private final UserRepository userRepository;
@@ -38,7 +40,6 @@ public class SubscriptionService {
     private final WalletService walletService;
     private final SubscriptionPaymentOrchestrator orchestrator;
 
-    private static final Logger log = LoggerFactory.getLogger(SubscriptionService.class);
     private final SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator;
 
     public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, EmailService emailService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
@@ -59,28 +60,28 @@ public class SubscriptionService {
 
     @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
     public void processSubscriptionRenewals() throws MessagingException {
-        log.info("Starting daily subscription renewal process");
+        logger.info("Starting daily subscription renewal process");
         Date today = new Date();
         List<Subscription> subscriptionsToRenew = subscriptionRepository
                 .findByStatusAndEndDateBeforeAndAutoRenewTrue(
                         SubscriptionStatus.ACTIVE,
                         today
                 );
-        log.info("Found {} subscriptions to renew", subscriptionsToRenew.size());
+        logger.info("Found {} subscriptions to renew", subscriptionsToRenew.size());
 
         for (Subscription subscription : subscriptionsToRenew) {
-            log.debug("Processing renewal for subscription ID: {}", subscription.getId());
+            logger.debug("Processing renewal for subscription ID: {}", subscription.getId());
             processRenewal(subscription);
         }
-        log.info("Completed daily subscription renewal process");
+        logger.info("Completed daily subscription renewal process");
     }
 
     private void processRenewal(Subscription subscription) throws MessagingException {
-        log.info("Processing renewal for subscription ID: {} - Attempt #{}",
+        logger.info("Processing renewal for subscription ID: {} - Attempt #{}",
                 subscription.getId(), subscription.getRenewalAttempts() + 1);
 
         if (subscription.getRenewalAttempts() >= 4) {
-            log.warn("Maximum renewal attempts reached for subscription ID: {}", subscription.getId());
+            logger.warn("Maximum renewal attempts reached for subscription ID: {}", subscription.getId());
             cancelSubscription(subscription);
             return;
         }
@@ -88,28 +89,28 @@ public class SubscriptionService {
         SubscriptionPlan planToUse = subscription.getNextSubscriptionPlan() != null ?
                 subscription.getNextSubscriptionPlan() :
                 subscription.getSubscriptionPlan();
-        log.debug("Using plan ID: {} for renewal", planToUse.getId());
+        logger.debug("Using plan ID: {} for renewal", planToUse.getId());
 
         boolean renewalSuccess = orchestrator.processSubscriptionRenewal(subscription, planToUse);
 
         if (renewalSuccess) {
-            log.info("Renewal successful for subscription ID: {}", subscription.getId());
+            logger.info("Renewal successful for subscription ID: {}", subscription.getId());
             renewSubscription(subscription, planToUse);
         } else {
-            log.warn("Renewal failed for subscription ID: {}", subscription.getId());
+            logger.warn("Renewal failed for subscription ID: {}", subscription.getId());
             handleFailedRenewal(subscription);
         }
 
     }
 
     private void renewSubscription(Subscription subscription, SubscriptionPlan plan) throws MessagingException {
-        log.info("Renewing subscription ID: {} with plan ID: {}", subscription.getId(), plan.getId());
+        logger.info("Renewing subscription ID: {} with plan ID: {}", subscription.getId(), plan.getId());
 
         // Create new subscription period
         Date newStartDate = subscription.getEndDate();
         Date newEndDate = Utils.addPeriod(newStartDate, plan.getPeriod());
 
-        log.debug("New subscription period: {} to {}", newStartDate, newEndDate);
+        logger.debug("New subscription period: {} to {}", newStartDate, newEndDate);
 
         subscription.setStartDate(newStartDate);
         subscription.setEndDate(newEndDate);
@@ -119,7 +120,7 @@ public class SubscriptionService {
         subscription.setNextSubscriptionPlan(null);
 
         subscriptionRepository.save(subscription);
-        log.info("Successfully updated subscription details for ID: {}", subscription.getId());
+        logger.info("Successfully updated subscription details for ID: {}", subscription.getId());
 
         EmailRequest emailRequest = EmailRequest.builder()
                 .to("maboukarl2@gmail.com")
@@ -136,7 +137,7 @@ public class SubscriptionService {
                 .build();
 
         emailService.sendEmail(emailRequest);
-        log.info("Sent renewal confirmation email for subscription ID: {}", subscription.getId());
+        logger.info("Sent renewal confirmation email for subscription ID: {}", subscription.getId());
     }
 
     private void handleFailedRenewal(Subscription subscription) throws MessagingException {

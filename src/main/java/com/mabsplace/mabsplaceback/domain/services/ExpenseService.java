@@ -12,6 +12,8 @@ import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class ExpenseService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ExpenseService.class);
+
     private final ExpenseRepository expenseRepository;
     private final ExpenseMapper expenseMapper;
     private final UserRepository userRepository;
@@ -32,55 +36,71 @@ public class ExpenseService {
     private final CurrencyRepository currencyRepository;
 
     public List<ExpenseResponseDto> getAllExpenses() {
-        return expenseRepository.findAll().stream()
+        logger.info("Retrieving all expenses");
+        List<ExpenseResponseDto> expenses = expenseRepository.findAll().stream()
                 .map(expenseMapper::toResponseDTO)
                 .collect(Collectors.toList());
+        logger.info("Retrieved {} expenses", expenses.size());
+        return expenses;
     }
 
     public List<ExpenseResponseDto> getExpensesByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        return expenseRepository.findByExpenseDateBetween(startDate, endDate).stream()
+        logger.info("Retrieving expenses from {} to {}", startDate, endDate);
+        List<ExpenseResponseDto> expenses = expenseRepository.findByExpenseDateBetween(startDate, endDate).stream()
                 .map(expenseMapper::toResponseDTO)
                 .collect(Collectors.toList());
+        logger.info("Retrieved {} expenses for the specified date range", expenses.size());
+        return expenses;
     }
 
     public ExpenseResponseDto getExpenseById(Long id) {
+        logger.info("Retrieving expense with ID: {}", id);
         return expenseRepository.findById(id)
                 .map(expenseMapper::toResponseDTO)
-                .orElseThrow(() -> new EntityNotFoundException("Expense not found with id: " + id));
+                .orElseThrow(() -> {
+                    logger.error("Expense not found with ID: {}", id);
+                    return new EntityNotFoundException("Expense not found with id: " + id);
+                });
     }
 
-    public ExpenseResponseDto createExpense(ExpenseRequestDto requestDTO, Long userId) {
-        // Verify all required entities exist
-        verifyRelatedEntities(requestDTO);
+    public ExpenseResponseDto createExpense(ExpenseRequestDto expenseRequestDto, Long userId) {
+        logger.info("Creating expense with data: {}, user ID: {}", expenseRequestDto, userId);
+        verifyRelatedEntities(expenseRequestDto);
 
-        Expense expense = expenseMapper.toEntity(requestDTO);
-
-        // Set the created by user
+        Expense expense = expenseMapper.toEntity(expenseRequestDto);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
         expense.setCreatedBy(user);
 
         Expense savedExpense = expenseRepository.save(expense);
+        logger.info("Expense created successfully: {}", expenseMapper.toResponseDTO(savedExpense));
         return expenseMapper.toResponseDTO(savedExpense);
     }
 
     public ExpenseResponseDto updateExpense(Long id, ExpenseRequestDto requestDTO) {
-        // Verify all required entities exist
-        verifyRelatedEntities(requestDTO);
-
+        logger.info("Updating expense with ID: {}, Request: {}", id, requestDTO);
         Expense expense = expenseRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Expense not found with id: " + id));
+                .orElseThrow(() -> {
+                    logger.error("Expense not found with ID: {}", id);
+                    return new EntityNotFoundException("Expense not found with id: " + id);
+                });
+
+        verifyRelatedEntities(requestDTO);
 
         expenseMapper.updateEntityFromDTO(requestDTO, expense);
         Expense updatedExpense = expenseRepository.save(expense);
+        logger.info("Expense updated successfully: {}", expenseMapper.toResponseDTO(updatedExpense));
         return expenseMapper.toResponseDTO(updatedExpense);
     }
 
     public void deleteExpense(Long id) {
+        logger.info("Deleting expense with ID: {}", id);
         if (!expenseRepository.existsById(id)) {
+            logger.error("Expense not found with ID: {}", id);
             throw new EntityNotFoundException("Expense not found with id: " + id);
         }
         expenseRepository.deleteById(id);
+        logger.info("Expense deleted successfully with ID: {}", id);
     }
 
     private void verifyRelatedEntities(ExpenseRequestDto requestDTO) {
@@ -94,14 +114,20 @@ public class ExpenseService {
     }
 
     public List<ExpenseResponseDto> getExpensesByCategory(Long categoryId) {
-        return expenseRepository.findByCategoryId(categoryId).stream()
+        logger.info("Retrieving expenses by category ID: {}", categoryId);
+        List<ExpenseResponseDto> expenses = expenseRepository.findByCategoryId(categoryId).stream()
                 .map(expenseMapper::toResponseDTO)
                 .collect(Collectors.toList());
+        logger.info("Retrieved {} expenses for category ID: {}", expenses.size(), categoryId);
+        return expenses;
     }
 
     public List<ExpenseResponseDto> getExpensesByUser(Long userId) {
-        return expenseRepository.findByCreatedById(userId).stream()
+        logger.info("Retrieving expenses created by user ID: {}", userId);
+        List<ExpenseResponseDto> expenses = expenseRepository.findByCreatedById(userId).stream()
                 .map(expenseMapper::toResponseDTO)
                 .collect(Collectors.toList());
+        logger.info("Retrieved {} expenses created by user ID: {}", expenses.size(), userId);
+        return expenses;
     }
 }

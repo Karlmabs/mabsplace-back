@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,12 +23,16 @@ import java.util.List;
 public class ExpenseCategoryController {
 
     private final ExpenseCategoryService expenseCategoryService;
+    private static final Logger logger = LoggerFactory.getLogger(ExpenseCategoryController.class);
 
     @GetMapping
     @Operation(summary = "Get all expense categories")
     @ApiResponse(responseCode = "200", description = "List of expense categories retrieved successfully")
     public ResponseEntity<List<ExpenseCategoryResponseDto>> getAllCategories() {
-        return ResponseEntity.ok(expenseCategoryService.getAllCategories());
+        logger.info("Fetching all expense categories");
+        List<ExpenseCategoryResponseDto> categories = expenseCategoryService.getAllCategories();
+        logger.info("Fetched {} categories", categories.size());
+        return ResponseEntity.ok(categories);
     }
 
     @GetMapping("/{id}")
@@ -34,7 +40,10 @@ public class ExpenseCategoryController {
     @ApiResponse(responseCode = "200", description = "Expense category retrieved successfully")
     @ApiResponse(responseCode = "404", description = "Expense category not found")
     public ResponseEntity<ExpenseCategoryResponseDto> getCategoryById(@PathVariable Long id) {
-        return ResponseEntity.ok(expenseCategoryService.getCategoryById(id));
+        logger.info("Fetching expense category with ID: {}", id);
+        ExpenseCategoryResponseDto category = expenseCategoryService.getCategoryById(id);
+        logger.info("Fetched expense category: {}", category);
+        return ResponseEntity.ok(category);
     }
 
     @PostMapping
@@ -42,7 +51,10 @@ public class ExpenseCategoryController {
     @ApiResponse(responseCode = "201", description = "Expense category created successfully")
     public ResponseEntity<ExpenseCategoryResponseDto> createCategory(
             @Valid @RequestBody ExpenseCategoryRequestDto requestDTO) {
-        return new ResponseEntity<>(expenseCategoryService.createCategory(requestDTO), HttpStatus.CREATED);
+        logger.info("Creating new expense category with request: {}", requestDTO);
+        ExpenseCategoryResponseDto createdCategory = expenseCategoryService.createCategory(requestDTO);
+        logger.info("Created new expense category: {}", createdCategory);
+        return new ResponseEntity<>(createdCategory, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
@@ -52,7 +64,10 @@ public class ExpenseCategoryController {
     public ResponseEntity<ExpenseCategoryResponseDto> updateCategory(
             @PathVariable Long id,
             @Valid @RequestBody ExpenseCategoryRequestDto requestDTO) {
-        return ResponseEntity.ok(expenseCategoryService.updateCategory(id, requestDTO));
+        logger.info("Updating expense category with ID: {}, Request: {}", id, requestDTO);
+        ExpenseCategoryResponseDto updatedCategory = expenseCategoryService.updateCategory(id, requestDTO);
+        logger.info("Updated expense category: {}", updatedCategory);
+        return ResponseEntity.ok(updatedCategory);
     }
 
     @DeleteMapping("/{id}")
@@ -60,7 +75,9 @@ public class ExpenseCategoryController {
     @ApiResponse(responseCode = "204", description = "Expense category deleted successfully")
     @ApiResponse(responseCode = "404", description = "Expense category not found")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
+        logger.info("Deleting expense category with ID: {}", id);
         expenseCategoryService.deleteCategory(id);
+        logger.info("Deleted expense category with ID: {}", id);
         return ResponseEntity.noContent().build();
     }
 }

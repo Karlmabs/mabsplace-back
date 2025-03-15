@@ -14,12 +14,12 @@ import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,47 +40,47 @@ public class NotificationService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private static final Logger LOGGER = Logger.getLogger(NotificationService.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
 
     public List<Notification> getUserNotifications(String email) {
-        LOGGER.info("Getting notifications for user: " + email);
+        logger.info("Getting notifications for user: {}", email);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        LOGGER.info("User found: " + user.getEmail());
+        logger.info("User found: {}", user.getEmail());
         return notificationRepository.findByUserOrderByCreatedAtDesc(user);
     }
 
     public void markAsRead(Long notificationId, String email) {
-        LOGGER.info("Marking notification as read: " + notificationId);
+        logger.info("Marking notification as read: {}", notificationId);
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        LOGGER.info("User found: " + user.getEmail());
+        logger.info("User found: {}", user.getEmail());
 
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("Notification not found"));
 
-        LOGGER.info("Notification found: " + notification.getId());
+        logger.info("Notification found: {}", notification.getId());
 
         if (!notification.getUser().getId().equals(user.getId())) {
-            LOGGER.warning("Unauthorized access to notification");
+            logger.warn("Unauthorized access to notification");
             throw new RuntimeException("Unauthorized access to notification");
         }
 
         notification.setRead(true);
-        LOGGER.info("Notification marked as read: " + notification.getId());
-        LOGGER.info("Saving notification to database");
+        logger.info("Notification marked as read: {}", notification.getId());
+        logger.info("Saving notification to database");
         notificationRepository.save(notification);
     }
 
 
     public void markAllAsRead(String email) {
-        LOGGER.info("Marking all notifications as read for user: " + email);
+        logger.info("Marking all notifications as read for user: {}", email);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        LOGGER.info("User found: " + user.getEmail());
-        LOGGER.info("Marking all notifications as read");
+        logger.info("User found: {}", user.getEmail());
+        logger.info("Marking all notifications as read");
 
         List<Notification> notifications = notificationRepository.findByUserOrderByCreatedAtDesc(user);
 
@@ -89,12 +89,12 @@ public class NotificationService {
     }
 
     public void updateUserPushToken(String email, String pushToken) {
-        LOGGER.info("Updating push token for user: " + email);
+        logger.info("Updating push token for user: {}", email);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        LOGGER.info("User found: " + user.getEmail());
+        logger.info("User found: {}", user.getEmail());
         user.setPushToken(pushToken);
-        LOGGER.info("Saving push token to database");
+        logger.info("Saving push token to database");
         userRepository.save(user);
     }
 
@@ -106,36 +106,36 @@ public class NotificationService {
             Map<String, Object> data
     ) {
         try {
-            LOGGER.info("Sending push notification to users: " + userIds);
+            logger.info("Initiating push notification for user IDs: {}", userIds);
             List<User> users = userRepository.findAllById(userIds);
-            LOGGER.info("Users found: " + users.size());
+            logger.info("Found {} users for notification", users.size());
             List<String> pushTokens = users.stream()
                     .map(User::getPushToken)
                     .filter(Objects::nonNull)
                     .toList();
 
-            LOGGER.info("Push tokens found: " + pushTokens.size());
+            // Removed redundant push token count log as per structured logging requirements
 
             if (pushTokens.isEmpty()) {
-                LOGGER.warning("No push tokens found for users");
+                logger.warn("No push tokens found for the provided user IDs: {}", userIds);
                 return;
             }
 
-            LOGGER.info("Preparing to send push notifications");
+            logger.info("Preparing to send push notifications");
             // Save notifications to database
             List<Notification> notifications = users.stream()
                     .map(user -> createNotification(user, title, body, data))
                     .collect(Collectors.toList());
-            LOGGER.info("Saving notifications to database");
+            logger.info("Saving {} notifications to database", notifications.size());
             notificationRepository.saveAll(notifications);
 
-            LOGGER.info("Sending push notifications");
+            logger.info("Sending push notifications");
             // Prepare and send push notifications
             List<Map<String, Object>> messages = pushTokens.stream()
                     .map(token -> createPushMessage(token, title, body, data))
                     .collect(Collectors.toList());
 
-            LOGGER.info("Push notifications prepared: " + messages.size());
+            logger.debug("Prepared push notifications: {}", messages);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -145,11 +145,10 @@ public class NotificationService {
 
             String s = restTemplate.postForObject(expoPushApiUrl, request, String.class);
 
-            LOGGER.info("Push notifications sent: " + s);
+            logger.info("Push notifications sent successfully. Response: {}", s);
 
         } catch (Exception e) {
-            // Log the error and handle it appropriately
-            LOGGER.warning("Failed to send push notification: " + e.getMessage());
+            logger.error("Failed to send push notifications to users: {}. Error: {}", userIds, e.getMessage(), e);
         }
     }
 
@@ -206,7 +205,7 @@ public class NotificationService {
             String body,
             Map<String, Object> data
     ) {
-        LOGGER.info("Sending notification to user: " + userId);
+        logger.info("Sending notification to user: " + userId);
         sendPushNotification(Collections.singletonList(userId), title, body, data);
     }
 
@@ -217,20 +216,21 @@ public class NotificationService {
             String body,
             Map<String, Object> data
     ) {
-        LOGGER.info("Sending notification to all users");
+        logger.info("Sending notification to all users");
         List<Long> allUserIds = userRepository.findAll().stream()
                 .map(User::getId)
                 .collect(Collectors.toList());
-        LOGGER.info("All users found: " + allUserIds.size());
-        LOGGER.info("Sending notification to all users");
+        logger.info("All users found: " + allUserIds.size());
+        logger.info("Sending notification to all users");
         sendPushNotification(allUserIds, title, body, data);
     }
 
     public void notifyReferrerOfPromoCode(User referrer, String promoCode) {
-        LOGGER.info("Notifying referrer of promo code: " + promoCode);
+        logger.info("Notifying referrer (ID: {}) of promo code: {}", referrer.getId(), promoCode);
         Map<String, Object> data = new HashMap<>();
         data.put("type", "PROMO_CODE");
         data.put("promoCode", promoCode);
         sendNotificationToUser(referrer.getId(), "Promo Code", "You have received a promo code", data);
+        logger.info("Notification sent successfully to referrer (ID: {})", referrer.getId());
     }
 }
