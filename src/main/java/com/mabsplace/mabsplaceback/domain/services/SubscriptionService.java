@@ -167,16 +167,24 @@ public class SubscriptionService {
     }
 
     private void cancelSubscription(Subscription subscription) throws MessagingException {
+        logger.info("Cancelling subscription ID: {}", subscription.getId());
+
         Profile profile = subscription.getProfile();
         if (profile != null) {
+            logger.debug("Setting profile ID: {} to INACTIVE", profile.getId());
             profile.setStatus(ProfileStatus.INACTIVE);
             profileRepository.save(profile);
-        }
+            logger.info("Profile status updated to INACTIVE successfully");
+        } else
+            logger.debug("No profile associated with subscription ID: {}", subscription.getId());
 
+        logger.debug("Setting subscription status to EXPIRED and turning off auto-renewal");
         subscription.setStatus(SubscriptionStatus.EXPIRED);
         subscription.setAutoRenew(false);
         subscriptionRepository.save(subscription);
+        logger.info("Subscription updated successfully with status: {}", SubscriptionStatus.EXPIRED);
 
+        logger.debug("Preparing email notification about expired subscription");
         EmailRequest emailRequest = EmailRequest.builder()
                 .to("maboukarl2@gmail.com")
                 .cc(List.of("yvanos510@gmail.com"))
@@ -193,6 +201,7 @@ public class SubscriptionService {
                 .build();
 
         emailService.sendEmail(emailRequest);
+        logger.info("Expiration notification email sent for subscription ID: {}", subscription.getId());
     }
 
     public void updateRenewalPlan(Long subscriptionId, Long newPlanId) {
