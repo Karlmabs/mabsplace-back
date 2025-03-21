@@ -10,6 +10,7 @@ import com.mabsplace.mabsplaceback.domain.repositories.UserProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.minio.MinioService;
+import com.mabsplace.mabsplaceback.utils.PromoCodeGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.util.List;
@@ -32,15 +34,18 @@ public class UserService {
     private final UserMapper mapper;
     private final MinioService minioService;
     private final UserProfileRepository userProfileRepository;
+    private final PromoCodeGenerator promoCodeGenerator;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, UserMapper mapper, MinioService minioService, UserProfileRepository userProfileRepository) {
+    public UserService(UserRepository userRepository, UserMapper mapper, MinioService minioService, 
+                      UserProfileRepository userProfileRepository, PromoCodeGenerator promoCodeGenerator) {
         this.userRepository = userRepository;
         this.mapper = mapper;
         this.minioService = minioService;
         this.userProfileRepository = userProfileRepository;
+        this.promoCodeGenerator = promoCodeGenerator;
     }
 
     public User getById(Long id) throws EntityNotFoundException {
@@ -58,15 +63,19 @@ public class UserService {
     }
 
     public User updateUser(Long id, UserRequestDto updatedUser) throws EntityNotFoundException {
-        System.out.println("referrerId: " + updatedUser.getReferrerId());
+        logger.info("Updating user with ID: {}", id);
         User target = userRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("User not found"));
         User updated = mapper.partialUpdate(updatedUser, target);
+        
         if (updatedUser.getProfileName() != null && !updatedUser.getProfileName().isEmpty()) {
             UserProfile defaultProfile = userProfileRepository.findByName(updatedUser.getProfileName()).orElseThrow(() -> new EntityNotFoundException("Profile not found"));
             updated.setUserProfile(defaultProfile);
         }
-        if (updatedUser.getReferrerId() != null) {
-            User referrer = userRepository.findById(updatedUser.getReferrerId()).orElseThrow(() -> new EntityNotFoundException("Referrer not found"));
+        
+        if (updatedUser.getReferralCode() != null && !updatedUser.getReferralCode().isEmpty()) {
+            logger.info("Updating user referrer using referral code: {}", updatedUser.getReferralCode());
+            User referrer = userRepository.findByReferralCode(updatedUser.getReferralCode())
+                    .orElseThrow(() -> new EntityNotFoundException("Referrer not found with code: " + updatedUser.getReferralCode()));
 
             // Check if the user already has a referrer and remove from the referrer's referrals
             if (updated.getReferrer() != null) {
@@ -74,6 +83,7 @@ public class UserService {
             }
 
             updated.setReferrer(referrer);
+            logger.info("User {} is now referred by {}", updated.getUsername(), referrer.getUsername());
         }
         return userRepository.save(updated);
     }
@@ -143,5 +153,68 @@ public class UserService {
             logger.warn("Password change failed for username: {}, incorrect old password", username);
             return false;
         }
+    }
+    
+    /**
+     * Generates a unique referral code for a user
+     * @param user The user to generate a referral code for
+     * @return The generated referral code
+     */
+    @Transactional
+    public String generateReferralCode(User user) {
+        logger.info("Generating referral code for user ID: {}", user.getId());
+        
+        // Check if user already has a referral code
+        if (user.getReferralCode() != null && !user.getReferralCode().isEmpty()) {
+            logger.info("User already has a referral code: {}", user.getReferralCode());
+            return user.getReferralCode();
+        }
+        
+        String referralCode;
+        boolean isUnique;
+        
+        // Generate a unique referral code
+        do {
+            referralCode = promoCodeGenerator.generateReferralCode();
+            isUnique = !userRepository.existsByReferralCode(referralCode);
+        } while (!isUnique);
+        
+        user.setReferralCode(referralCode);
+        userRepository.save(user);
+        
+        logger.info("Generated referral code for user ID {}: {}", user.getId(), referralCode);
+        return referralCode;
+    }
+    
+    /**
+     * Generates referral codes for all users who don't have one yet
+     * @return The number of referral codes generated
+     */
+    @Transactional
+    public int generateMissingReferralCodes() {
+        logger.info("Generating missing referral codes for all users");
+        
+        List<User> usersWithoutReferralCode = userRepository.findAll().stream()
+                .filter(user -> user.getReferralCode() == null || user.getReferralCode().isEmpty())
+                .toList();
+        
+        int count = 0;
+        for (User user : usersWithoutReferralCode) {
+            generateReferralCode(user);
+            count++;
+        }
+        
+        logger.info("Generated {} missing referral codes", count);
+        return count;
+    }
+    
+    /**
+     * Finds a user by their referral code
+     * @param referralCode The referral code to look up
+     * @return The user with the given referral code, if found
+     */
+    public Optional<User> findByReferralCode(String referralCode) {
+        logger.info("Finding user by referral code: {}", referralCode);
+        return userRepository.findByReferralCode(referralCode);
     }
 }

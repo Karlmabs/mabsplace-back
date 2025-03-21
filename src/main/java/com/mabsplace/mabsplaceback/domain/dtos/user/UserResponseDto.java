@@ -40,6 +40,7 @@ public class UserResponseDto implements Serializable{
     private PromoCodeResponseDto promoCode;
     private Set<DiscountResponseDto> discounts;
     private Long referrerId;
+    private String referralCode;
     private List<UserResponseDto> referrals;
 
 }

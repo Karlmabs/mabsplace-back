@@ -53,6 +53,9 @@ public class User {
     private String image;
 
     private String pushToken;
+    
+    @Column(unique = true)
+    private String referralCode;
 
     @ManyToMany
     @JoinTable(joinColumns = @JoinColumn(name = "user_id"))

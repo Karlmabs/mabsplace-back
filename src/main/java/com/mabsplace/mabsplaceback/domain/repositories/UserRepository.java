@@ -19,6 +19,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Boolean existsByUsername(String username);
 
   Boolean existsByEmail(String email);
+  
+  Optional<User> findByReferralCode(String referralCode);
+  
+  Boolean existsByReferralCode(String referralCode);
 
   @Modifying
   @Query("UPDATE User u SET u.authType = ?2 WHERE u.username = ?1")

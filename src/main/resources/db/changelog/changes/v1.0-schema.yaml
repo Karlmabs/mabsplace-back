@@ -780,3 +780,22 @@ databaseChangeLog:
               - column:
                   name: symbol
                   value: "XAF"
+                  
+  - changeSet:
+      id: add-referral-code-to-users
+      author: Karlmabs
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: referral_code
+                  type: varchar(10)
+                  constraints:
+                    unique: true
+        - createIndex:
+            indexName: idx_users_referral_code
+            tableName: users
+            columns:
+              - column:
+                  name: referral_code

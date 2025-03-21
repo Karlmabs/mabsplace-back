@@ -16,6 +16,7 @@ import com.mabsplace.mabsplaceback.domain.repositories.UserProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.domain.services.EmailVerificationService;
 import com.mabsplace.mabsplaceback.domain.services.PromoCodeService;
+import com.mabsplace.mabsplaceback.domain.services.TransactionService;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.security.events.OnRegistrationCompleteEvent;
 import com.mabsplace.mabsplaceback.security.jwt.JwtUtils;
@@ -32,6 +33,8 @@ import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.apache.coyote.BadRequestException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -59,6 +62,8 @@ public class AuthController {
 
     @Value("${mabsplace.google.clientId}")
     private static final String CLIENT_ID = "";
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @Autowired
     AuthenticationManager authenticationManager;
@@ -181,11 +186,18 @@ public class AuthController {
                     return userProfileRepository.save(newProfile);
                 });
 
-        // Set Referrer
-        if (signUpRequest.getReferrerId() != null) {
-            User referrer = userRepository.findById(signUpRequest.getReferrerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("User", "id", signUpRequest.getReferrerId()));
-            user.setReferrer(referrer);
+        // Set Referrer using referral code
+        if (signUpRequest.getReferralCode() != null && !signUpRequest.getReferralCode().isEmpty()) {
+            User referrer = userRepository.findByReferralCode(signUpRequest.getReferralCode())
+                    .orElse(null);
+            
+            if (referrer != null) {
+                user.setReferrer(referrer);
+                logger.info("User {} referred by user {} with code {}", user.getUsername(), 
+                          referrer.getUsername(), signUpRequest.getReferralCode());
+            } else {
+                logger.warn("Invalid referral code provided: {}", signUpRequest.getReferralCode());
+            }
         }
 
         // Assign default profile

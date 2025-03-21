@@ -8,6 +8,7 @@ import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.services.UserService;
+import com.mabsplace.mabsplaceback.security.response.MessageResponse;
 import com.mabsplace.mabsplaceback.utils.PageDto;
 import com.mabsplace.mabsplaceback.utils.PaginationUtils;
 import com.mabsplace.mabsplaceback.utils.Utils;
@@ -20,7 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -115,5 +118,47 @@ public class UserController {
             logger.warn("Password change failed for username: {}, incorrect old password", username);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Old password is incorrect");
         }
+    }
+    
+    /**
+     * Get the referral code for a user
+     */
+    @GetMapping("/{id}/referral-code")
+    public ResponseEntity<?> getUserReferralCode(@PathVariable Long id) {
+        logger.info("Getting referral code for user ID: {}", id);
+        User user = userService.getById(id);
+        
+        // Generate a code if the user doesn't have one
+        if (user.getReferralCode() == null || user.getReferralCode().isEmpty()) {
+            String code = userService.generateReferralCode(user);
+            logger.info("Generated new referral code for user ID {}: {}", id, code);
+        }
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("referralCode", user.getReferralCode());
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Generate referral codes for all users who don't have one
+     */
+    @PostMapping("/generate-referral-codes")
+    public ResponseEntity<?> generateMissingReferralCodes() {
+        logger.info("Generating missing referral codes for all users");
+        int count = userService.generateMissingReferralCodes();
+        
+        return ResponseEntity.ok(new MessageResponse("Generated " + count + " referral codes"));
+    }
+    
+    /**
+     * Look up a user by their referral code
+     */
+    @GetMapping("/by-referral-code/{code}")
+    public ResponseEntity<?> getUserByReferralCode(@PathVariable String code) {
+        logger.info("Looking up user by referral code: {}", code);
+        return userService.findByReferralCode(code)
+                .map(user -> ResponseEntity.ok(mapper.toDto(user)))
+                .orElse(ResponseEntity.notFound().build());
     }
 }

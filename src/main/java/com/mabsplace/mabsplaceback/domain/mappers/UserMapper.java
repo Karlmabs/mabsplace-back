@@ -17,6 +17,7 @@ public interface UserMapper {
     @Mapping(target = "userProfile", expression = "java(mapUserProfile(user))")
     @Mapping(target = "referrerId", expression = "java(mapReferrer(user))")
     @Mapping(target = "referrals", expression = "java(mapReferrals(user.getReferrals()))")
+    @Mapping(source = "referralCode", target = "referralCode")
     UserResponseDto toDto(User user);
 
     default List<UserResponseDto> mapReferrals(List<User> referrals) {
