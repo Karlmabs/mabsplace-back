@@ -2,6 +2,8 @@ package com.mabsplace.mabsplaceback.domain.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mabsplace.mabsplaceback.domain.entities.Notification;
+import com.mabsplace.mabsplaceback.domain.entities.PackageSubscriptionPlan;
+import com.mabsplace.mabsplaceback.domain.entities.ServicePackage;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.NotificationType;
 import com.mabsplace.mabsplaceback.domain.repositories.NotificationRepository;
@@ -232,5 +234,17 @@ public class NotificationService {
         data.put("promoCode", promoCode);
         sendNotificationToUser(referrer.getId(), "Promo Code", "You have received a promo code", data);
         logger.info("Notification sent successfully to referrer (ID: {})", referrer.getId());
+    }
+
+    public void notifyUserOfNewPackageSubscription(User user, ServicePackage servicePackage, PackageSubscriptionPlan packagePlan) {
+        logger.info("Notifying user (ID: {}) of new package subscription: {}", user.getId(), servicePackage.getName());
+        Map<String, Object> data = new HashMap<>();
+        data.put("type", "PACKAGE_SUBSCRIPTION");
+        data.put("packageId", servicePackage.getId());
+        data.put("packageName", servicePackage.getName());
+        data.put("packagePlanId", packagePlan.getId());
+        data.put("packagePlanName", packagePlan.getName());
+        sendNotificationToUser(user.getId(), "New Subscription", "You have subscribed to a new package", data);
+        logger.info("Notification sent successfully to user (ID: {})", user.getId());
     }
 }

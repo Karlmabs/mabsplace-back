@@ -31,6 +31,24 @@ public class Subscription {
   @ManyToOne
   @JoinColumn(name = "service_id", referencedColumnName = "id")
   private MyService service;
+  
+  /**
+   * If this is a package subscription, this field will reference
+   * the package subscription plan. Only one of subscriptionPlan
+   * or packageSubscriptionPlan should be set.
+   */
+  @ManyToOne
+  @JoinColumn(name = "package_plan_id", referencedColumnName = "id")
+  private PackageSubscriptionPlan packageSubscriptionPlan;
+  
+  /**
+   * If this is a package subscription, this field will reference
+   * the service package. Only one of service or servicePackage
+   * should be set.
+   */
+  @ManyToOne
+  @JoinColumn(name = "package_id", referencedColumnName = "id")
+  private ServicePackage servicePackage;
 
   @OneToOne
   @JoinColumn(name = "profile_id", referencedColumnName = "id")
@@ -52,10 +70,25 @@ public class Subscription {
   @ManyToOne
   @JoinColumn(name = "next_subscription_plan_id", referencedColumnName = "id")
   private SubscriptionPlan nextSubscriptionPlan;
+  
+  /**
+   * If this is a package subscription, this field will reference
+   * the next package subscription plan. Only one of nextSubscriptionPlan
+   * or nextPackageSubscriptionPlan should be set.
+   */
+  @ManyToOne
+  @JoinColumn(name = "next_package_plan_id", referencedColumnName = "id")
+  private PackageSubscriptionPlan nextPackageSubscriptionPlan;
 
   // New field for trial tracking
   @Column(name = "is_trial")
   private Boolean isTrial = false;
+  
+  /**
+   * Flag to indicate if this is a package subscription
+   */
+  @Column(name = "is_package_subscription")
+  private Boolean isPackageSubscription = false;
 
   @PrePersist
   protected void onCreate() {

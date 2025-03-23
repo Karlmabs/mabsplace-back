@@ -169,6 +169,124 @@ public class EmailService {
         logger.info("Email sent successfully to: {}", request.getTo());
     }
 
+    /**
+     * Send package subscription confirmation email
+     */
+    @Async
+    public void sendPackageSubscriptionConfirmationEmail(String email, String packageName, Date endDate) 
+            throws MessagingException {
+        logger.info("Sending package subscription confirmation email to: {}", email);
+        
+        EmailRequest request = EmailRequest.builder()
+                .to(email)
+                .subject("Package Subscription Confirmation")
+                .headerText("Package Subscription Confirmation")
+                .body("<p>Thank you for subscribing to the " + packageName + " package. " +
+                      "Your subscription is now active and will expire on " + endDate + ".</p>" +
+                      "<p>This package includes multiple streaming services, all accessible with a single subscription.</p>" +
+                      "<p>Enjoy your premium entertainment experience!</p>")
+                .companyName("MabsPlace")
+                .build();
+        
+        sendEmail(request);
+        logger.info("Package subscription confirmation email sent to: {}", email);
+    }
+    
+    /**
+     * Send package subscription cancellation email
+     */
+    @Async
+    public void sendPackageSubscriptionCancellationEmail(String email, String packageName) 
+            throws MessagingException {
+        logger.info("Sending package subscription cancellation email to: {}", email);
+        
+        EmailRequest request = EmailRequest.builder()
+                .to(email)
+                .subject("Package Subscription Cancelled")
+                .headerText("Package Subscription Cancelled")
+                .body("<p>Your subscription to the " + packageName + " package has been cancelled. " +
+                      "You will no longer have access to the services included in this package.</p>" +
+                      "<p>If you cancelled this by mistake, please contact our support team or resubscribe " +
+                      "from your account dashboard.</p>" +
+                      "<p>We hope to see you again soon!</p>")
+                .companyName("MabsPlace")
+                .build();
+        
+        sendEmail(request);
+        logger.info("Package subscription cancellation email sent to: {}", email);
+    }
+    
+    /**
+     * Send package subscription renewal email
+     */
+    @Async
+    public void sendPackageSubscriptionRenewalEmail(String email, String packageName, Date newEndDate) 
+            throws MessagingException {
+        logger.info("Sending package subscription renewal email to: {}", email);
+        
+        EmailRequest request = EmailRequest.builder()
+                .to(email)
+                .subject("Package Subscription Renewed")
+                .headerText("Package Subscription Renewed")
+                .body("<p>Good news! Your subscription to the " + packageName + " package has been renewed. " +
+                      "Your subscription will now expire on " + newEndDate + ".</p>" +
+                      "<p>Thank you for choosing to continue with our service. " +
+                      "We appreciate your business and hope you continue to enjoy your entertainment experience.</p>")
+                .companyName("MabsPlace")
+                .build();
+        
+        sendEmail(request);
+        logger.info("Package subscription renewal email sent to: {}", email);
+    }
+    
+    /**
+     * Send package subscription renewal failed email
+     */
+    @Async
+    public void sendPackageSubscriptionRenewalFailedEmail(String email, String packageName, int attempts) 
+            throws MessagingException {
+        logger.info("Sending package subscription renewal failed email to: {}", email);
+        
+        EmailRequest request = EmailRequest.builder()
+                .to(email)
+                .subject("Package Subscription Renewal Failed")
+                .headerText("Package Subscription Renewal Failed")
+                .body("<p>We were unable to renew your subscription to the " + packageName + 
+                      " package due to insufficient funds or payment issues.</p>" +
+                      "<p>This is attempt " + attempts + " out of 4. After 4 failed attempts, " +
+                      "your subscription will be cancelled.</p>" +
+                      "<p>Please update your payment information or add funds to your wallet " +
+                      "to continue enjoying our services.</p>")
+                .companyName("MabsPlace")
+                .build();
+        
+        sendEmail(request);
+        logger.info("Package subscription renewal failed email sent to: {}", email);
+    }
+    
+    /**
+     * Send package subscription expired email
+     */
+    @Async
+    public void sendPackageSubscriptionExpiredEmail(String email, String packageName) 
+            throws MessagingException {
+        logger.info("Sending package subscription expired email to: {}", email);
+        
+        EmailRequest request = EmailRequest.builder()
+                .to(email)
+                .subject("Package Subscription Expired")
+                .headerText("Package Subscription Expired")
+                .body("<p>Your subscription to the " + packageName + " package has expired. " +
+                      "You no longer have access to the services included in this package.</p>" +
+                      "<p>To restore access, please renew your subscription from your account dashboard.</p>" +
+                      "<p>We hope to see you again soon!</p>")
+                .companyName("MabsPlace")
+                .build();
+        
+        sendEmail(request);
+        logger.info("Package subscription expired email sent to: {}", email);
+    }
+    
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
     public void notifyUpcomingPayments() throws MessagingException {
         logger.info("Scheduled task started: Checking for upcoming payments.");

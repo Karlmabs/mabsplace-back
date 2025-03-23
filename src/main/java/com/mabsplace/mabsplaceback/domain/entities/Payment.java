@@ -2,10 +2,7 @@ package com.mabsplace.mabsplaceback.domain.entities;
 
 import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -16,6 +13,7 @@ import java.util.Date;
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 public class Payment {
 
   @Id
@@ -37,6 +35,10 @@ public class Payment {
   @ManyToOne
   @JoinColumn(name = "service_id", referencedColumnName = "id")
   private MyService service;
+
+  @ManyToOne
+  @JoinColumn(name = "service_package_id", referencedColumnName = "id")
+  private ServicePackage servicePackage;
 
   @ManyToOne
   @JoinColumn(name = "subscription_plan_id", referencedColumnName = "id")

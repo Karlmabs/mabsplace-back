@@ -11,11 +11,12 @@ import java.util.Date;
 @Setter
 @Builder
 public class PaymentRequestDto {
-  private long userId;
-  private BigDecimal amount;
-  private Date paymentDate;
-  private long currencyId;
-  private long serviceId;
-  private String promoCode;
-  private long subscriptionPlanId;
+    private long userId;
+    private BigDecimal amount;
+    private Date paymentDate;
+    private long currencyId;
+    private long serviceId;
+    private long servicePackageId;
+    private String promoCode;
+    private long subscriptionPlanId;
 }

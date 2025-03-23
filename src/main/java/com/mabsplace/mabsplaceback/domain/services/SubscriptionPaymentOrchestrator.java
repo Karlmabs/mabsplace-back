@@ -21,8 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-import static com.mysql.cj.conf.PropertyKey.logger;
-
 @Service
 public class SubscriptionPaymentOrchestrator {
     private final WalletService walletService;
@@ -44,12 +42,26 @@ public class SubscriptionPaymentOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionPaymentOrchestrator.class);
 
+    private final PackageSubscriptionPlanRepository packagePlanRepository;
+    
     public SubscriptionPaymentOrchestrator(
             WalletService walletService,
             SubscriptionRepository subscriptionRepository,
             PaymentRepository paymentRepository,
             EmailService emailService,
-            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, PromoCodeService promoCodeService, SubscriptionDiscountService subscriptionDiscountService, TransactionRepository transactionRepository) {
+            NotificationService notificationService, 
+            DiscountService discountService, 
+            UserRepository userRepository, 
+            PaymentMapper paymentMapper, 
+            SubscriptionMapper mapper, 
+            CurrencyRepository currencyRepository, 
+            MyServiceRepository myServiceRepository, 
+            SubscriptionPlanRepository subscriptionPlanRepository, 
+            ProfileRepository profileRepository, 
+            PromoCodeService promoCodeService, 
+            SubscriptionDiscountService subscriptionDiscountService, 
+            TransactionRepository transactionRepository,
+            PackageSubscriptionPlanRepository packagePlanRepository) {
         this.walletService = walletService;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
@@ -66,6 +78,171 @@ public class SubscriptionPaymentOrchestrator {
         this.promoCodeService = promoCodeService;
         this.subscriptionDiscountService = subscriptionDiscountService;
         this.transactionRepository = transactionRepository;
+        this.packagePlanRepository = packagePlanRepository;
+    }
+    
+    /**
+     * Helper method to get user by ID
+     */
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+    }
+    
+    /**
+     * Helper method to get available service account
+     */
+    public ServiceAccount getAvailableServiceAccount(Long serviceId) {
+        MyService service = myServiceRepository.findById(serviceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Service", "id", serviceId));
+        
+        // Find an available account for this service
+        // This is a simplified implementation - in practice, you might have more complex logic
+        List<ServiceAccount> accounts = service.getServiceAccounts();
+        if (accounts == null || accounts.isEmpty()) {
+            throw new RuntimeException("No service accounts available for service: " + service.getName());
+        }
+        
+        return accounts.get(0);
+    }
+    
+    /**
+     * Helper method to calculate end date based on period
+     */
+    public Date calculateEndDate(Period period) {
+        Date startDate = new Date();
+        java.util.Calendar calendar = java.util.Calendar.getInstance();
+        calendar.setTime(startDate);
+        
+        switch (period) {
+            case DAILY:
+                calendar.add(java.util.Calendar.DAY_OF_MONTH, 1);
+                break;
+            case MONTHLY:
+                calendar.add(java.util.Calendar.MONTH, 1);
+                break;
+            case QUARTERLY:
+                calendar.add(java.util.Calendar.MONTH, 3);
+                break;
+            case SEMI_ANNUALLY:
+                calendar.add(java.util.Calendar.MONTH, 6);
+                break;
+            case YEARLY:
+                calendar.add(java.util.Calendar.YEAR, 1);
+                break;
+            default:
+                calendar.add(java.util.Calendar.MONTH, 1); // Default to monthly
+        }
+        
+        return calendar.getTime();
+    }
+    
+    /**
+     * Process payment for a package subscription
+     */
+    public void processPackageSubscriptionPayment(User user, PackageSubscriptionPlan packagePlan, 
+                                                Subscription subscription, String promoCode) {
+        log.info("Processing payment for package subscription for user ID: {} with package plan ID: {}", 
+                user.getId(), packagePlan.getId());
+        
+        // Get discount for user
+        double userDiscount = discountService.getDiscountForUser(user.getId());
+        BigDecimal originalAmount = packagePlan.getPrice();
+        BigDecimal amountAfterDiscount = originalAmount.subtract(BigDecimal.valueOf(userDiscount));
+        
+        // Apply promo code if provided
+        if (promoCode != null && !promoCode.isEmpty()) {
+            try {
+                PromoCodeResponseDto promoCodeDto = promoCodeService.validatePromoCode(promoCode, user);
+                BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                        promoCodeDto.getDiscountAmount().divide(BigDecimal.valueOf(100)));
+                amountAfterDiscount = amountAfterDiscount.multiply(discountMultiplier)
+                        .setScale(2, RoundingMode.HALF_UP);
+                
+                log.info("Applied promo code: {}. Amount after promo: {}", promoCode, amountAfterDiscount);
+            } catch (Exception e) {
+                log.warn("Failed to apply promo code: {}", promoCode, e);
+            }
+        }
+        
+        // Check if user has sufficient funds
+        if (!walletService.checkBalance(user.getWallet().getBalance(), amountAfterDiscount)) {
+            throw new RuntimeException("Insufficient funds for package subscription");
+        }
+        
+        // Create payment record
+        Payment payment = Payment.builder()
+                .user(user)
+                .amount(amountAfterDiscount)
+                .currency(packagePlan.getCurrency())
+                .paymentDate(new Date())
+                .status(PaymentStatus.PAID)
+                .build();
+        
+        // If promo code provided, store it with the payment
+        if (promoCode != null && !promoCode.isEmpty()) {
+            try {
+                promoCodeService.applyPromoCode(promoCode, payment);
+            } catch (Exception e) {
+                log.warn("Error applying promo code to payment: {}", e.getMessage());
+            }
+        }
+        
+        paymentRepository.save(payment);
+        
+        // Process wallet transaction
+        walletService.createTransaction(
+                user.getWallet().getId(),
+                TransactionType.SUBSCRIPTION_PAYMENT,
+                amountAfterDiscount,
+                "Package Subscription: " + packagePlan.getServicePackage().getName()
+        );
+        
+        log.info("Payment processed successfully for package subscription");
+    }
+    
+    /**
+     * Process renewal payment for a package subscription
+     */
+    public boolean processPackageSubscriptionRenewal(Subscription subscription, PackageSubscriptionPlan packagePlan) {
+        log.info("Processing renewal payment for package subscription ID: {} with plan ID: {}", 
+                subscription.getId(), packagePlan.getId());
+        
+        User user = subscription.getUser();
+        BigDecimal amount = packagePlan.getPrice();
+        
+        // Check if user has sufficient funds
+        if (!walletService.checkBalance(user.getWallet().getBalance(), amount)) {
+            log.warn("Insufficient funds for package subscription renewal");
+            return false;
+        }
+        
+        try {
+            // Create payment record
+            Payment payment = Payment.builder()
+                    .user(user)
+                    .amount(amount)
+                    .currency(packagePlan.getCurrency())
+                    .paymentDate(new Date())
+                    .status(PaymentStatus.PAID)
+                    .build();
+            
+            paymentRepository.save(payment);
+            
+            // Process wallet transaction
+            walletService.createTransaction(
+                    user.getWallet().getId(),
+                    TransactionType.SUBSCRIPTION_RENEWAL,
+                    amount,
+                    "Package Subscription Renewal: " + packagePlan.getServicePackage().getName()
+            );
+            
+            log.info("Renewal payment processed successfully for package subscription ID: {}", subscription.getId());
+            return true;
+        } catch (Exception e) {
+            log.error("Error processing renewal payment for package subscription: {}", e.getMessage());
+            return false;
+        }
     }
 
     public Payment processPaymentWithoutSubscription(PaymentRequestDto paymentRequest) {

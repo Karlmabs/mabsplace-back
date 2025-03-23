@@ -1,0 +1,151 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-service-packages-table
+      author: Karlmabs
+      changes:
+        - createTable:
+            tableName: service_packages
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: image
+                  type: varchar(255)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValue: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: create-package-services-table
+      author: Karlmabs
+      changes:
+        - createTable:
+            tableName: package_services
+            columns:
+              - column:
+                  name: package_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_package_services_package_id
+                    references: service_packages(id)
+              - column:
+                  name: service_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_package_services_service_id
+                    references: services(id)
+            primaryKey:
+              columnNames:
+                - package_id
+                - service_id
+              constraintName: pk_package_services
+
+  - changeSet:
+      id: create-package-subscription-plans-table
+      author: Karlmabs
+      changes:
+        - createTable:
+            tableName: package_subscription_plans
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: decimal(19, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: period
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(500)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: package_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_package_plans_package_id
+                    references: service_packages(id)
+              - column:
+                  name: currency_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_package_plans_currency_id
+                    references: currencies(id)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValue: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: update-subscriptions-table-for-packages
+      author: Karlmabs
+      changes:
+        - addColumn:
+            tableName: subscriptions
+            columns:
+              - column:
+                  name: package_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_subscriptions_package_id
+                    references: service_packages(id)
+              - column:
+                  name: package_plan_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_subscriptions_package_plan_id
+                    references: package_subscription_plans(id)
+              - column:
+                  name: next_package_plan_id
+                  type: bigint
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_subscriptions_next_package_plan_id
+                    references: package_subscription_plans(id)
+              - column:
+                  name: is_package_subscription
+                  type: boolean
+                  defaultValue: false
+                  constraints:
+                    nullable: false

@@ -25,4 +25,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     boolean existsByUserIdAndServiceIdAndIsTrial(Long id, Long id1, boolean b);
 
     boolean existsByUserIdAndServiceIdAndStatusAndEndDateAfter(Long id, Long id1, SubscriptionStatus subscriptionStatus, Date date);
+
+    List<Subscription> findByUserIdAndServicePackageIdAndStatus(Long userId, Long id, SubscriptionStatus subscriptionStatus);
 }

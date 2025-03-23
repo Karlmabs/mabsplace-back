@@ -2,10 +2,7 @@ package com.mabsplace.mabsplaceback.domain.entities;
 
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Table(name = "profiles")
@@ -13,6 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 public class Profile {
 
   @Id

@@ -1,3 +1,5 @@
 databaseChangeLog:
   - include:
       file: classpath:/db/changelog/changes/v1.0-schema.yaml
+  - include:
+      file: classpath:/db/changelog/changes/package-subscription.yaml
