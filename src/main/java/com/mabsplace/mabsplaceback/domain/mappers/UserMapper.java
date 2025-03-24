@@ -24,7 +24,7 @@ public interface UserMapper {
         if (referrals == null) {
             return null;
         }
-        return referrals.stream().map(this::toDto).collect(Collectors.toList());
+        return null;
     }
 
     default Long mapReferrer(User user) {
