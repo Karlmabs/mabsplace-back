@@ -33,15 +33,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(value = {Exception.class})
     public ResponseEntity<Object> handleException(Exception e) {
-        // create your custom error wrapper
+        // Log the exception with stack trace for debugging purposes
+        e.printStackTrace();
+
+        // Create a more informative error message
+        String errorMessage = "An unexpected error occurred: " + e.getMessage();
+
+        // Create the custom error response
         ApiException apiException = new ApiException(
-                e.getMessage(), // error message
-                HttpStatus.INTERNAL_SERVER_ERROR, // http status
-                ZonedDateTime.now() // timestamp
+                errorMessage,
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ZonedDateTime.now()
         );
 
-
-        // return it within a ResponseEntity
+        // Return the error response
         return new ResponseEntity<>(apiException, apiException.getHttpStatus());
     }
 }
