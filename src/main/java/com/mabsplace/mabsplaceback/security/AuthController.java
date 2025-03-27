@@ -17,6 +17,7 @@ import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.domain.services.EmailVerificationService;
 import com.mabsplace.mabsplaceback.domain.services.PromoCodeService;
 import com.mabsplace.mabsplaceback.domain.services.TransactionService;
+import com.mabsplace.mabsplaceback.domain.services.UserService;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.security.events.OnRegistrationCompleteEvent;
 import com.mabsplace.mabsplaceback.security.jwt.JwtUtils;
@@ -68,6 +69,8 @@ public class AuthController {
     @Autowired
     AuthenticationManager authenticationManager;
 
+    private final UserService userService;
+
     @Autowired
     UserRepository userRepository;
 
@@ -108,7 +111,8 @@ public class AuthController {
     private final UserProfileRepository userProfileRepository;
 
 
-    public AuthController(UserMapper userMapper, PromoCodeService promoCodeService, UserProfileRepository userProfileRepository) {
+    public AuthController(UserService userService, UserMapper userMapper, PromoCodeService promoCodeService, UserProfileRepository userProfileRepository) {
+        this.userService = userService;
         this.userMapper = userMapper;
         this.promoCodeService = promoCodeService;
         this.userProfileRepository = userProfileRepository;
@@ -207,6 +211,8 @@ public class AuthController {
         user.setAuthType(AuthenticationType.DATABASE);
 
         User result = userRepository.save(user);
+
+        userService.generateReferralCode(result);
 
         result.setWallet(
                 Wallet.builder()
