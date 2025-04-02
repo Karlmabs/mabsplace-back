@@ -42,5 +42,6 @@ public class UserResponseDto implements Serializable{
     private Long referrerId;
     private String referralCode;
     private List<UserResponseDto> referrals;
+    private UserResponseDto referrer;
 
 }
