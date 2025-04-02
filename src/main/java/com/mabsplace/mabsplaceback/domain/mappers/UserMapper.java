@@ -25,7 +25,15 @@ public interface UserMapper {
         if (referrals == null) {
             return null;
         }
-        return referrals.stream().map(this::toDto).collect(Collectors.toList());
+        return referrals.stream()
+                .map(referral -> {
+                    UserResponseDto dto = new UserResponseDto();
+                    dto.setId(referral.getId());
+                    dto.setUsername(referral.getUsername());
+                    // Map other essential fields without including nested referrals
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     default String mapReferrerName(User user) {
