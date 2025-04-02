@@ -1,8 +1,11 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
+import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
+import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ApiException;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -23,12 +27,12 @@ import java.util.stream.Collectors;
 
 /**
  * Service to handle package subscriptions
- * This service delegates to the regular subscription service where possible,
- * but handles the package-specific operations
+ * This service aligns with the flow of regular subscriptions but for service packages
  */
 @Service
 public class PackageSubscriptionService {
     private static final Logger logger = LoggerFactory.getLogger(PackageSubscriptionService.class);
+    private static final int MAX_RENEWAL_ATTEMPTS = 3;
     
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionService subscriptionService;
@@ -38,6 +42,8 @@ public class PackageSubscriptionService {
     private final ProfileRepository profileRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final WalletService walletService;
+    private final PaymentRepository paymentRepository;
     
     public PackageSubscriptionService(
             SubscriptionRepository subscriptionRepository,
@@ -47,7 +53,9 @@ public class PackageSubscriptionService {
             PackageSubscriptionPlanRepository packagePlanRepository,
             ProfileRepository profileRepository,
             NotificationService notificationService,
-            EmailService emailService) {
+            EmailService emailService,
+            WalletService walletService,
+            PaymentRepository paymentRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.subscriptionService = subscriptionService;
         this.orchestrator = orchestrator;
@@ -56,134 +64,191 @@ public class PackageSubscriptionService {
         this.profileRepository = profileRepository;
         this.notificationService = notificationService;
         this.emailService = emailService;
+        this.walletService = walletService;
+        this.paymentRepository = paymentRepository;
     }
     
     /**
-     * Create a package subscription for a user
-     * This creates a single subscription record for the package,
-     * but handles all the necessary profile activations for each service
+     * Process payment for package subscription
+     * This is the entry point for creating a package subscription, following the same
+     * flow as regular subscriptions - payment first, then subscription creation
      * 
-     * @param userId ID of the user subscribing to the package
-     * @param packagePlanId ID of the package subscription plan
-     * @param promoCode Optional promo code for discount (can be null)
-     * @return The created subscription
-     * @throws ResourceNotFoundException if user or package plan not found
-     * @throws ApiException if validation fails or other business rules are violated
+     * @param paymentRequest The payment request containing all necessary details
+     * @return Payment object containing payment details
+     * @throws ApiException If payment processing fails
      */
     @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
-    public Subscription createPackageSubscription(Long userId, Long packagePlanId, String promoCode) {
-        logger.info("Creating package subscription for user ID: {} with package plan ID: {}", userId, packagePlanId);
+    public Payment processPackageSubscriptionPayment(PaymentRequestDto paymentRequest) {
+        logger.info("Processing payment for package subscription for user ID: {} with package plan ID: {}", 
+                paymentRequest.getUserId(), paymentRequest.getSubscriptionPlanId());
         
-        // Input validation
-        if (userId == null || userId <= 0) {
-            throw new IllegalArgumentException("User ID must be a positive number");
+        try {
+            // Validate input
+            if (paymentRequest.getServicePackageId() <= 0) {
+                throw new ApiException("Service package ID is required");
+            }
+            
+            if (paymentRequest.getSubscriptionPlanId() <= 0) {
+                throw new ApiException("Package subscription plan ID is required");
+            }
+            
+            // Check if package exists
+            ServicePackage servicePackage = packageRepository.findById(paymentRequest.getServicePackageId())
+                    .orElseThrow(() -> new ResourceNotFoundException("ServicePackage", "id", paymentRequest.getServicePackageId()));
+            
+            // Check if package plan exists
+            PackageSubscriptionPlan packagePlan = packagePlanRepository.findById(paymentRequest.getSubscriptionPlanId())
+                    .orElseThrow(() -> new ResourceNotFoundException("PackageSubscriptionPlan", "id", paymentRequest.getSubscriptionPlanId()));
+            
+            // Validate that package plan belongs to the package
+            if (!packagePlan.getServicePackage().getId().equals(servicePackage.getId())) {
+                throw new ApiException("The specified subscription plan does not belong to the specified package");
+            }
+            
+            // Fetch user
+            User user = orchestrator.getUserById(paymentRequest.getUserId());
+            
+            // Create and process the payment
+            Payment payment = createPackagePayment(user, paymentRequest, packagePlan);
+            
+            // If payment is successful, create the subscription
+            if (payment.getStatus() == com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID) {
+                createPackageSubscriptionFromPayment(payment, packagePlan, servicePackage);
+            }
+            
+            return payment;
+        } catch (ResourceNotFoundException | ApiException e) {
+            // Let these exceptions propagate
+            throw e;
+        } catch (Exception e) {
+            logger.error("Unexpected error processing package subscription payment", e);
+            throw new ApiException("An unexpected error occurred during payment processing: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Create a payment record for a package subscription
+     */
+    private Payment createPackagePayment(User user, PaymentRequestDto paymentRequest, PackageSubscriptionPlan packagePlan) {
+        // Get any user-specific discount
+        double userDiscount = orchestrator.discountService.getDiscountForUser(user.getId());
+        BigDecimal originalAmount = packagePlan.getPrice();
+        BigDecimal amountAfterDiscount = originalAmount.subtract(BigDecimal.valueOf(userDiscount));
+        
+        // Apply promo code if provided
+        BigDecimal finalAmount = amountAfterDiscount;
+        if (StringUtils.hasText(paymentRequest.getPromoCode())) {
+            try {
+                orchestrator.promoCodeService.validatePromoCode(paymentRequest.getPromoCode(), user);
+                BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                        orchestrator.promoCodeService.validatePromoCode(paymentRequest.getPromoCode(), user).getDiscountAmount().divide(BigDecimal.valueOf(100)));
+                finalAmount = amountAfterDiscount.multiply(discountMultiplier);
+                logger.info("Applied promo code: {}. Final amount: {}", paymentRequest.getPromoCode(), finalAmount);
+            } catch (Exception e) {
+                logger.warn("Failed to apply promo code: {}", paymentRequest.getPromoCode(), e);
+                // Continue with original amount if promo code application fails
+            }
         }
         
-        if (packagePlanId == null || packagePlanId <= 0) {
-            throw new IllegalArgumentException("Package plan ID must be a positive number");
+        // Check if user has sufficient funds
+        if (!walletService.checkBalance(user.getWallet().getBalance(), finalAmount)) {
+            throw new ApiException("Insufficient funds for package subscription. Required: " + finalAmount);
+        }
+        
+        // Create payment record
+        Payment payment = Payment.builder()
+                .user(user)
+                .amount(finalAmount)
+                .currency(packagePlan.getCurrency())
+                .paymentDate(new Date())
+                .status(com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID)
+                .servicePackage(packagePlan.getServicePackage())
+                .build();
+        
+        // If promo code provided, store it with the payment
+        if (StringUtils.hasText(paymentRequest.getPromoCode())) {
+            try {
+                orchestrator.promoCodeService.applyPromoCode(paymentRequest.getPromoCode(), payment);
+            } catch (Exception e) {
+                logger.warn("Error applying promo code to payment: {}", e.getMessage());
+            }
+        }
+        
+        // Save the payment
+        payment = paymentRepository.save(payment);
+        
+        // Process wallet transaction - debit the user's wallet
+        walletService.createTransaction(
+                user.getWallet().getId(),
+                TransactionType.SUBSCRIPTION_PAYMENT,
+                finalAmount,
+                "Package Subscription: " + packagePlan.getServicePackage().getName()
+        );
+        
+        logger.info("Payment processed successfully for package subscription: {}", payment.getId());
+        return payment;
+    }
+    
+    /**
+     * Create a package subscription from a successful payment
+     */
+    private Subscription createPackageSubscriptionFromPayment(Payment payment, PackageSubscriptionPlan packagePlan, ServicePackage servicePackage) {
+        logger.info("Creating package subscription from payment ID: {}", payment.getId());
+        User user = payment.getUser();
+        
+        // Check if user already has an active subscription for this package
+        List<Subscription> existingSubscriptions = subscriptionRepository.findByUserIdAndServicePackageIdAndStatus(
+                user.getId(), servicePackage.getId(), SubscriptionStatus.ACTIVE);
+        
+        if (!existingSubscriptions.isEmpty()) {
+            logger.warn("User {} already has an active subscription for package {}", 
+                    user.getId(), servicePackage.getId());
+            throw new ApiException("You already have an active subscription for this package");
+        }
+        
+        // Validate service accounts availability
+        validateServiceAccountsAvailability(servicePackage);
+        
+        // Create the subscription record
+        Subscription subscription = new Subscription();
+        subscription.setUser(user);
+        subscription.setPackageSubscriptionPlan(packagePlan);
+        subscription.setServicePackage(servicePackage);
+        subscription.setStatus(SubscriptionStatus.INACTIVE); // Will be activated after profile setup
+        subscription.setAutoRenew(true);
+        subscription.setStartDate(new Date());
+        subscription.setEndDate(orchestrator.calculateEndDate(packagePlan.getPeriod()));
+        subscription.setIsPackageSubscription(true);
+        subscription.setRenewalAttempts(0);
+        
+        // Save the subscription to get an ID
+        Subscription savedSubscription = subscriptionRepository.save(subscription);
+        
+        // Note: Profiles will be activated separately by an admin
+        // We don't automatically create profiles here to match the regular subscription flow
+        
+        // Notify the user of successful subscription creation
+        try {
+            notificationService.notifyUserOfNewPackageSubscription(
+                    user, servicePackage, packagePlan);
+        } catch (Exception e) {
+            logger.error("Failed to send notification for new package subscription", e);
         }
         
         try {
-            // Fetch package subscription plan
-            PackageSubscriptionPlan packagePlan = packagePlanRepository.findById(packagePlanId)
-                    .orElseThrow(() -> new ResourceNotFoundException("PackageSubscriptionPlan", "id", packagePlanId));
-            
-            // Fetch user 
-            User user = orchestrator.getUserById(userId);
-            
-            // Check if user already has an active subscription for this package
-            List<Subscription> existingSubscriptions = subscriptionRepository.findByUserIdAndServicePackageIdAndStatus(
-                    userId, packagePlan.getServicePackage().getId(), SubscriptionStatus.ACTIVE);
-            
-            if (!existingSubscriptions.isEmpty()) {
-                logger.warn("User {} already has an active subscription for package {}", 
-                        userId, packagePlan.getServicePackage().getId());
-                throw new RuntimeException("You already have an active subscription for this package");
-            }
-            
-            // Validate service accounts availability before proceeding
-            validateServiceAccountsAvailability(packagePlan.getServicePackage());
-            
-            // Create a single subscription record for the package
-            Subscription subscription = new Subscription();
-            subscription.setUser(user);
-            subscription.setPackageSubscriptionPlan(packagePlan);
-            subscription.setServicePackage(packagePlan.getServicePackage());
-            subscription.setStatus(SubscriptionStatus.INACTIVE); // Will be activated after payment
-            subscription.setAutoRenew(true);
-            subscription.setStartDate(new Date());
-            subscription.setEndDate(orchestrator.calculateEndDate(packagePlan.getPeriod()));
-            subscription.setIsPackageSubscription(true);
-            subscription.setRenewalAttempts(0);
-            
-            // Process payment
-            try {
-                orchestrator.processPackageSubscriptionPayment(user, packagePlan, subscription, promoCode);
-            } catch (Exception e) {
-                logger.error("Payment processing failed for package subscription", e);
-                throw new RuntimeException("Payment processing failed: " + e.getMessage());
-            }
-            
-            // Activate the subscription
-            subscription.setStatus(SubscriptionStatus.ACTIVE);
-            
-            // Save the subscription first to ensure we have an ID
-            Subscription savedSubscription = subscriptionRepository.save(subscription);
-            
-            // For each service in the package, create or activate a profile
-            List<Profile> activatedProfiles;
-            try {
-                activatedProfiles = activateProfilesForPackage(user, packagePlan.getServicePackage());
-                
-                if (activatedProfiles.isEmpty()) {
-                    throw new RuntimeException("Failed to activate any profiles for the package services");
-                }
-                
-                // Set the first profile as the main profile for this subscription
-                // This is a bit of a hack, but it allows us to reuse existing code
-                savedSubscription.setProfile(activatedProfiles.get(0));
-                savedSubscription = subscriptionRepository.save(savedSubscription);
-                
-            } catch (Exception e) {
-                logger.error("Failed to activate profiles for package subscription", e);
-                // The transaction will be rolled back
-                throw new RuntimeException("Failed to activate profiles: " + e.getMessage());
-            }
-            
-            // Notify user - outside transaction boundary in case of notification failures
-            try {
-                notificationService.notifyUserOfNewPackageSubscription(
-                        user, packagePlan.getServicePackage(), packagePlan);
-            } catch (Exception e) {
-                logger.error("Failed to send notification for new package subscription", e);
-                // Don't fail the transaction for notification errors
-            }
-            
-            try {
-                emailService.sendPackageSubscriptionConfirmationEmail(user.getEmail(), 
-                        packagePlan.getServicePackage().getName(), 
-                        subscription.getEndDate());
-            } catch (MessagingException e) {
-                logger.error("Failed to send package subscription confirmation email", e);
-                // Don't fail the transaction for email errors
-            }
-            
-            logger.info("Package subscription created successfully with ID: {}", savedSubscription.getId());
-            return savedSubscription;
-        } catch (RuntimeException e) {
-            // Let these exceptions propagate as is
-            throw e;
-        } catch (Exception e) {
-            logger.error("Unexpected error when creating package subscription", e);
-            throw new RuntimeException("An unexpected error occurred: " + e.getMessage());
+            emailService.sendPackageSubscriptionConfirmationEmail(user.getEmail(), 
+                    servicePackage.getName(), 
+                    subscription.getEndDate());
+        } catch (MessagingException e) {
+            logger.error("Failed to send package subscription confirmation email", e);
         }
+        
+        logger.info("Package subscription created successfully with ID: {}", savedSubscription.getId());
+        return savedSubscription;
     }
     
     /**
      * Validates that all services in a package have available service accounts
-     * 
-     * @param servicePackage The package to validate
-     * @throws RuntimeException if any service lacks available accounts
      */
     private void validateServiceAccountsAvailability(ServicePackage servicePackage) {
         List<String> unavailableServices = new ArrayList<>();
@@ -199,17 +264,57 @@ public class PackageSubscriptionService {
         
         if (!unavailableServices.isEmpty()) {
             String serviceNames = String.join(", ", unavailableServices);
-            throw new RuntimeException("The following services have no available accounts: " + serviceNames);
+            throw new ApiException("The following services have no available accounts: " + serviceNames);
         }
     }
     
     /**
-     * Activate profiles for each service in a package
+     * Activate profiles for a package subscription
+     * This method should be called by an admin after the subscription is created
      * 
-     * @param user The user who is subscribing to the package
-     * @param servicePackage The package containing services to activate profiles for
-     * @return List of activated profiles for the services in the package
-     * @throws RuntimeException if profile activation fails for any service
+     * @param subscriptionId The ID of the package subscription
+     * @return List of activated profiles
+     * @throws ApiException If profile activation fails
+     */
+    @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
+    public List<Profile> activateProfilesForPackageSubscription(Long subscriptionId) {
+        logger.info("Activating profiles for package subscription ID: {}", subscriptionId);
+        
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", subscriptionId));
+        
+        if (!subscription.getIsPackageSubscription()) {
+            throw new ApiException("Subscription is not a package subscription");
+        }
+        
+        if (subscription.getStatus() != SubscriptionStatus.INACTIVE) {
+            throw new ApiException("Only inactive subscriptions can have profiles activated. Current status: " + subscription.getStatus());
+        }
+        
+        User user = subscription.getUser();
+        ServicePackage servicePackage = subscription.getServicePackage();
+        
+        List<Profile> activatedProfiles = activateProfilesForPackage(user, servicePackage);
+        
+        if (activatedProfiles.isEmpty()) {
+            throw new ApiException("Failed to activate any profiles for the package services");
+        }
+        
+        // Set the first profile as the main profile for this subscription
+        subscription.setProfile(activatedProfiles.get(0));
+        
+        // Now activate the subscription
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscriptionRepository.save(subscription);
+        
+        logger.info("Successfully activated {} profiles and subscription for package subscription {}", 
+                activatedProfiles.size(), subscriptionId);
+        
+        return activatedProfiles;
+    }
+    
+    /**
+     * Activate profiles for each service in a package
      */
     private List<Profile> activateProfilesForPackage(User user, ServicePackage servicePackage) {
         logger.info("Activating profiles for user {} for package {}", user.getId(), servicePackage.getId());
@@ -287,11 +392,6 @@ public class PackageSubscriptionService {
             }
         }
         
-        // If we failed to activate all services, throw exception
-        if (activatedProfiles.isEmpty() && !servicePackage.getServices().isEmpty()) {
-            throw new ApiException("Failed to activate any profiles for services in the package");
-        }
-        
         // If we have some failures but some successes, log warning
         if (!failedServices.isEmpty()) {
             String failedServiceNames = String.join(", ", failedServices);
@@ -338,7 +438,6 @@ public class PackageSubscriptionService {
             logger.info("Deactivating profiles for all services in package with ID: {}", servicePackage.getId());
             
             // Deactivate profiles for all services in the package - using batch processing
-            // First, collect all profiles that need to be deactivated
             List<Profile> profilesToDeactivate = new ArrayList<>();
             
             for (MyService service : servicePackage.getServices()) {
@@ -367,19 +466,17 @@ public class PackageSubscriptionService {
             subscriptionRepository.save(subscription);
             logger.info("Subscription status updated to CANCELLED for ID: {}", subscriptionId);
             
-            // Notify user - outside transaction boundary
+            // Notify user
             try {
                 notificationService.notifyUserOfCancelledPackageSubscription(user, servicePackage);
             } catch (Exception e) {
                 logger.error("Failed to send cancellation notification for package subscription", e);
-                // Don't fail the transaction for notification errors
             }
             
             try {
                 emailService.sendPackageSubscriptionCancellationEmail(user.getEmail(), servicePackage.getName());
             } catch (MessagingException e) {
                 logger.error("Failed to send package subscription cancellation email", e);
-                // Don't fail the transaction for email errors
             }
             
             logger.info("Package subscription cancelled successfully with ID: {}", subscriptionId);
@@ -393,12 +490,10 @@ public class PackageSubscriptionService {
     }
     
     /**
-     * Renew a package subscription
+     * Renew a package subscription - following the same flow as regular subscriptions
      * 
      * @param subscription The subscription to renew
      * @return true if renewal was successful, false otherwise
-     * @throws IllegalArgumentException if the subscription is not a package subscription
-     * @throws ApiException if validation fails or renewal fails unexpectedly
      */
     @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public boolean renewPackageSubscription(Subscription subscription) {
@@ -429,18 +524,21 @@ public class PackageSubscriptionService {
                 throw new ApiException("No subscription plan found for renewal");
             }
             
-            // Validate that the package still exists and has services
-            ServicePackage servicePackage = subscription.getServicePackage();
-            if (servicePackage == null || servicePackage.getServices() == null || servicePackage.getServices().isEmpty()) {
-                throw new ApiException("Service package is invalid or has no services");
-            }
+            // Create payment request for renewal
+            PaymentRequestDto renewalPayment = PaymentRequestDto.builder()
+                    .amount(planToUse.getPrice())
+                    .userId(user.getId())
+                    .currencyId(planToUse.getCurrency().getId())
+                    .servicePackageId(subscription.getServicePackage().getId())
+                    .subscriptionPlanId(planToUse.getId())
+                    .paymentDate(new Date())
+                    .build();
             
-            logger.info("Using plan {} for package subscription renewal", planToUse.getId());
-            
-            // Process payment with retry logic
+            // Process payment
             boolean paymentSuccess = false;
             try {
-                paymentSuccess = orchestrator.processPackageSubscriptionRenewal(subscription, planToUse);
+                Payment payment = orchestrator.processPaymentWithoutSubscription(renewalPayment);
+                paymentSuccess = payment.getStatus() == com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID;
             } catch (Exception e) {
                 logger.error("Error processing payment for subscription renewal", e);
                 paymentSuccess = false;
@@ -472,23 +570,9 @@ public class PackageSubscriptionService {
                 }
                 
                 // Save changes to subscription
-                try {
-                    subscriptionRepository.save(subscription);
-                } catch (Exception e) {
-                    logger.error("Failed to update subscription after renewal", e);
-                    throw new ApiException("Failed to update subscription: " + e.getMessage());
-                }
+                subscriptionRepository.save(subscription);
                 
-                // Ensure all profiles are active - but don't fail renewal if profile activation fails
-                try {
-                    List<Profile> activatedProfiles = activateProfilesForPackage(user, subscription.getServicePackage());
-                    logger.info("Activated {} profiles for package subscription renewal", activatedProfiles.size());
-                } catch (Exception e) {
-                    logger.error("Failed to activate all profiles during subscription renewal", e);
-                    // Continue with renewal despite profile activation issues
-                }
-                
-                // Notify user (outside transaction boundary)
+                // Notify user
                 try {
                     notificationService.notifyUserOfRenewedPackageSubscription(
                             user, subscription.getServicePackage(), planToUse);
@@ -514,7 +598,6 @@ public class PackageSubscriptionService {
                 subscription.setLastRenewalAttempt(new Date());
                 
                 // If too many renewal attempts, mark as expired
-                final int MAX_RENEWAL_ATTEMPTS = 3;
                 if (newAttempts >= MAX_RENEWAL_ATTEMPTS) {
                     logger.warn("Maximum renewal attempts ({}) reached for subscription {}. Marking as expired.", 
                             MAX_RENEWAL_ATTEMPTS, subscription.getId());
@@ -522,9 +605,6 @@ public class PackageSubscriptionService {
                 }
                 
                 subscriptionRepository.save(subscription);
-                
-                logger.warn("Package subscription renewal failed for ID: {}. Attempt: {}", 
-                        subscription.getId(), subscription.getRenewalAttempts());
                 
                 try {
                     emailService.sendPackageSubscriptionRenewalFailedEmail(user.getEmail(), 
@@ -556,10 +636,6 @@ public class PackageSubscriptionService {
     
     /**
      * Handle expiration of package subscriptions
-     * 
-     * @param subscription The subscription to mark as expired
-     * @throws IllegalArgumentException if the subscription is not a package subscription
-     * @throws ApiException if validation fails or expiration process fails unexpectedly
      */
     @Transactional(propagation = Propagation.REQUIRED, isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public void handleExpiredPackageSubscription(Subscription subscription) {
@@ -618,19 +694,17 @@ public class PackageSubscriptionService {
             subscriptionRepository.save(subscription);
             logger.info("Subscription status updated to EXPIRED for ID: {}", subscription.getId());
             
-            // Notify user - outside transaction boundary
+            // Notify user
             try {
                 notificationService.notifyUserOfExpiredPackageSubscription(user, servicePackage);
             } catch (Exception e) {
                 logger.error("Failed to send expiration notification for package subscription", e);
-                // Don't fail the transaction for notification errors
             }
             
             try {
                 emailService.sendPackageSubscriptionExpiredEmail(user.getEmail(), servicePackage.getName());
             } catch (MessagingException e) {
                 logger.error("Failed to send package subscription expired email", e);
-                // Don't fail the transaction for email errors
             }
             
             logger.info("Expired package subscription handled successfully with ID: {}", subscription.getId());
