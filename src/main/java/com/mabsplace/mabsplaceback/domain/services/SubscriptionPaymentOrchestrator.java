@@ -170,6 +170,8 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     public boolean processSubscriptionRenewal(Subscription subscription, SubscriptionPlan nextPlan) {
+        User user = subscription.getUser();
+
         PaymentRequestDto renewalPayment = PaymentRequestDto.builder()
                 .amount(subscriptionDiscountService.getDiscountedPrice(nextPlan))
                 .userId(subscription.getUser().getId())
@@ -178,6 +180,13 @@ public class SubscriptionPaymentOrchestrator {
                 .subscriptionPlanId(nextPlan.getId())
                 .paymentDate(new Date())
                 .build();
+
+        // Check if user has a personal promo code
+        String personalPromoCode = promoCodeService.getUserPersonalPromoCode(user);
+        if (personalPromoCode != null && !personalPromoCode.isEmpty()) {
+            renewalPayment.setPromoCode(personalPromoCode);
+            log.info("Applied personal promo code '{}' for user ID: {}", personalPromoCode, user.getId());
+        }
 
         try {
             Payment payment = processPaymentWithoutSubscription(renewalPayment);

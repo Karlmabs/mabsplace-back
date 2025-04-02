@@ -278,4 +278,18 @@ public class PromoCodeService {
 
         return promoCodeMapper.toDtoList(promoCodes);
     }
+
+    public String getUserPersonalPromoCode(User user) {
+        logger.info("Fetching personal promo code for user ID: {}", user.getId());
+
+        List<PromoCode> promoCodes = promoCodeRepository.findByAssignedUser(user);
+        if (promoCodes.isEmpty()) {
+            logger.error("Promo code not found for user ID: {}", user.getId());
+            return null;
+        }
+        PromoCode promoCode = promoCodes.get(0);
+
+        logger.info("Fetched personal promo code successfully: {}", promoCode);
+        return promoCode.getCode();
+    }
 }
