@@ -5,7 +5,7 @@ import com.mabsplace.mabsplaceback.domain.dtos.expense.ExpenseResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Expense;
 import org.mapstruct.*;
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE, componentModel = "spring")
+@Mapper(componentModel = "spring")
 public interface ExpenseMapper {
 
     @Mapping(target = "category", source = "category")

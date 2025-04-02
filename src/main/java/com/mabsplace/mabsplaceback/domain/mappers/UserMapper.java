@@ -30,7 +30,7 @@ public interface UserMapper {
 
     default String mapReferrerName(User user) {
         if (user == null || user.getReferrer() == null) {
-            return null;
+            return "No referrer";
         }
         return user.getReferrer().getUsername();
     }
