@@ -16,10 +16,24 @@ public interface UserMapper {
 
     @Mapping(target = "userProfile", expression = "java(mapUserProfile(user))")
     @Mapping(target = "referrerId", expression = "java(mapReferrer(user))")
-    @Mapping(target = "referrals", expression = "java(user.getReferrals().stream().map(this::toDto).collect(Collectors.toList()))")
+    @Mapping(target = "referrals", expression = "java(mapReferrals(user.getReferrals()))")
     @Mapping(source = "referralCode", target = "referralCode")
-    @Mapping(target = "referrer", expression = "java(toDto(user.getReferrer()))")
+    @Mapping(target = "referrerName", expression = "java(mapReferrerName(user.getReferrer()))")
     UserResponseDto toDto(User user);
+
+    default List<UserResponseDto> mapReferrals(List<User> referrals) {
+        if (referrals == null) {
+            return null;
+        }
+        return referrals.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    default String mapReferrerName(User user) {
+        if (user == null || user.getReferrer() == null) {
+            return null;
+        }
+        return user.getReferrer().getUsername();
+    }
 
     default Long mapReferrer(User user) {
         if (user == null || user.getReferrer() == null) {
