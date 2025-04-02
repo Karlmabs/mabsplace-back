@@ -194,11 +194,17 @@ public class AuthController {
         if (signUpRequest.getReferralCode() != null && !signUpRequest.getReferralCode().isEmpty()) {
             User referrer = userRepository.findByReferralCode(signUpRequest.getReferralCode())
                     .orElse(null);
-            
+
             if (referrer != null) {
-                user.setReferrer(referrer);
-                logger.info("User {} referred by user {} with code {}", user.getUsername(), 
-                          referrer.getUsername(), signUpRequest.getReferralCode());
+                // Check that user isn't trying to use their own referral code
+                if (referrer.getUsername().equals(signUpRequest.getUsername()) ||
+                        referrer.getEmail().equals(signUpRequest.getEmail())) {
+                    logger.warn("User {} attempted to use their own referral code", signUpRequest.getUsername());
+                } else {
+                    user.setReferrer(referrer);
+                    logger.info("User {} referred by user {} with code {}", user.getUsername(),
+                            referrer.getUsername(), signUpRequest.getReferralCode());
+                }
             } else {
                 logger.warn("Invalid referral code provided: {}", signUpRequest.getReferralCode());
             }
