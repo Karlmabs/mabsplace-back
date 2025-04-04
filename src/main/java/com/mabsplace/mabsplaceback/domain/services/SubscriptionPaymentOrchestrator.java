@@ -252,6 +252,16 @@ public class SubscriptionPaymentOrchestrator {
                 .status(SubscriptionStatus.INACTIVE)
                 .build();
 
+        // Auto-assign profile if available
+        Long profileId = findAvailableProfileId(payment.getService().getId());
+        if (profileId != null) {
+            subscriptionDto.setProfileId(profileId);
+            log.info("Auto-assigned profile ID: {} to subscription", profileId);
+        } else {
+            log.info("No available profile found for user ID: {} and service ID: {}", 
+                    payment.getUser().getId(), payment.getService().getId());
+        }
+
         // Create subscription
         Subscription subscription = createSubscriptionFromDto(subscriptionDto);
         subscriptionRepository.save(subscription);
@@ -268,8 +278,40 @@ public class SubscriptionPaymentOrchestrator {
                 .isTrial(true)
                 .build();
 
+        // Auto-assign profile if available
+        Long profileId = findAvailableProfileId(payment.getService().getId());
+        if (profileId != null) {
+            subscriptionDto.setProfileId(profileId);
+            log.info("Auto-assigned profile ID: {} to trial subscription", profileId);
+        } else {
+            log.info("No available profile found for user ID: {} and service ID: {}", 
+                    payment.getUser().getId(), payment.getService().getId());
+        }
+
         // Create subscription
         createSubscriptionFromDto(subscriptionDto);
+    }
+    
+    /**
+     * Finds an available (inactive) profile for the given service
+     * @param serviceId the service ID
+     * @return profile ID if available, otherwise null
+     */
+    private Long findAvailableProfileId(Long serviceId) {
+        try {
+            // Find available profiles with INACTIVE status
+            List<Profile> availableProfiles = profileRepository.findAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
+            
+            if (!availableProfiles.isEmpty()) {
+                // Return the first available profile ID
+                return availableProfiles.get(0).getId();
+            }
+            
+            return null;
+        } catch (Exception e) {
+            log.error("Error finding available profile for service ID: {}", serviceId, e);
+            return null;
+        }
     }
 
     private Subscription createSubscriptionFromDto(SubscriptionRequestDto subscription) {
