@@ -327,6 +327,7 @@ public class SubscriptionPaymentOrchestrator {
         newSubscription.setService(service);
         newSubscription.setStatus(subscription.getStatus());
         newSubscription.setEndDate(Utils.addPeriod(subscription.getStartDate(), subscriptionPlan.getPeriod()));
+        newSubscription.setAutoRenew(true);
 
         if (subscription.getIsTrial()) {
             newSubscription.setIsTrial(true);
@@ -354,6 +355,10 @@ public class SubscriptionPaymentOrchestrator {
             profile.setStatus(ProfileStatus.ACTIVE);
             profile = profileRepository.save(profile);
             newSubscription.setProfile(profile);
+
+            // Set subscription status to ACTIVE since we found an available profile
+            newSubscription.setStatus(SubscriptionStatus.ACTIVE);
+            log.info("Setting subscription status to ACTIVE because an available profile was found");
         }
 
         log.info("Sending notification to user ID: {}", newSubscription.getUser().getId());
