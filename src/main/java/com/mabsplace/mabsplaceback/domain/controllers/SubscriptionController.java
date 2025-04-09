@@ -76,11 +76,6 @@ public class SubscriptionController {
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteSubscription(@PathVariable Long id) {
     logger.info("Deleting subscription with ID: {}", id);
-    Subscription subscription = subscriptionRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Subscription not found"));
-    Profile profile = subscription.getProfile();
-    profile.setStatus(ProfileStatus.INACTIVE);
-    profileRepository.save(profile);
     subscriptionService.deleteSubscription(id);
     logger.info("Deleted subscription successfully and set profile status to INACTIVE, ID: {}", id);
     return new ResponseEntity<>(HttpStatus.NO_CONTENT);

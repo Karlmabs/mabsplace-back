@@ -33,8 +33,40 @@ public class SubscriptionPlanService {
     this.discountService = discountService;
   }
 
+  private void validateSubscriptionPlan(SubscriptionPlanRequestDto subscriptionPlan, Long excludeId) {
+    // Check for duplicate period
+    boolean periodExists = excludeId == null ?
+        subscriptionPlanRepository.existsByMyServiceIdAndPeriod(subscriptionPlan.getMyServiceId(), subscriptionPlan.getPeriod()) :
+        subscriptionPlanRepository.existsByMyServiceIdAndPeriodAndIdNot(subscriptionPlan.getMyServiceId(), subscriptionPlan.getPeriod(), excludeId);
+
+    if (periodExists) {
+      logger.error("Subscription plan with period {} already exists for service ID: {}",
+          subscriptionPlan.getPeriod(), subscriptionPlan.getMyServiceId());
+      throw new IllegalStateException(
+          String.format("A subscription plan with period %s already exists for this service",
+              subscriptionPlan.getPeriod()));
+    }
+
+    // Check for duplicate name
+    boolean nameExists = excludeId == null ?
+        subscriptionPlanRepository.existsByMyServiceIdAndNameIgnoreCase(subscriptionPlan.getMyServiceId(), subscriptionPlan.getName()) :
+        subscriptionPlanRepository.existsByMyServiceIdAndNameIgnoreCaseAndIdNot(subscriptionPlan.getMyServiceId(), subscriptionPlan.getName(), excludeId);
+
+    if (nameExists) {
+      logger.error("Subscription plan with name '{}' already exists for service ID: {}",
+          subscriptionPlan.getName(), subscriptionPlan.getMyServiceId());
+      throw new IllegalStateException(
+          String.format("A subscription plan with name '%s' already exists for this service",
+              subscriptionPlan.getName()));
+    }
+  }
+
   public SubscriptionPlan createSubscriptionPlan(SubscriptionPlanRequestDto subscriptionPlan) throws ResourceNotFoundException {
     logger.info("Creating subscription plan with data: {}", subscriptionPlan);
+
+    // Validate unique constraints
+    validateSubscriptionPlan(subscriptionPlan, null);
+
     SubscriptionPlan newSubscriptionPlan = mapper.toEntity(subscriptionPlan);
     newSubscriptionPlan.setMyService(myServiceRepository.findById(subscriptionPlan.getMyServiceId())
         .orElseThrow(() -> {
@@ -46,6 +78,7 @@ public class SubscriptionPlanService {
             logger.error("Currency not found with ID: {}", subscriptionPlan.getCurrencyId());
             return new ResourceNotFoundException("Currency", "id", subscriptionPlan.getCurrencyId());
         }));
+
     SubscriptionPlan savedSubscriptionPlan = subscriptionPlanRepository.save(newSubscriptionPlan);
     logger.info("Subscription plan created successfully: {}", savedSubscriptionPlan);
     return savedSubscriptionPlan;
@@ -83,10 +116,15 @@ public class SubscriptionPlanService {
 
   public SubscriptionPlan updateSubscriptionPlan(Long id, SubscriptionPlanRequestDto updatedSubscriptionPlan) throws ResourceNotFoundException {
     logger.info("Updating subscription plan with ID: {}, data: {}", id, updatedSubscriptionPlan);
-    SubscriptionPlan target = subscriptionPlanRepository.findById(id).orElseThrow(() -> {
-        logger.error("SubscriptionPlan not found with ID: {}", id);
-        return new ResourceNotFoundException("SubscriptionPlan", "id", id);
-    });
+
+    // Validate unique constraints excluding current plan
+    validateSubscriptionPlan(updatedSubscriptionPlan, id);
+
+    SubscriptionPlan target = subscriptionPlanRepository.findById(id)
+        .orElseThrow(() -> {
+            logger.error("SubscriptionPlan not found with ID: {}", id);
+            return new ResourceNotFoundException("SubscriptionPlan", "id", id);
+        });
 
     SubscriptionPlan updated = mapper.partialUpdate(updatedSubscriptionPlan, target);
     updated.setMyService(myServiceRepository.findById(updatedSubscriptionPlan.getMyServiceId())
@@ -101,7 +139,7 @@ public class SubscriptionPlanService {
         }));
 
     SubscriptionPlan savedSubscriptionPlan = subscriptionPlanRepository.save(updated);
-    logger.info("Updated subscription plan successfully: {}", savedSubscriptionPlan);
+    logger.info("Subscription plan updated successfully: {}", savedSubscriptionPlan);
     return savedSubscriptionPlan;
   }
 }

@@ -13,6 +13,7 @@ import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.utils.Utils;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -272,6 +273,7 @@ public class SubscriptionService {
         return subscriptionRepository.findAll();
     }
 
+    @Transactional
     public Subscription updateSubscription(Long id, SubscriptionRequestDto updatedSubscription) {
         Subscription target = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
         Subscription updated = mapper.partialUpdate(updatedSubscription, target);
@@ -303,17 +305,17 @@ public class SubscriptionService {
                 throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
             }
 
-            // Update the new profile to ACTIVE and associate it with the subscription
-            newProfile.setStatus(ProfileStatus.ACTIVE);
-            profileRepository.save(newProfile);
-            updated.setProfile(newProfile);
-
-            // If there was an old profile and it's different from the new one, set it to INACTIVE
+            // First, handle the old profile if it exists
             if (target.getProfile() != null && !target.getProfile().equals(newProfile)) {
                 Profile oldProfile = target.getProfile();
                 oldProfile.setStatus(ProfileStatus.INACTIVE);
                 profileRepository.save(oldProfile);
             }
+
+            // Then, activate the new profile
+            newProfile.setStatus(ProfileStatus.ACTIVE);
+            profileRepository.save(newProfile);
+            updated.setProfile(newProfile);
         }
 
         notificationService.sendNotificationToUser(updated.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());

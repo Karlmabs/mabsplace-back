@@ -19,6 +19,8 @@ spec:
           ports:
             - containerPort: 8080
           env: # Setting Environmental Variables
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
             - name: DB_HOST   # Setting Database host address
               value: mysql
             - name: DB_NAME  # Setting Database name
