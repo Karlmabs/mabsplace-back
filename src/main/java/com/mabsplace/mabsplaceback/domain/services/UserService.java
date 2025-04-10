@@ -77,6 +77,14 @@ public class UserService {
             User referrer = userRepository.findByReferralCode(updatedUser.getReferralCode())
                     .orElseThrow(() -> new EntityNotFoundException("Referrer not found with code: " + updatedUser.getReferralCode()));
 
+            // Prevent self-referral
+            if (referrer.getId().equals(updated.getId()) ||
+                referrer.getUsername().equals(updated.getUsername()) ||
+                referrer.getEmail().equals(updated.getEmail())) {
+                logger.warn("User {} attempted to use their own referral code", updated.getUsername());
+                throw new IllegalArgumentException("Cannot use your own referral code");
+            }
+
             // Check if the user already has a referrer and remove from the referrer's referrals
             if (updated.getReferrer() != null) {
                 updated.getReferrer().getReferrals().remove(updated);

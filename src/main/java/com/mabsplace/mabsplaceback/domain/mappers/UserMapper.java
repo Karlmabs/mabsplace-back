@@ -30,7 +30,12 @@ public interface UserMapper {
                     UserResponseDto dto = new UserResponseDto();
                     dto.setId(referral.getId());
                     dto.setUsername(referral.getUsername());
-                    // Map other essential fields without including nested referrals
+                    dto.setEmail(referral.getEmail());
+                    dto.setFirstname(referral.getFirstname());
+                    dto.setLastname(referral.getLastname());
+                    dto.setImage(referral.getImage());
+                    dto.setReferralCode(referral.getReferralCode());
+                    // Still don't include nested referrals to avoid recursion
                     return dto;
                 })
                 .collect(Collectors.toList());
