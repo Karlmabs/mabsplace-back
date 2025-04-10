@@ -15,7 +15,7 @@ public interface UserMapper {
     User toEntity(UserRequestDto userRequestDto);
 
     @Mapping(target = "userProfile", expression = "java(mapUserProfile(user))")
-    @Mapping(target = "referrerId", expression = "java(mapReferrer(user))")
+//    @Mapping(target = "referrerId", expression = "java(mapReferrer(user))")
     @Mapping(target = "referrals", expression = "java(mapReferrals(user.getReferrals()))")
     @Mapping(source = "referralCode", target = "referralCode")
     @Mapping(target = "referrerName", expression = "java(mapReferrerName(user.getReferrer()))")
