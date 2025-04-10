@@ -4,6 +4,7 @@ import com.mabsplace.mabsplaceback.domain.dtos.expense.ExpenseRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.expense.ExpenseResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Expense;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.enums.RecurrencePeriod;
 import com.mabsplace.mabsplaceback.domain.mappers.ExpenseMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.ExpenseCategoryRepository;
@@ -14,8 +15,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -71,6 +71,17 @@ public class ExpenseService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
         expense.setCreatedBy(user);
+
+        // Add this block to handle recurring expenses
+        if (expense.isRecurring()) {
+            if (expense.getRecurrencePeriod() == null) {
+                throw new IllegalArgumentException("Recurrence period must be specified for recurring expenses");
+            }
+            // Set the next recurrence date based on the expense date
+            expense.setNextRecurrenceDate(
+                calculateNextRecurrenceDate(expense.getExpenseDate(), expense.getRecurrencePeriod())
+            );
+        }
 
         Expense savedExpense = expenseRepository.save(expense);
         logger.info("Expense created successfully: {}", expenseMapper.toResponseDTO(savedExpense));
@@ -129,5 +140,56 @@ public class ExpenseService {
                 .collect(Collectors.toList());
         logger.info("Retrieved {} expenses created by user ID: {}", expenses.size(), userId);
         return expenses;
+    }
+
+    @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
+    public void processRecurringExpenses() {
+        logger.info("Processing recurring expenses");
+        List<Expense> recurringExpenses = expenseRepository
+            .findByIsRecurringTrueAndNextRecurrenceDateLessThanEqual(LocalDateTime.now());
+
+        for (Expense expense : recurringExpenses) {
+            try {
+                createRecurringExpense(expense);
+                updateNextRecurrenceDate(expense);
+            } catch (Exception e) {
+                logger.error("Failed to process recurring expense ID: {}", expense.getId(), e);
+            }
+        }
+    }
+
+    private void createRecurringExpense(Expense originalExpense) {
+        Expense newExpense = new Expense();
+        newExpense.setCategory(originalExpense.getCategory());
+        newExpense.setAmount(originalExpense.getAmount());
+        newExpense.setDescription(originalExpense.getDescription());
+        newExpense.setExpenseDate(LocalDateTime.now());
+        newExpense.setPaymentMethod(originalExpense.getPaymentMethod());
+        newExpense.setCurrency(originalExpense.getCurrency());
+        newExpense.setCreatedBy(originalExpense.getCreatedBy());
+        newExpense.setRecurring(false); // This is an instance, not the template
+
+        expenseRepository.save(newExpense);
+        logger.info("Created recurring expense instance from template ID: {}", originalExpense.getId());
+    }
+
+    private void updateNextRecurrenceDate(Expense expense) {
+        LocalDateTime nextDate = calculateNextRecurrenceDate(
+            expense.getNextRecurrenceDate(),
+            expense.getRecurrencePeriod()
+        );
+        expense.setNextRecurrenceDate(nextDate);
+        expenseRepository.save(expense);
+        logger.info("Updated next recurrence date for expense ID: {} to {}",
+            expense.getId(), nextDate);
+    }
+
+    private LocalDateTime calculateNextRecurrenceDate(LocalDateTime currentDate, RecurrencePeriod period) {
+        return switch (period) {
+            case DAILY -> currentDate.plusDays(1);
+            case WEEKLY -> currentDate.plusWeeks(1);
+            case MONTHLY -> currentDate.plusMonths(1);
+            case YEARLY -> currentDate.plusYears(1);
+        };
     }
 }

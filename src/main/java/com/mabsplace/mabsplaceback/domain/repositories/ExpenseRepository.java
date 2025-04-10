@@ -12,4 +12,6 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByExpenseDateBetween(LocalDateTime startDate, LocalDateTime endDate);
     List<Expense> findByCategoryId(Long categoryId);
     List<Expense> findByCreatedById(Long userId);
+
+    List<Expense> findByIsRecurringTrueAndNextRecurrenceDateLessThanEqual(LocalDateTime date);
 }
