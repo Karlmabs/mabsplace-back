@@ -12,6 +12,8 @@ spec:
       labels:
         app: spring-app
     spec:
+      nodeSelector:
+        "kubernetes.io/hostname": ubuntu
       containers:
         - name: spring-app
           image: karlmabs/spring-app:latest

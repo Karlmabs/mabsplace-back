@@ -32,7 +32,7 @@ public class SubscriptionRepositoryTest {
 
         // Then
         assertThat(result).isNotEmpty();
-        assertThat(result.get(0).getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
-        assertThat(result.get(0).isAutoRenew()).isTrue();
+        assertThat(result.getFirst().getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(result.getFirst().isAutoRenew()).isTrue();
     }
 }

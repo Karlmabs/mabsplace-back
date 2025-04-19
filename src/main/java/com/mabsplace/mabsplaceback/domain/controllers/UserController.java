@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -87,6 +88,7 @@ public class UserController {
         return new ResponseEntity<>(mapper.toDtoList(users), HttpStatus.OK);
     }
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'UPDATE_USER')")
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id, @RequestBody UserRequestDto updatedUser) {
         logger.info("Updating user with ID: {}, Request: {}", id, updatedUser);
