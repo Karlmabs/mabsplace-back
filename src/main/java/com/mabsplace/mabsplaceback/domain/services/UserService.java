@@ -8,7 +8,6 @@ import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.UserProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
-import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.minio.MinioService;
 import com.mabsplace.mabsplaceback.utils.PromoCodeGenerator;
 import jakarta.persistence.EntityNotFoundException;
@@ -106,6 +105,14 @@ public class UserService {
 
     public Optional<User> getUserById(Long id) {
         return userRepository.findById(id);
+    }
+
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username)
+            .orElseThrow(() -> {
+                logger.error("User not found with username: {}", username);
+                return new EntityNotFoundException("User not found with username: " + username);
+            });
     }
 
     public User createUser(User user) {

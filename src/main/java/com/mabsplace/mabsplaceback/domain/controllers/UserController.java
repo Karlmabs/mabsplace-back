@@ -88,6 +88,20 @@ public class UserController {
         return new ResponseEntity<>(mapper.toDtoList(users), HttpStatus.OK);
     }
 
+    // get user by username
+    @GetMapping("/username/{username}")
+    public ResponseEntity<UserResponseDto> getUserByUsername(@PathVariable String username) {
+        logger.info("Fetching user with username: {}", username);
+        try {
+            UserResponseDto user = mapper.toDto(userService.getUserByUsername(username));
+            logger.info("Fetched user: {}", user);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            logger.warn("User not found with username: {}", username);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'UPDATE_USER')")
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDto> updateUser(@PathVariable Long id, @RequestBody UserRequestDto updatedUser) {
@@ -121,7 +135,7 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Old password is incorrect");
         }
     }
-    
+
     /**
      * Get the referral code for a user
      */
@@ -129,19 +143,19 @@ public class UserController {
     public ResponseEntity<?> getUserReferralCode(@PathVariable Long id) {
         logger.info("Getting referral code for user ID: {}", id);
         User user = userService.getById(id);
-        
+
         // Generate a code if the user doesn't have one
         if (user.getReferralCode() == null || user.getReferralCode().isEmpty()) {
             String code = userService.generateReferralCode(user);
             logger.info("Generated new referral code for user ID {}: {}", id, code);
         }
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("referralCode", user.getReferralCode());
-        
+
         return ResponseEntity.ok(response);
     }
-    
+
     /**
      * Generate referral codes for all users who don't have one
      */
@@ -149,10 +163,10 @@ public class UserController {
     public ResponseEntity<?> generateMissingReferralCodes() {
         logger.info("Generating missing referral codes for all users");
         int count = userService.generateMissingReferralCodes();
-        
+
         return ResponseEntity.ok(new MessageResponse("Generated " + count + " referral codes"));
     }
-    
+
     /**
      * Look up a user by their referral code
      */
