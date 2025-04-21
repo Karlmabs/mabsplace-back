@@ -142,4 +142,11 @@ public class PaymentService {
         paymentRepository.deleteById(id);
         logger.info("Deleted payment successfully with ID: {}", id);
     }
+
+    public List<Payment> getPaymentsByUserId(Long userId) {
+        logger.info("Fetching payments for user ID: {}", userId);
+        List<Payment> payments = paymentRepository.findByUserId(userId);
+        logger.info("Fetched {} payments for user ID: {}", payments.size(), userId);
+        return payments;
+    }
 }

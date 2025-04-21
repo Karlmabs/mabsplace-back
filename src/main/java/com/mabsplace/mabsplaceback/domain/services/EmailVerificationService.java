@@ -37,6 +37,24 @@ public class EmailVerificationService {
         return code;
     }
 
+    public void sendVerificationCodeToNewEmail(String email) throws MessagingException {
+        logger.info("Attempting to send verification code to new email: {}", email);
+        String code = generateVerificationCode();
+        verificationCodes.put(email, new VerificationEntry(code, Instant.now()));
+        logger.debug("Verification code stored for email: {}", email);
+
+        EmailRequest emailRequest = EmailRequest.builder()
+                .to(email)
+                .subject("MabsPlace Verification Code")
+                .headerText("MabsPlace Verification Code")
+                .body("<h1>Your verification code is: " + code + "</h1>")
+                .companyName("MabsPlace")
+                .build();
+
+        emailService.sendEmail(emailRequest);
+        logger.info("Verification code sent successfully to email: {}", email);
+    }
+
     public void sendVerificationCode(String email) throws MessagingException {
         logger.info("Attempting to send verification code to email: {}", email);
         Optional<User> userOptional = userRepository.findByEmail(email);

@@ -38,6 +38,16 @@ public class PaymentController {
     return new ResponseEntity<>(mapper.toDto(payment), HttpStatus.CREATED);
   }
 
+  // get all payments of a user
+  @GetMapping("/user/{userId}")
+  public ResponseEntity<List<PaymentResponseDto>> getPaymentsByUserId(@PathVariable Long userId)
+    {
+      logger.info("Fetching payments for user ID: {}", userId);
+      List<Payment> payments = paymentService.getPaymentsByUserId(userId);
+      logger.info("Fetched {} payments for user ID: {}", payments.size(), userId);
+      return ResponseEntity.ok(mapper.toDtoList(payments));
+    }
+
   @GetMapping("/{id}")
   public ResponseEntity<PaymentResponseDto> getPaymentById(@PathVariable Long id) {
     logger.info("Fetching payment with ID: {}", id);

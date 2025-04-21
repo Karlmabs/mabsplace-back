@@ -280,6 +280,38 @@ public class AuthController {
         return true;
     }
 
+    @PostMapping("/verify-new-email")
+    public ResponseEntity<?> sendVerificationToNewEmail(@RequestParam String email) {
+        try {
+            // Check if email already exists
+            if (userRepository.existsByEmail(email)) {
+                return ResponseEntity
+                        .badRequest()
+                        .body(new MessageResponse("Email is already registered"));
+            }
+
+            emailVerificationService.sendVerificationCodeToNewEmail(email);
+            return ResponseEntity.ok()
+                    .body(new MessageResponse("Verification code sent successfully"));
+        } catch (MessagingException e) {
+            logger.error("Error sending verification code to email: {}", email, e);
+            return ResponseEntity
+                    .internalServerError()
+                    .body(new MessageResponse("Error sending verification code"));
+        }
+    }
+
+    @PostMapping("/verify-new-email/check")
+    public ResponseEntity<?> verifyNewEmail(@RequestBody VerifyCodeRequest request) {
+        if (emailVerificationService.verifyCode(request.getEmail(), request.getCode())) {
+            return ResponseEntity.ok()
+                    .body(new MessageResponse("Email verified successfully"));
+        }
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new MessageResponse("Invalid verification code"));
+    }
+
     @GetMapping("/sendVerificationCode/{email}")
     public ResponseEntity<?> sendVerificationCode(@PathVariable("email") String email) throws MessagingException {
         emailVerificationService.sendVerificationCode(email);
