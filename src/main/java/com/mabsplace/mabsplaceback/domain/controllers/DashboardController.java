@@ -334,48 +334,40 @@ public class DashboardController {
         // Get service performance history
         List<ServiceHistoricalMetric> serviceMetrics = jdbcTemplate.query(
                 """
-                WITH RECURSIVE MonthSeries AS (
-                    SELECT DATE_SUB(DATE_FORMAT(CURRENT_DATE, '%Y-%m-01'), INTERVAL 11 MONTH) as month_start
+                WITH RECURSIVE Months AS (
+                    SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH), '%Y-%m-01') AS month_start
                     UNION ALL
                     SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
-                    FROM MonthSeries
+                    FROM Months
                     WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 ),
-                ServiceMonth AS (
+                ServiceStats AS (
                     SELECT
                         s.id as service_id,
                         s.name as service_name,
-                        DATE_FORMAT(ms.month_start, '%b %Y') as month,
+                        m.month_start,
+                        DATE_FORMAT(m.month_start, '%M %Y') as month_display,
                         COUNT(DISTINCT sub.id) as subscriptions,
                         COALESCE(SUM(p.amount), 0) as revenue
-                    FROM MonthSeries ms
+                    FROM Months m
                     CROSS JOIN services s
-                    LEFT JOIN subscriptions sub ON s.id = sub.service_id 
-                        AND DATE_FORMAT(sub.start_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
-                    LEFT JOIN payments p ON sub.user_id = p.user_id
-                        AND DATE_FORMAT(p.payment_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
-                        AND p.status = 'PAID'
-                    WHERE sub.status = 'ACTIVE' OR sub.status IS NULL
-                    GROUP BY s.id, ms.month_start
-                )
-                SELECT serviceName, month, subscriptions, revenue
-                FROM (
-                    SELECT
-                        s.name AS serviceName,
-                        DATE_FORMAT(ms.month_start, '%M %Y') AS month,
-                        COUNT(DISTINCT sub.id) AS subscriptions,
-                        COALESCE(SUM(p.amount), 0) AS revenue
-                    FROM MonthSeries ms
-                    CROSS JOIN services s
-                    LEFT JOIN subscriptions sub ON s.id = sub.service_id 
+                    LEFT JOIN subscriptions sub ON 
+                        s.id = sub.service_id 
                         AND sub.status = 'ACTIVE'
-                        AND DATE_FORMAT(sub.start_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
-                    LEFT JOIN payments p ON p.user_id = sub.user_id
-                        AND DATE_FORMAT(p.payment_date, '%Y-%m') = DATE_FORMAT(ms.month_start, '%Y-%m')
+                        AND sub.start_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                    LEFT JOIN payments p ON 
+                        p.user_id = sub.user_id
                         AND p.status = 'PAID'
-                    GROUP BY s.name, ms.month_start
-                ) AS metrics
-                ORDER BY serviceName, STR_TO_DATE(month, '%M %Y')
+                        AND p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                    GROUP BY s.id, s.name, m.month_start
+                )
+                SELECT 
+                    service_name as serviceName,
+                    month_display as month,
+                    subscriptions,
+                    revenue
+                FROM ServiceStats
+                ORDER BY month_start, service_name
                 """,
                 (rs, rowNum) -> new ServiceHistoricalMetric(
                         rs.getString("serviceName"),
@@ -388,39 +380,37 @@ public class DashboardController {
         // Get top performing months
         List<TopPerformingMonth> topMonths = jdbcTemplate.query(
                 """
-                WITH ActiveSubscribers AS (
-                    SELECT
-                        DATE_FORMAT(start_date, '%Y%m') AS month_key,
-                        COUNT(DISTINCT user_id) AS active_subscribers
-                    FROM subscriptions
-                    WHERE status = 'ACTIVE'
-                    GROUP BY DATE_FORMAT(start_date, '%Y%m')
+                WITH RECURSIVE Months AS (
+                    SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH), '%Y-%m-01') AS month_start
+                    UNION ALL
+                    SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
+                    FROM Months
+                    WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 ),
-                MonthlyRevenue AS (
-                    SELECT
-                        DATE_FORMAT(payment_date, '%Y%m') AS month_key,
-                        SUM(amount) AS revenue
-                    FROM payments
-                    WHERE status = 'PAID'
-                    GROUP BY month_key
-                ),
-                NewSubscriptions AS (
-                    SELECT
-                        DATE_FORMAT(start_date, '%Y%m') AS month_key,
-                        COUNT(DISTINCT id) AS new_subscriptions
-                    FROM subscriptions
-                    GROUP BY month_key
+                MonthlyStats AS (
+                    SELECT 
+                        DATE_FORMAT(m.month_start, '%Y%m') AS month_key,
+                        DATE_FORMAT(m.month_start, '%M %Y') AS month_display,
+                        COALESCE(SUM(p.amount), 0) as revenue,
+                        COUNT(DISTINCT s.id) as new_subscriptions,
+                        COUNT(DISTINCT s.user_id) as active_subscribers
+                    FROM Months m
+                    LEFT JOIN payments p ON 
+                        p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                        AND p.status = 'PAID'
+                    LEFT JOIN subscriptions s ON 
+                        s.start_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                        AND s.status = 'ACTIVE'
+                    GROUP BY m.month_start
                 )
-                SELECT
-                    DATE_FORMAT(STR_TO_DATE(mr.month_key, '%Y%m'), '%M %Y') AS month,
-                    COALESCE(ns.new_subscriptions, 0) AS new_subscriptions,
-                    COALESCE(mr.revenue, 0) AS revenue,
-                    COALESCE(asub.active_subscribers, 0) AS active_subscribers
-                FROM MonthlyRevenue mr
-                LEFT JOIN ActiveSubscribers asub ON mr.month_key = asub.month_key
-                LEFT JOIN NewSubscriptions ns ON mr.month_key = ns.month_key
-                ORDER BY mr.revenue DESC
-                LIMIT 5;
+                SELECT 
+                    month_display as month,
+                    new_subscriptions,
+                    revenue,
+                    active_subscribers
+                FROM MonthlyStats
+                ORDER BY revenue DESC
+                LIMIT 5
                 """,
                 (rs, rowNum) -> new TopPerformingMonth(
                         rs.getString("month"),
