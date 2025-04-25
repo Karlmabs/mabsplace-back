@@ -1,9 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.dtos.user;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.io.Serializable;
 
@@ -11,6 +8,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Getter
 @Setter
+@ToString
 public class UserRequestDto implements Serializable {
     private String username;
     private String email;
