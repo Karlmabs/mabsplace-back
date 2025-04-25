@@ -438,23 +438,35 @@ public class DashboardController {
         // Get current month overview
         MonthlyOverview currentMonth = jdbcTemplate.queryForObject(
                 """
+                WITH CurrentMonth AS (
+                    SELECT DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') AS month_start
+                )
                 SELECT 
-                    DATE_FORMAT(CURRENT_DATE, '%M %Y') as month,
-                    (SELECT COALESCE(SUM(amount), 0) FROM payments
-                     WHERE status = 'PAID'
-                     AND MONTH(payment_date) = MONTH(CURRENT_DATE)
-                     AND YEAR(payment_date) = YEAR(CURRENT_DATE)) AS revenue,
-                    (SELECT COUNT(DISTINCT id) FROM subscriptions
-                     WHERE status = 'ACTIVE'
-                     AND MONTH(start_date) = MONTH(CURRENT_DATE)
-                     AND YEAR(start_date) = YEAR(CURRENT_DATE)) AS new_subscriptions,
-                    (SELECT COALESCE(SUM(amount), 0) FROM expenses 
-                     WHERE MONTH(expense_date) = MONTH(CURRENT_DATE)
-                     AND YEAR(expense_date) = YEAR(CURRENT_DATE)) AS expenses,
-                    (SELECT COUNT(DISTINCT user_id) FROM subscriptions
-                     WHERE status = 'ACTIVE'
-                     AND MONTH(start_date) = MONTH(CURRENT_DATE)
-                     AND YEAR(start_date) = YEAR(CURRENT_DATE)) AS active_subscribers
+                    DATE_FORMAT(month_start, '%M %Y') as month,
+                    COALESCE((
+                        SELECT SUM(amount) 
+                        FROM payments 
+                        WHERE status = 'PAID'
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as revenue,
+                    COALESCE((
+                        SELECT COUNT(DISTINCT id) 
+                        FROM subscriptions
+                        WHERE status = 'ACTIVE'
+                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as new_subscriptions,
+                    COALESCE((
+                        SELECT SUM(amount) 
+                        FROM expenses
+                        WHERE expense_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as expenses,
+                    COALESCE((
+                        SELECT COUNT(DISTINCT user_id)
+                        FROM subscriptions
+                        WHERE status = 'ACTIVE'
+                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as active_subscribers
+                FROM CurrentMonth
                 """,
                 (rs, rowNum) -> new MonthlyOverview(
                         rs.getString("month"),
@@ -469,26 +481,35 @@ public class DashboardController {
         // Get previous month overview
         MonthlyOverview previousMonth = jdbcTemplate.queryForObject(
                 """
+                WITH PreviousMonth AS (
+                    SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH), '%Y-%m-01') AS month_start
+                )
                 SELECT 
-                    DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH), '%M %Y') as month,
-                    COALESCE(SUM(p.amount), 0) as revenue,
-                    COUNT(DISTINCT s.id) as new_subscriptions,
-                    (SELECT COALESCE(SUM(amount), 0) 
-                     FROM expenses 
-                     WHERE MONTH(expense_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                     AND YEAR(expense_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) as expenses,
-                    (SELECT COUNT(DISTINCT user_id) 
-                     FROM subscriptions 
-                     WHERE status = 'ACTIVE'
-                     AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                     AND YEAR(start_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) as active_subscribers
-                FROM payments p
-                LEFT JOIN subscriptions s ON p.user_id = s.user_id 
-                    AND MONTH(s.start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                    AND YEAR(s.start_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                WHERE p.status = 'PAID'
-                    AND MONTH(p.payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                    AND YEAR(p.payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                    DATE_FORMAT(month_start, '%M %Y') as month,
+                    COALESCE((
+                        SELECT SUM(amount) 
+                        FROM payments 
+                        WHERE status = 'PAID'
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as revenue,
+                    COALESCE((
+                        SELECT COUNT(DISTINCT id) 
+                        FROM subscriptions
+                        WHERE status = 'ACTIVE'
+                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as new_subscriptions,
+                    COALESCE((
+                        SELECT SUM(amount) 
+                        FROM expenses
+                        WHERE expense_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as expenses,
+                    COALESCE((
+                        SELECT COUNT(DISTINCT user_id)
+                        FROM subscriptions
+                        WHERE status = 'ACTIVE'
+                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as active_subscribers
+                FROM PreviousMonth
                 """,
                 (rs, rowNum) -> new MonthlyOverview(
                         rs.getString("month"),
@@ -504,40 +525,39 @@ public class DashboardController {
         List<MonthlyTrend> trends = jdbcTemplate.query(
                 """
                 WITH RECURSIVE Months AS (
-                    SELECT DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH) as date
+                    SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01') AS month_start
                     UNION ALL
-                    SELECT DATE_ADD(date, INTERVAL 1 MONTH)
+                    SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
                     FROM Months
-                    WHERE date < CURRENT_DATE
+                    WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 )
                 SELECT 
-                    DATE_FORMAT(m.date, '%M %Y') as month,
-                    COALESCE(SUM(p.amount), 0) as revenue,
-                    COUNT(DISTINCT s.id) as new_subscriptions,
+                    DATE_FORMAT(month_start, '%M %Y') as month,
                     COALESCE((
-                        SELECT SUM(e.amount)
-                        FROM expenses e
-                        WHERE MONTH(e.expense_date) = MONTH(m.date)
-                        AND YEAR(e.expense_date) = YEAR(m.date)
+                        SELECT SUM(amount) 
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as revenue,
+                    COALESCE((
+                        SELECT COUNT(DISTINCT id) 
+                        FROM subscriptions
+                        WHERE status = 'ACTIVE'
+                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                    ), 0) as new_subscriptions,
+                    COALESCE((
+                        SELECT SUM(amount) 
+                        FROM expenses
+                        WHERE expense_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as expenses,
                     COALESCE((
                         SELECT COUNT(DISTINCT user_id)
                         FROM subscriptions
                         WHERE status = 'ACTIVE'
-                        AND MONTH(start_date) = MONTH(m.date)
-                        AND YEAR(start_date) = YEAR(m.date)
+                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as active_subscribers
-                FROM Months m
-                LEFT JOIN payments p ON 
-                    MONTH(p.payment_date) = MONTH(m.date)
-                    AND YEAR(p.payment_date) = YEAR(m.date)
-                    AND p.status = 'PAID'
-                LEFT JOIN subscriptions s ON 
-                    p.user_id = s.user_id
-                    AND MONTH(s.start_date) = MONTH(m.date)
-                    AND YEAR(s.start_date) = YEAR(m.date)
-                GROUP BY m.date
-                ORDER BY m.date
+                FROM Months
+                ORDER BY month_start
                 """,
                 (rs, rowNum) -> new MonthlyTrend(
                         rs.getString("month"),
