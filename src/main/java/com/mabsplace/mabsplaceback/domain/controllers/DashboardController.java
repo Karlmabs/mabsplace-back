@@ -348,17 +348,20 @@ public class DashboardController {
                         m.month_start,
                         DATE_FORMAT(m.month_start, '%M %Y') as month_display,
                         COUNT(DISTINCT sub.id) as subscriptions,
-                        COALESCE(SUM(p.amount), 0) as revenue
+                        COALESCE(
+                            (SELECT SUM(p2.amount)
+                             FROM payments p2
+                             WHERE p2.service_id = s.id
+                             AND p2.status = 'PAID'
+                             AND p2.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                            ), 0
+                        ) as revenue
                     FROM Months m
                     CROSS JOIN services s
                     LEFT JOIN subscriptions sub ON 
                         s.id = sub.service_id 
                         AND sub.status = 'ACTIVE'
                         AND sub.start_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
-                    LEFT JOIN payments p ON 
-                        p.user_id = sub.user_id
-                        AND p.status = 'PAID'
-                        AND p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                     GROUP BY s.id, s.name, m.month_start
                 )
                 SELECT 
