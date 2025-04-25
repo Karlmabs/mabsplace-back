@@ -92,7 +92,7 @@ public class SubscriptionPaymentOrchestrator {
 
         Payment payment = createPayment(user, paymentRequest, amountAfterDiscount);
 
-        if (payment.getStatus() == PaymentStatus.PAID && user.getReferrer() != null) {
+        if (payment.getStatus() == PaymentStatus.PAID && user.getReferrer() != null && !payment.getSubscriptionPlan().getName().equals("Trial")) {
             User referrer = user.getReferrer();
 
             String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
@@ -136,7 +136,7 @@ public class SubscriptionPaymentOrchestrator {
                 // Check if this is the user's first payment
                 boolean isFirstPayment = paymentRepository.countByUserId(user.getId()) == 1;
 
-                if (isFirstPayment) {
+                if (isFirstPayment && !payment.getSubscriptionPlan().getName().equals("Trial")) {
                     BigDecimal rewardAmount = getReferralRewardAmount(); // Fetch reward configuration
                     walletService.credit(referrer.getWallet().getId(), rewardAmount);
                     Transaction transaction = Transaction.builder()
@@ -170,6 +170,14 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     public boolean processSubscriptionRenewal(Subscription subscription, SubscriptionPlan nextPlan) {
+        // Prevent renewal of trial subscriptions
+        if (subscription.getIsTrial()) {
+            log.info("Skipping renewal for trial subscription ID: {}", subscription.getId());
+            subscription.setStatus(SubscriptionStatus.CANCELLED);
+            subscriptionRepository.save(subscription);
+            return false;
+        }
+
         User user = subscription.getUser();
 
         PaymentRequestDto renewalPayment = PaymentRequestDto.builder()
@@ -331,6 +339,7 @@ public class SubscriptionPaymentOrchestrator {
 
         if (subscription.getIsTrial()) {
             newSubscription.setIsTrial(true);
+            newSubscription.setAutoRenew(false);
         } else {
             newSubscription.setIsTrial(false);
         }
