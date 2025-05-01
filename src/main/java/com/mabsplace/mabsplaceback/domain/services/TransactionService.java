@@ -5,11 +5,13 @@ import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionRequestDto
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Transaction;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.entities.Wallet;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import com.mabsplace.mabsplaceback.domain.mappers.TransactionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.TransactionRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.WalletRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
@@ -36,6 +38,7 @@ public class TransactionService {
     private final WalletRepository walletRepository;
     private final WalletService walletService;
     private final CurrencyRepository currencyRepository;
+    private final UserRepository userRepository;
 
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -44,12 +47,13 @@ public class TransactionService {
     @Value("${mabsplace.app.privateKey}")
     private String privateKey;
 
-    public TransactionService(TransactionRepository transactionRepository, TransactionMapper mapper, WalletRepository walletRepository, WalletService walletService, CurrencyRepository currencyRepository, CoolPayService coolPayService) {
+    public TransactionService(TransactionRepository transactionRepository, TransactionMapper mapper, WalletRepository walletRepository, WalletService walletService, CurrencyRepository currencyRepository, UserRepository userRepository, CoolPayService coolPayService) {
         this.transactionRepository = transactionRepository;
         this.mapper = mapper;
         this.walletRepository = walletRepository;
         this.walletService = walletService;
         this.currencyRepository = currencyRepository;
+        this.userRepository = userRepository;
         this.coolPayService = coolPayService;
     }
 
@@ -294,5 +298,53 @@ public class TransactionService {
 
     public List<Transaction> getTransactionsByUserId(Long userId) {
         return transactionRepository.findByReceiverWalletUserId(userId);
+    }
+
+    // Implement method to transfer money from one user to another
+    public TransactionResponseDto transferMoneyToUser(TransactionRequestDto transaction, Long senderId, Long receiverId) throws ResourceNotFoundException {
+        logger.info("Processing user-to-user transfer: Amount: {}, Sender ID: {}, Receiver ID: {}", 
+                transaction.getAmount(), senderId, receiverId);
+        
+        // Get sender and receiver users
+        User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", senderId));
+        User receiver = userRepository.findById(receiverId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", receiverId));
+        
+        // Get their wallets
+        Wallet senderWallet = sender.getWallet();
+        Wallet receiverWallet = receiver.getWallet();
+        
+        // Set wallet IDs in transaction
+        transaction.setSenderWalletId(senderWallet.getId());
+        transaction.setReceiverWalletId(receiverWallet.getId());
+        
+        // Check if sender has sufficient balance
+        if (!walletService.checkBalance(senderWallet.getBalance(), transaction.getAmount())) {
+            logger.error("Insufficient funds in sender wallet ID: {}", senderWallet.getId());
+            throw new RuntimeException("Insufficient funds");
+        }
+        
+        // Create and process the transaction
+        Transaction newTransaction = mapper.toEntity(transaction);
+        newTransaction.setSenderWallet(senderWallet);
+        newTransaction.setReceiverWallet(receiverWallet);
+        newTransaction.setCurrency(currencyRepository.findById(transaction.getCurrencyId())
+                .orElseThrow(() -> new ResourceNotFoundException("Currency", "id", transaction.getCurrencyId())));
+        newTransaction.setTransactionType(TransactionType.TRANSFER);
+        newTransaction.setTransactionDate(new Date());
+        newTransaction.setTransactionStatus(TransactionStatus.PENDING);
+        newTransaction.setTransactionRef(UUID.randomUUID().toString());
+        newTransaction.setSenderName(sender.getFirstname() + " " + sender.getLastname());
+        newTransaction.setSenderPhoneNumber(sender.getPhonenumber());
+        
+        Transaction savedTransaction = transactionRepository.save(newTransaction);
+        logger.info("Transfer transaction created: {}", savedTransaction.getId());
+        
+        // Process the transfer immediately
+        changeTransactionStatus(savedTransaction.getId(), TransactionStatus.COMPLETED);
+        logger.info("Transfer completed successfully");
+        
+        return mapper.toDto(savedTransaction);
     }
 }

@@ -136,4 +136,19 @@ public class TransactionController {
         logger.info("Fetched {} transactions for user ID: {}", transactions.size(), userId);
         return new ResponseEntity<>(mapper.toDtoList(transactions), HttpStatus.OK);
     }
+
+    @PostMapping("/transfer-to-user/{userId}/{receiverId}")
+    public ResponseEntity<TransactionResponseDto> transferToUser(
+            @RequestBody TransactionRequestDto transactionRequestDto,
+            @PathVariable("userId") Long userId,
+            @PathVariable("receiverId") Long receiverId) {
+        logger.info("User-to-user transfer requested: From user ID: {}, To user ID: {}, Amount: {}", 
+                userId, receiverId, transactionRequestDto.getAmount());
+        
+        TransactionResponseDto createdTransaction = transactionService.transferMoneyToUser(
+                transactionRequestDto, userId, receiverId);
+        
+        logger.info("User-to-user transfer successful: {}", createdTransaction);
+        return new ResponseEntity<>(createdTransaction, HttpStatus.OK);
+    }
 }
