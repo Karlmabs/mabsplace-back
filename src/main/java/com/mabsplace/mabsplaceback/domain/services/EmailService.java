@@ -56,102 +56,185 @@ public class EmailService {
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>%s</title>
                     <style>
-                        :root {
-                            --primary-color: #1a73e8;
-                            --secondary-color: #f8f9fa;
-                            --text-color: #202124;
-                            --muted-color: #5f6368;
+                        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+                        
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
                         }
                         
                         body {
-                            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                            background-color: #ffffff;
-                            margin: 0;
-                            padding: 0;
-                            color: var(--text-color);
+                            font-family: 'Poppins', Arial, sans-serif;
+                            background-color: #f4f7fa;
+                            color: #333;
                             line-height: 1.6;
                         }
                         
-                        .container {
-                            width: 100%%;
+                        .email-wrapper {
                             max-width: 600px;
-                            margin: 40px auto;
+                            margin: 0 auto;
                             background-color: #ffffff;
-                            border: 1px solid #dadce0;
-                            border-radius: 8px;
+                            border-radius: 12px;
                             overflow: hidden;
+                            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
                         }
                         
-                        .header {
-                            background-color: var(--primary-color);
-                            color: #ffffff;
+                        .email-header {
+                            background: linear-gradient(135deg, #1a73e8, #0d47a1);
+                            padding: 30px 20px;
                             text-align: center;
-                            padding: 24px 20px;
                         }
                         
-                        .header h1 {
-                            margin: 0;
+                        .logo {
+                            margin-bottom: 15px;
+                        }
+                        
+                        .logo img {
+                            height: 40px;
+                        }
+                        
+                        .header-title {
+                            color: #ffffff;
                             font-size: 24px;
+                            font-weight: 600;
+                            margin: 0;
+                        }
+                        
+                        .email-body {
+                            padding: 40px 30px;
+                            color: #4a4a4a;
+                        }
+                        
+                        .greeting {
+                            font-size: 18px;
                             font-weight: 500;
+                            margin-bottom: 20px;
                         }
                         
-                        .content {
-                            padding: 32px 24px;
-                            background-color: #ffffff;
+                        .content-block {
+                            margin-bottom: 25px;
                         }
                         
-                        .content p {
+                        .content-block p {
+                            margin-bottom: 15px;
                             font-size: 16px;
-                            margin: 16px 0;
-                            color: var(--text-color);
                         }
                         
-                        .message-box {
-                            background-color: var(--secondary-color);
+                        .highlight-box {
+                            background-color: #f0f7ff;
+                            border-left: 4px solid #1a73e8;
+                            padding: 15px;
+                            margin: 20px 0;
                             border-radius: 4px;
-                            padding: 16px;
-                            margin: 24px 0;
                         }
                         
-                        .button {
+                        .cta-button {
                             display: inline-block;
-                            background-color: var(--primary-color);
-                            color: #ffffff;
+                            background-color: #1a73e8;
+                            color: #ffffff !important;
                             text-decoration: none;
-                            padding: 12px 24px;
-                            border-radius: 4px;
-                            margin: 16px 0;
+                            padding: 12px 30px;
+                            border-radius: 6px;
                             font-weight: 500;
+                            margin: 20px 0;
+                            text-align: center;
+                            transition: background-color 0.3s ease;
                         }
                         
-                        .footer {
-                            background-color: var(--secondary-color);
-                            color: var(--muted-color);
+                        .cta-button:hover {
+                            background-color: #0d47a1;
+                        }
+                        
+                        .divider {
+                            height: 1px;
+                            background-color: #e0e0e0;
+                            margin: 30px 0;
+                        }
+                        
+                        .email-footer {
+                            background-color: #f8f9fa;
+                            padding: 25px 30px;
                             text-align: center;
-                            padding: 20px;
+                            color: #757575;
                             font-size: 14px;
-                            border-top: 1px solid #dadce0;
+                            border-top: 1px solid #e0e0e0;
+                        }
+                        
+                        .social-links {
+                            margin: 15px 0;
+                        }
+                        
+                        .social-links a {
+                            display: inline-block;
+                            margin: 0 8px;
+                            color: #1a73e8;
+                            text-decoration: none;
+                        }
+                        
+                        .footer-links {
+                            margin: 15px 0;
+                        }
+                        
+                        .footer-links a {
+                            color: #1a73e8;
+                            text-decoration: none;
+                            margin: 0 10px;
+                        }
+                        
+                        .copyright {
+                            margin-top: 15px;
+                            font-size: 13px;
                         }
                         
                         @media only screen and (max-width: 600px) {
-                            .container {
-                                margin: 0;
+                            .email-wrapper {
                                 border-radius: 0;
-                                border: none;
+                            }
+                            
+                            .email-body {
+                                padding: 30px 20px;
+                            }
+                            
+                            .email-footer {
+                                padding: 20px;
                             }
                         }
                     </style>
                 </head>
                 <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>%s</h1>
+                    <div class="email-wrapper">
+                        <div class="email-header">
+                            <div class="logo">
+                                <!-- You can add your logo here -->
+                                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                            </div>
+                            <h1 class="header-title">%s</h1>
                         </div>
-                        <div class="content">
-                            %s
+                        
+                        <div class="email-body">
+                            <div class="greeting">Hello,</div>
+                            <div class="content-block">
+                                %s
+                            </div>
                         </div>
-                        <div class="footer">
-                            <p>%s</p>
+                        
+                        <div class="email-footer">
+                            <div class="social-links">
+                                <!-- Social media links -->
+                                <a href="https://facebook.com/mabsplace">Facebook</a>
+                                <a href="https://twitter.com/mabsplace">Twitter</a>
+                                <a href="https://instagram.com/mabsplace">Instagram</a>
+                            </div>
+                            
+                            <div class="footer-links">
+                                <a href="https://mabsplace.com/privacy">Privacy Policy</a>
+                                <a href="https://mabsplace.com/terms">Terms of Service</a>
+                            </div>
+                            
+                            <div class="copyright">
+                                %s
+                            </div>
                         </div>
                     </div>
                 </body>
