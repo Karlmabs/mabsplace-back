@@ -470,5 +470,19 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/renew-token")
+    public ResponseEntity<?> renewToken(Authentication authentication) {
+        logger.info("Token renewal requested for user: {}", authentication.getName());
+        
+        // Get current authenticated user
+        User user = userRepository.findByUsername(authentication.getName())
+            .orElseThrow(() -> new ResourceNotFoundException("User", "username", authentication.getName()));
+        
+        // Generate new token
+        String newToken = tokenProvider.createToken(authentication);
+        
+        logger.info("Token renewed successfully for user: {}", authentication.getName());
+        return ResponseEntity.ok().body(new AuthResponse(newToken, userMapper.toDto(user)));
+    }
 
 }
