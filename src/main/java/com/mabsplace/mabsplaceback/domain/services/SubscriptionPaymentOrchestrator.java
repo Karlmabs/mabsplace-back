@@ -128,16 +128,21 @@ public class SubscriptionPaymentOrchestrator {
 
         // Create subscription if payment successful
         if (payment.getStatus() == PaymentStatus.PAID) {
+            SubscriptionPlan plan = subscriptionPlanRepository.findById(payment.getSubscriptionPlan().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", payment.getSubscriptionPlan().getId()));
+            boolean isTrial = plan.getName().equals("Trial");
+            
             createInitialSubscription(payment);
 
             if (user.getReferrer() != null) {
                 User referrer = user.getReferrer();
 
-                // Check if this is the user's first payment
-                boolean isFirstPayment = paymentRepository.countByUserId(user.getId()) == 1;
+                // Check if this is the user's first non-trial payment
+                boolean isFirstNonTrialPayment = !isTrial && 
+                    paymentRepository.countByUserIdAndSubscriptionPlanNameNot(user.getId(), "Trial") == 1;
 
-                if (isFirstPayment && !payment.getSubscriptionPlan().getName().equals("Trial")) {
-                    BigDecimal rewardAmount = getReferralRewardAmount(); // Fetch reward configuration
+                if (isFirstNonTrialPayment) {
+                    BigDecimal rewardAmount = getReferralRewardAmount();
                     walletService.credit(referrer.getWallet().getId(), rewardAmount);
                     Transaction transaction = Transaction.builder()
                             .amount(rewardAmount)
@@ -150,6 +155,7 @@ public class SubscriptionPaymentOrchestrator {
                             .transactionType(TransactionType.TRANSFER)
                             .build();
                     transactionRepository.save(transaction);
+                    log.info("Referral reward of {} sent to referrer ID: {}", rewardAmount, referrer.getId());
                 } else {
                     String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
                     notificationService.notifyReferrerOfPromoCode(referrer, promoCode);
