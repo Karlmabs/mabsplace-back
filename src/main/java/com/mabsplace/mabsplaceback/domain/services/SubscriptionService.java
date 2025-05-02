@@ -276,6 +276,13 @@ public class SubscriptionService {
     @Transactional
     public Subscription updateSubscription(Long id, SubscriptionRequestDto updatedSubscription) {
         Subscription target = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
+        
+        // Prevent changing autoRenew to true for trial subscriptions
+        if (target.getIsTrial() && updatedSubscription.isAutoRenew()) {
+            logger.warn("Attempted to enable auto-renewal for trial subscription ID: {}", id);
+            throw new IllegalStateException("Auto-renewal cannot be enabled for trial subscriptions");
+        }
+        
         Subscription updated = mapper.partialUpdate(updatedSubscription, target);
         updated.setUser(userRepository.findById(updatedSubscription.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", updatedSubscription.getUserId())));
         updated.setSubscriptionPlan(subscriptionPlanRepository.findById(updatedSubscription.getSubscriptionPlanId()).orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getSubscriptionPlanId())));
