@@ -223,8 +223,7 @@ public class EmailService {
                             <div class="social-links">
                                 <!-- Social media links -->
                                 <a href="https://facebook.com/mabsplace">Facebook</a>
-                                <a href="https://twitter.com/mabsplace">Twitter</a>
-                                <a href="https://instagram.com/mabsplace">Instagram</a>
+                                <a href="https://instagram.com/mabs.place">Instagram</a>
                             </div>
                             
                             <div class="footer-links">
