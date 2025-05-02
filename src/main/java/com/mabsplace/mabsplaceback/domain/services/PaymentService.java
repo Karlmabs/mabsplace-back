@@ -58,7 +58,7 @@ public class PaymentService {
         this.subscriptionPaymentOrchestrator = subscriptionPaymentOrchestrator;
     }
 
-    public Payment createPayment(PaymentRequestDto paymentRequestDto) {
+    public Payment createPayment(PaymentRequestDto paymentRequestDto) throws MessagingException {
         logger.info("Create payment request: {}", paymentRequestDto);
         Payment payment = orchestrator.processPaymentAndCreateSubscription(paymentRequestDto);
         logger.info("Payment created: {}", payment);
