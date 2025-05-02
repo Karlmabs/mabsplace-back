@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
@@ -10,6 +11,7 @@ import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import com.mabsplace.mabsplaceback.utils.Utils;
+import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -102,7 +104,7 @@ public class SubscriptionPaymentOrchestrator {
         return payment;
     }
 
-    public Payment processPaymentAndCreateSubscription(PaymentRequestDto paymentRequest) {
+    public Payment processPaymentAndCreateSubscription(PaymentRequestDto paymentRequest) throws MessagingException {
         // Handle payment processing
         User user = userRepository.findById(paymentRequest.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequest.getUserId()));
         double discount = discountService.getDiscountForUser(user.getId());
@@ -133,6 +135,15 @@ public class SubscriptionPaymentOrchestrator {
             boolean isTrial = plan.getName().equals("Trial");
             
             createInitialSubscription(payment);
+
+            // send email
+            emailService.sendEmail(EmailRequest.builder()
+                    .to("mabsplace2024@gmail.com")
+                    .subject("Payment Confirmation")
+                    .headerText("Payment Confirmation")
+                    .body(" <p>A payment of $" + payment.getAmount() + " from " + user.getUsername() + " for " + payment.getService().getName() + " has been successfully processed.</p>")
+                    .companyName("MabsPlace")
+                    .build());
 
             if (user.getReferrer() != null) {
                 User referrer = user.getReferrer();
