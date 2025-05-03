@@ -277,27 +277,10 @@ public class SubscriptionService {
     public Subscription updateSubscription(Long id, SubscriptionRequestDto updatedSubscription) {
         Subscription target = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
         
-        // Check if this is a trial subscription
-        if (target.getIsTrial()) {
-            boolean isNextPlanTrial = false;
-            
-            // Check if next plan is being updated and if it's a trial plan
-            if (updatedSubscription.getNextSubscriptionPlanId() != 0L) {
-                SubscriptionPlan nextPlan = subscriptionPlanRepository.findById(updatedSubscription.getNextSubscriptionPlanId())
-                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getNextSubscriptionPlanId()));
-                isNextPlanTrial = nextPlan.getName().equals("Trial");
-            } else if (updatedSubscription.getSubscriptionPlanId() != 0L) {
-                // If no next plan specified, check the current/updated plan
-                SubscriptionPlan currentPlan = subscriptionPlanRepository.findById(updatedSubscription.getSubscriptionPlanId())
-                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getSubscriptionPlanId()));
-                isNextPlanTrial = currentPlan.getName().equals("Trial");
-            }
-            
-            // Prevent enabling auto-renewal for trial-to-trial
-            if (isNextPlanTrial && (updatedSubscription.isAutoRenew() || target.isAutoRenew())) {
-                logger.warn("Attempted to set trial-to-trial renewal for subscription ID: {}", id);
-                throw new IllegalStateException("Auto-renewal cannot be enabled for trial-to-trial subscriptions");
-            }
+        // Prevent changing autoRenew to true for trial subscriptions
+        if (target.getIsTrial() && updatedSubscription.isAutoRenew()) {
+            logger.warn("Attempted to enable auto-renewal for trial subscription ID: {}", id);
+            throw new IllegalStateException("Auto-renewal cannot be enabled for trial subscriptions");
         }
         
         Subscription updated = mapper.partialUpdate(updatedSubscription, target);

@@ -209,9 +209,9 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     public boolean processSubscriptionRenewal(Subscription subscription, SubscriptionPlan nextPlan) {
-        // Prevent renewal of trial subscriptions to another trial
-        if (subscription.getIsTrial() && nextPlan.getName().equals("Trial")) {
-            log.info("Skipping renewal from trial to trial subscription for ID: {}", subscription.getId());
+        // Prevent renewal of trial subscriptions
+        if (subscription.getIsTrial()) {
+            log.info("Skipping renewal for trial subscription ID: {}", subscription.getId());
             subscription.setStatus(SubscriptionStatus.CANCELLED);
             subscriptionRepository.save(subscription);
             return false;
