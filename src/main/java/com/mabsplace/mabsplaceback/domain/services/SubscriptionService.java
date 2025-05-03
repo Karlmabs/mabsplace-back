@@ -277,10 +277,25 @@ public class SubscriptionService {
     public Subscription updateSubscription(Long id, SubscriptionRequestDto updatedSubscription) {
         Subscription target = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));
         
-        // Prevent changing autoRenew to true for trial subscriptions
+        // Prevent changing autoRenew to true for trial subscriptions if next plan is also a trial
         if (target.getIsTrial() && updatedSubscription.isAutoRenew()) {
-            logger.warn("Attempted to enable auto-renewal for trial subscription ID: {}", id);
-            throw new IllegalStateException("Auto-renewal cannot be enabled for trial subscriptions");
+            // Check if next plan is a trial plan
+            boolean isNextPlanTrial = false;
+            if (updatedSubscription.getNextSubscriptionPlanId() != 0L) {
+                SubscriptionPlan nextPlan = subscriptionPlanRepository.findById(updatedSubscription.getNextSubscriptionPlanId())
+                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getNextSubscriptionPlanId()));
+                isNextPlanTrial = nextPlan.getName().equals("Trial");
+            } else {
+                // If no next plan specified, use the current/updated plan
+                SubscriptionPlan currentPlan = subscriptionPlanRepository.findById(updatedSubscription.getSubscriptionPlanId())
+                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", updatedSubscription.getSubscriptionPlanId()));
+                isNextPlanTrial = currentPlan.getName().equals("Trial");
+            }
+            
+            if (isNextPlanTrial) {
+                logger.warn("Attempted to enable auto-renewal from trial to trial subscription ID: {}", id);
+                throw new IllegalStateException("Auto-renewal cannot be enabled for trial-to-trial subscriptions");
+            }
         }
         
         Subscription updated = mapper.partialUpdate(updatedSubscription, target);

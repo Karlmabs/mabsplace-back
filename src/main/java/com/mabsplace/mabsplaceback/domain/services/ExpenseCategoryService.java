@@ -74,4 +74,8 @@ public class ExpenseCategoryService {
         expenseCategoryRepository.deleteById(id);
         logger.info("Expense category deleted successfully with ID: {}", id);
     }
+
+    public Long getCategoryByName(String referralRewards) {
+        return expenseCategoryRepository.findByName(referralRewards).getId();
+    }
 }

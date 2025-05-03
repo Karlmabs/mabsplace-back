@@ -4,6 +4,7 @@ import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
+import com.mabsplace.mabsplaceback.domain.dtos.expense.ExpenseRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.*;
 import com.mabsplace.mabsplaceback.domain.mappers.PaymentMapper;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -43,15 +45,29 @@ public class SubscriptionPaymentOrchestrator {
     private final PromoCodeService promoCodeService;
     private final SubscriptionDiscountService subscriptionDiscountService;
     private final TransactionRepository transactionRepository;
+    private final ExpenseService expenseService;
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionPaymentOrchestrator.class);
+    private final ExpenseCategoryService expenseCategoryService;
 
     public SubscriptionPaymentOrchestrator(
             WalletService walletService,
             SubscriptionRepository subscriptionRepository,
             PaymentRepository paymentRepository,
             EmailService emailService,
-            NotificationService notificationService, DiscountService discountService, UserRepository userRepository, PaymentMapper paymentMapper, SubscriptionMapper mapper, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, PromoCodeService promoCodeService, SubscriptionDiscountService subscriptionDiscountService, TransactionRepository transactionRepository) {
+            NotificationService notificationService,
+            DiscountService discountService,
+            UserRepository userRepository,
+            PaymentMapper paymentMapper,
+            SubscriptionMapper mapper,
+            CurrencyRepository currencyRepository,
+            MyServiceRepository myServiceRepository,
+            SubscriptionPlanRepository subscriptionPlanRepository,
+            ProfileRepository profileRepository,
+            PromoCodeService promoCodeService,
+            SubscriptionDiscountService subscriptionDiscountService,
+            TransactionRepository transactionRepository,
+            ExpenseService expenseService, ExpenseCategoryService expenseCategoryService) {
         this.walletService = walletService;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
@@ -68,6 +84,8 @@ public class SubscriptionPaymentOrchestrator {
         this.promoCodeService = promoCodeService;
         this.subscriptionDiscountService = subscriptionDiscountService;
         this.transactionRepository = transactionRepository;
+        this.expenseService = expenseService;
+        this.expenseCategoryService = expenseCategoryService;
     }
 
     public Payment processPaymentWithoutSubscription(PaymentRequestDto paymentRequest) {
@@ -166,6 +184,10 @@ public class SubscriptionPaymentOrchestrator {
                             .transactionType(TransactionType.TRANSFER)
                             .build();
                     transactionRepository.save(transaction);
+                    
+                    // Create expense entry for the referral reward
+                    createReferralRewardExpense(referrer, rewardAmount, payment.getCurrency());
+                    
                     log.info("Referral reward of {} sent to referrer ID: {}", rewardAmount, referrer.getId());
                 } else {
                     String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
@@ -187,9 +209,9 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     public boolean processSubscriptionRenewal(Subscription subscription, SubscriptionPlan nextPlan) {
-        // Prevent renewal of trial subscriptions
-        if (subscription.getIsTrial()) {
-            log.info("Skipping renewal for trial subscription ID: {}", subscription.getId());
+        // Prevent renewal of trial subscriptions to another trial
+        if (subscription.getIsTrial() && nextPlan.getName().equals("Trial")) {
+            log.info("Skipping renewal from trial to trial subscription for ID: {}", subscription.getId());
             subscription.setStatus(SubscriptionStatus.CANCELLED);
             subscriptionRepository.save(subscription);
             return false;
@@ -395,5 +417,29 @@ public class SubscriptionPaymentOrchestrator {
     public void createSubscription(SubscriptionRequestDto subscription) {
         Subscription newSubscription = createSubscriptionFromDto(subscription);
         subscriptionRepository.save(newSubscription);
+    }
+
+    private void createReferralRewardExpense(User referrer, BigDecimal amount, Currency currency) {
+        try {
+            ExpenseRequestDto expenseRequest = new ExpenseRequestDto();
+            expenseRequest.setAmount(amount);
+            expenseRequest.setCurrencyId(currency.getId());
+            expenseRequest.setDescription("Referral reward for user: " + referrer.getUsername());
+            expenseRequest.setExpenseDate(LocalDateTime.now());
+            expenseRequest.setPaymentMethod(PaymentMethod.MOBILE_MONEY);
+            expenseRequest.setRecurring(false);
+            
+            // You'll need to have a category ID for referral rewards in your database
+            // This should be configured or retrieved from a repository
+
+            Long referralExpenseCategoryId = expenseCategoryService.getCategoryByName("Referral Rewards");
+            expenseRequest.setCategoryId(referralExpenseCategoryId);
+            
+            expenseService.createExpense(expenseRequest, 1L); // Admin user ID (replace with actual admin ID)
+            log.info("Created expense entry for referral reward to user ID: {}", referrer.getId());
+        } catch (Exception e) {
+            log.error("Failed to create expense for referral reward", e);
+            // Don't throw the exception to avoid disrupting the main payment flow
+        }
     }
 }
