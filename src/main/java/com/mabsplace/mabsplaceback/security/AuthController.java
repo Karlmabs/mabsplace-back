@@ -7,6 +7,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.mabsplace.mabsplaceback.domain.dtos.auth.OAuth2AuthRequest;
+import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
@@ -253,9 +254,9 @@ public class AuthController {
 
     @GetMapping("/user/me")
 //    @PreAuthorize("hasRole('USER')")
-    public User getCurrentUser(@CurrentUser UserPrincipal userPrincipal) {
-        return userRepository.findById(userPrincipal.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userPrincipal.getId()));
+    public UserResponseDto getCurrentUser(@CurrentUser UserPrincipal userPrincipal) {
+        return userMapper.toDto(userRepository.findById(userPrincipal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userPrincipal.getId())));
     }
 
     @GetMapping("/registrationConfirm")
