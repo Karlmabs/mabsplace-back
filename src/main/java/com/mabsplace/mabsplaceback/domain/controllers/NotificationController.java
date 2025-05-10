@@ -37,6 +37,7 @@ public class NotificationController {
     ) {
         logger.info("Updating push token for user: {}", authentication.getName());
         try {
+            logger.info("Updating push token for user: {}", authentication.getName());
             notificationService.updateUserPushToken(authentication.getName(), request.getPushToken());
             logger.info("Push token updated successfully for user: {}", authentication.getName());
             return ResponseEntity.ok(new ApiResponse(true, "Push token updated successfully"));
