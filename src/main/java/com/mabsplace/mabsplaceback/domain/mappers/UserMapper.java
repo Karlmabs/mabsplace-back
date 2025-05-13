@@ -63,7 +63,7 @@ public interface UserMapper {
         userProfileDTO.setId(user.getUserProfile().getId());
         userProfileDTO.setDescription(user.getUserProfile().getDescription());
         userProfileDTO.setName(user.getUserProfile().getName());
-        userProfileDTO.setRoleNames(user.getRoles().stream().map(Role::getName).collect(Collectors.toSet()));
+        userProfileDTO.setRoleNames(user.getUserProfile().getRoles().stream().map(Role::getName).collect(Collectors.toSet()));
         userProfileDTO.setCreatedAt(user.getUserProfile().getCreatedAt());
         userProfileDTO.setUpdatedAt(user.getUserProfile().getUpdatedAt());
         return userProfileDTO;
