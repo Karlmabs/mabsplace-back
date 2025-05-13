@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class ExpenseController {
 
     private static final Logger logger = LoggerFactory.getLogger(ExpenseController.class);
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_EXPENSES')")
     @GetMapping
     @Operation(summary = "Get all expenses")
     @ApiResponse(responseCode = "200", description = "List of expenses retrieved successfully")

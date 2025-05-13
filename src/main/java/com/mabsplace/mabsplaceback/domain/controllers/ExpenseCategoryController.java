@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class ExpenseCategoryController {
     private final ExpenseCategoryService expenseCategoryService;
     private static final Logger logger = LoggerFactory.getLogger(ExpenseCategoryController.class);
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_EXPENSE_CATEGORIES')")
     @GetMapping
     @Operation(summary = "Get all expense categories")
     @ApiResponse(responseCode = "200", description = "List of expense categories retrieved successfully")
