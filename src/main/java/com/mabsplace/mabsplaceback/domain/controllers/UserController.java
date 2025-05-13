@@ -80,6 +80,7 @@ public class UserController {
         return ResponseEntity.ok(paginatedUsers);
     }
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_USERS')")
     @GetMapping("/all")
     public ResponseEntity<List<UserResponseDto>> getAllUsers() {
         logger.info("Fetching all users");

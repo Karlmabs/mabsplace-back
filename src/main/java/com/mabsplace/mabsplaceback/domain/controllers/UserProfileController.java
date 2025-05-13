@@ -70,8 +70,8 @@ public class UserProfileController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_USER_PROFILES')")
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserProfileDTO>> getAllProfiles() {
         logger.info("Fetching all user profiles");
         List<UserProfileDTO> profiles = userProfileService.getAllProfiles();

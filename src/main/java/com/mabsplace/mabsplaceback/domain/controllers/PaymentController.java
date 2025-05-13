@@ -56,6 +56,7 @@ public class PaymentController {
     return ResponseEntity.ok(mapper.toDto(payment));
   }
 
+  @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_PAYMENTS')")
   @GetMapping
   public ResponseEntity<List<PaymentResponseDto>> getAllPayments() {
     logger.info("Fetching all payments");

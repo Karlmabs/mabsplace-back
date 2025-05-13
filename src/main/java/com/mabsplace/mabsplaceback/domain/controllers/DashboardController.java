@@ -3,6 +3,7 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/dashboard")
+@PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'SEE_DASHBOARD')")
 public class DashboardController {
 
     @Autowired
