@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -101,6 +102,7 @@ public class TransactionController {
         return ResponseEntity.ok(mapper.toDto(transaction));
     }
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_TRANSACTIONS')")
     @GetMapping
     public ResponseEntity<List<TransactionResponseDto>> getAllTransactions() {
         logger.info("Fetching all transactions");

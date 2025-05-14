@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -52,6 +53,7 @@ public class SubscriptionPlanController {
         return new ResponseEntity<>(mapper.toDtoList(subscriptionPlans), HttpStatus.OK);
     }
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_SUBSCRIPTION_PLANS')")
     @GetMapping
     public ResponseEntity<List<SubscriptionPlanResponseDto>> getAllSubscriptionPlans() {
         logger.info("Fetching all subscription plans");
