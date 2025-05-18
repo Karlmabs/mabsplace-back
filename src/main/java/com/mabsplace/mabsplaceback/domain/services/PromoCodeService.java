@@ -92,10 +92,20 @@ public class PromoCodeService {
                     return new ResourceNotFoundException("PromoCode", "code", code);
                 });
 
-        if (!promoCode.isValid() || !promoCode.isAssignedToUser(user)) {
-            logger.warn("Promo code {} is not valid or not assigned to the provided user", code);
-            throw new IllegalStateException("Promo code is not valid or not assigned to this user");
+        // Add detailed logging to identify the exact validation issue
+        if (!promoCode.isValid()) {
+            logger.warn("Promo code {} is not valid. Expired: {}, Exhausted: {}, Status: {}",
+                    code, promoCode.isExpired(), promoCode.isExhausted(), promoCode.getStatus());
+            throw new IllegalStateException("Promo code is not valid (expired, exhausted, or inactive)");
         }
+
+        if (!promoCode.isAssignedToUser(user)) {
+            logger.warn("Promo code {} is not assigned to user {}. Assigned to: {}",
+                    code, user != null ? user.getId() : "null",
+                    promoCode.getAssignedUser() != null ? promoCode.getAssignedUser().getId() : "null");
+            throw new IllegalStateException("Promo code is not assigned to this user");
+        }
+
         logger.info("Promo code validated successfully: {}", promoCode);
         return promoCodeMapper.toDto(promoCode);
     }

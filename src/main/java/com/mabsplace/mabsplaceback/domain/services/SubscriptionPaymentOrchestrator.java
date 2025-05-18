@@ -218,10 +218,14 @@ public class SubscriptionPaymentOrchestrator {
         }
 
         User user = subscription.getUser();
+        // Ensure we have the full user object with all relationships loaded
+        if (user != null) {
+            user = userRepository.findById(user.getId()).orElse(user);
+        }
 
         PaymentRequestDto renewalPayment = PaymentRequestDto.builder()
                 .amount(subscriptionDiscountService.getDiscountedPrice(nextPlan))
-                .userId(subscription.getUser().getId())
+                .userId(user.getId())
                 .currencyId(nextPlan.getCurrency().getId())
                 .serviceId(subscription.getService().getId())
                 .subscriptionPlanId(nextPlan.getId())
@@ -239,7 +243,7 @@ public class SubscriptionPaymentOrchestrator {
             Payment payment = processPaymentWithoutSubscription(renewalPayment);
             return payment.getStatus() == PaymentStatus.PAID;
         } catch (Exception e) {
-            log.error("Renewal payment failed for subscription {}", subscription.getId(), e);
+            log.error("Renewal payment failed for subscription {}: {}", subscription.getId(), e.getMessage(), e);
             return false;
         }
     }
