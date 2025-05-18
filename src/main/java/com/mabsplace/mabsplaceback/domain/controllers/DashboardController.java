@@ -20,9 +20,9 @@ public class DashboardController {
 
     @GetMapping("/stats")
     public DashboardStats getStats() {         
-        // Get total subscribers (count of active subscriptions)
+        // Get total subscribers (count of distinct users with active payments)
         Integer totalSubscribers = jdbcTemplate.queryForObject(
-                "SELECT COUNT(DISTINCT user_id) FROM subscriptions WHERE status = 'ACTIVE'",
+                "SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID'",
                 Integer.class
         );
 
@@ -41,15 +41,15 @@ public class DashboardController {
                 Double.class
         );
 
-        // Get active subscriptions count
+        // Get active subscriptions count (count of payments with subscription plans)
         Integer activeSubscriptions = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE'",
+                "SELECT COUNT(*) FROM payments WHERE status = 'PAID' AND subscription_plan_id IS NOT NULL",
                 Integer.class
         );
 
         // Calculate growth percentages (comparing with previous month)
-        Double subscriptionGrowth = calculateGrowthRate("subscriptions");
-        Double revenueGrowth = calculateGrowthRate("payments");
+        Double subscriptionGrowth = calculateGrowthRateFromPayments("subscriptions");
+        Double revenueGrowth = calculateGrowthRateFromPayments("payments");
 
         // New expense stats
         Double monthlyExpenses = jdbcTemplate.queryForObject(
@@ -175,22 +175,23 @@ public class DashboardController {
     public List<MonthlyRevenue> getRevenueAndSubscriptionsTrend() {
         String sql = """
                 WITH RECURSIVE Months AS (
-                                       SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01') AS month_start
-                                       UNION ALL
-                                       SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
-                                       FROM Months
-                                       WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
-                                   )
-                                   SELECT DATE_FORMAT(month_start, '%b') AS month,
-                                       COALESCE((SELECT SUM(amount) FROM payments\s
-                                           WHERE status = 'PAID'\s
-                                           AND payment_date BETWEEN month_start AND LAST_DAY(month_start)), 0) AS revenue,
-                                       COALESCE((SELECT COUNT(DISTINCT id) FROM subscriptions
-                                                 WHERE status = 'ACTIVE'\s
-                                                 AND MONTH(start_date) = MONTH(month_start)
-                                                 AND YEAR(start_date) = YEAR(month_start)), 0) AS subscriptions
-                                   FROM Months
-                                   ORDER BY month_start;
+                    SELECT DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH), '%Y-%m-01') AS month_start
+                    UNION ALL
+                    SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
+                    FROM Months
+                    WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+                )
+                SELECT DATE_FORMAT(month_start, '%b') AS month,
+                    COALESCE((SELECT SUM(amount) FROM payments
+                        WHERE status = 'PAID'
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)), 0) AS revenue,
+                    COALESCE((SELECT COUNT(DISTINCT id) FROM payments
+                             WHERE status = 'PAID'
+                             AND subscription_plan_id IS NOT NULL
+                             AND MONTH(payment_date) = MONTH(month_start)
+                             AND YEAR(payment_date) = YEAR(month_start)), 0) AS subscriptions
+                FROM Months
+                ORDER BY month_start;
                 """;
 
         return jdbcTemplate.query(sql,
@@ -206,9 +207,9 @@ public class DashboardController {
     @GetMapping("/service-distribution")
     public List<ServiceDistribution> getServiceDistribution() {
         return jdbcTemplate.query(
-                "SELECT s.name, COUNT(sub.id) as value " +
+                "SELECT s.name, COUNT(p.id) as value " +
                         "FROM services s " +
-                        "LEFT JOIN subscriptions sub ON s.id = sub.service_id AND sub.status = 'ACTIVE' " +
+                        "LEFT JOIN payments p ON s.id = p.service_id AND p.status = 'PAID' " +
                         "GROUP BY s.id, s.name",
                 (rs, rowNum) -> new ServiceDistribution(
                         rs.getString("name"),
@@ -229,41 +230,41 @@ public class DashboardController {
     @GetMapping("/top-services")
     public List<TopService> getTopServices() {
         String sql = """
-                    WITH CurrentMonthStats AS (
-                        SELECT 
-                            s.id,
-                            s.name,
-                            COUNT(DISTINCT sub.id) as current_subscribers
-                        FROM services s
-                        LEFT JOIN subscriptions sub ON s.id = sub.service_id
-                        WHERE sub.status = 'ACTIVE'
-                        AND MONTH(sub.start_date) = MONTH(CURRENT_DATE)
-                        AND YEAR(sub.start_date) = YEAR(CURRENT_DATE)
-                        GROUP BY s.id, s.name
-                    ),
-                    LastMonthStats AS (
-                        SELECT 
-                            s.id,
-                            COUNT(DISTINCT sub.id) as last_month_subscribers
-                        FROM services s
-                        LEFT JOIN subscriptions sub ON s.id = sub.service_id
-                        WHERE sub.status = 'ACTIVE'
-                        AND MONTH(sub.start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                        AND YEAR(sub.start_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                        GROUP BY s.id
-                    )
+                WITH CurrentMonthStats AS (
                     SELECT 
-                        cms.name,
-                        cms.current_subscribers as subscribers,
-                        CASE 
-                            WHEN lms.last_month_subscribers > 0 
-                            THEN ((cms.current_subscribers - lms.last_month_subscribers) / lms.last_month_subscribers * 100)
-                            ELSE 0 
-                        END as growth
-                    FROM CurrentMonthStats cms
-                    LEFT JOIN LastMonthStats lms ON cms.id = lms.id
-                    ORDER BY cms.current_subscribers DESC
-                    LIMIT 4
+                        s.id,
+                        s.name,
+                        COUNT(DISTINCT p.id) as current_subscribers
+                    FROM services s
+                    LEFT JOIN payments p ON s.id = p.service_id
+                    WHERE p.status = 'PAID'
+                    AND MONTH(p.payment_date) = MONTH(CURRENT_DATE)
+                    AND YEAR(p.payment_date) = YEAR(CURRENT_DATE)
+                    GROUP BY s.id, s.name
+                ),
+                LastMonthStats AS (
+                    SELECT 
+                        s.id,
+                        COUNT(DISTINCT p.id) as last_month_subscribers
+                    FROM services s
+                    LEFT JOIN payments p ON s.id = p.service_id
+                    WHERE p.status = 'PAID'
+                    AND MONTH(p.payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                    AND YEAR(p.payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                    GROUP BY s.id
+                )
+                SELECT 
+                    cms.name,
+                    cms.current_subscribers as subscribers,
+                    CASE 
+                        WHEN lms.last_month_subscribers > 0 
+                        THEN ((cms.current_subscribers - lms.last_month_subscribers) / lms.last_month_subscribers * 100)
+                        ELSE 0 
+                    END as growth
+                FROM CurrentMonthStats cms
+                LEFT JOIN LastMonthStats lms ON cms.id = lms.id
+                ORDER BY cms.current_subscribers DESC
+                LIMIT 4
                 """;
 
         return jdbcTemplate.query(sql,
@@ -275,22 +276,30 @@ public class DashboardController {
         );
     }
 
-    private Double calculateGrowthRate(String table) {
+    private Double calculateGrowthRateFromPayments(String metric) {
         String query = "";
-        if (table.equals("subscriptions")) {
+        if (metric.equals("subscriptions")) {
             query = "SELECT " +
-                    "CASE WHEN (SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
+                    "CASE WHEN (SELECT COUNT(*) FROM payments WHERE status = 'PAID' AND subscription_plan_id IS NOT NULL " +
+                    "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
                     "THEN 0 ELSE " +
-                    "((SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(CURRENT_DATE)) - " +
-                    "(SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
-                    "(SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND MONTH(start_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
+                    "((SELECT COUNT(*) FROM payments WHERE status = 'PAID' AND subscription_plan_id IS NOT NULL " +
+                    "AND MONTH(payment_date) = MONTH(CURRENT_DATE)) - " +
+                    "(SELECT COUNT(*) FROM payments WHERE status = 'PAID' AND subscription_plan_id IS NOT NULL " +
+                    "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
+                    "(SELECT COUNT(*) FROM payments WHERE status = 'PAID' AND subscription_plan_id IS NOT NULL " +
+                    "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
         } else {
             query = "SELECT " +
-                    "CASE WHEN (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
+                    "CASE WHEN (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                    "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
                     "THEN 0 ELSE " +
-                    "((SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(CURRENT_DATE)) - " +
-                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
-                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
+                    "((SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                    "AND MONTH(payment_date) = MONTH(CURRENT_DATE)) - " +
+                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                    "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
+                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                    "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
         }
         return jdbcTemplate.queryForObject(query, Double.class);
     }
@@ -349,21 +358,14 @@ public class DashboardController {
                         s.name as service_name,
                         m.month_start,
                         DATE_FORMAT(m.month_start, '%M %Y') as month_display,
-                        COUNT(DISTINCT sub.id) as subscriptions,
-                        COALESCE(
-                            (SELECT SUM(p2.amount)
-                             FROM payments p2
-                             WHERE p2.service_id = s.id
-                             AND p2.status = 'PAID'
-                             AND p2.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
-                            ), 0
-                        ) as revenue
+                        COUNT(DISTINCT p.id) as subscriptions,
+                        COALESCE(SUM(p.amount), 0) as revenue
                     FROM Months m
                     CROSS JOIN services s
-                    LEFT JOIN subscriptions sub ON 
-                        s.id = sub.service_id 
-                        AND sub.status = 'ACTIVE'
-                        AND sub.start_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                    LEFT JOIN payments p ON 
+                        s.id = p.service_id 
+                        AND p.status = 'PAID'
+                        AND p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                     GROUP BY s.id, s.name, m.month_start
                 )
                 SELECT 
@@ -397,15 +399,12 @@ public class DashboardController {
                         DATE_FORMAT(m.month_start, '%Y%m') AS month_key,
                         DATE_FORMAT(m.month_start, '%M %Y') AS month_display,
                         COALESCE(SUM(p.amount), 0) as revenue,
-                        COUNT(DISTINCT s.id) as new_subscriptions,
-                        COUNT(DISTINCT s.user_id) as active_subscribers
+                        COUNT(DISTINCT p.id) as new_subscriptions,
+                        COUNT(DISTINCT p.user_id) as active_subscribers
                     FROM Months m
                     LEFT JOIN payments p ON 
                         p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                         AND p.status = 'PAID'
-                    LEFT JOIN subscriptions s ON 
-                        s.start_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
-                        AND s.status = 'ACTIVE'
                     GROUP BY m.month_start
                 )
                 SELECT 
@@ -446,9 +445,10 @@ public class DashboardController {
                     ), 0) as revenue,
                     COALESCE((
                         SELECT COUNT(DISTINCT id) 
-                        FROM subscriptions
-                        WHERE status = 'ACTIVE'
-                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND subscription_plan_id IS NOT NULL
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as new_subscriptions,
                     COALESCE((
                         SELECT SUM(amount) 
@@ -457,9 +457,10 @@ public class DashboardController {
                     ), 0) as expenses,
                     COALESCE((
                         SELECT COUNT(DISTINCT user_id)
-                        FROM subscriptions
-                        WHERE status = 'ACTIVE'
-                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND subscription_plan_id IS NOT NULL
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as active_subscribers
                 FROM CurrentMonth
                 """,
@@ -489,9 +490,10 @@ public class DashboardController {
                     ), 0) as revenue,
                     COALESCE((
                         SELECT COUNT(DISTINCT id) 
-                        FROM subscriptions
-                        WHERE status = 'ACTIVE'
-                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND subscription_plan_id IS NOT NULL
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as new_subscriptions,
                     COALESCE((
                         SELECT SUM(amount) 
@@ -500,9 +502,10 @@ public class DashboardController {
                     ), 0) as expenses,
                     COALESCE((
                         SELECT COUNT(DISTINCT user_id)
-                        FROM subscriptions
-                        WHERE status = 'ACTIVE'
-                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND subscription_plan_id IS NOT NULL
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as active_subscribers
                 FROM PreviousMonth
                 """,
@@ -536,9 +539,10 @@ public class DashboardController {
                     ), 0) as revenue,
                     COALESCE((
                         SELECT COUNT(DISTINCT id) 
-                        FROM subscriptions
-                        WHERE status = 'ACTIVE'
-                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND subscription_plan_id IS NOT NULL
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as new_subscriptions,
                     COALESCE((
                         SELECT SUM(amount) 
@@ -547,9 +551,10 @@ public class DashboardController {
                     ), 0) as expenses,
                     COALESCE((
                         SELECT COUNT(DISTINCT user_id)
-                        FROM subscriptions
-                        WHERE status = 'ACTIVE'
-                        AND start_date BETWEEN month_start AND LAST_DAY(month_start)
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND subscription_plan_id IS NOT NULL
+                        AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
                     ), 0) as active_subscribers
                 FROM Months
                 ORDER BY month_start
