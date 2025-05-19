@@ -100,9 +100,20 @@ public class PromoCodeService {
         }
 
         if (!promoCode.isAssignedToUser(user)) {
-            logger.warn("Promo code {} is not assigned to user {}. Assigned to: {}",
-                    code, user != null ? user.getId() : "null",
-                    promoCode.getAssignedUser() != null ? promoCode.getAssignedUser().getId() : "null");
+            Long userId = user != null ? user.getId() : null;
+            Long assignedUserId = promoCode.getAssignedUser() != null ? promoCode.getAssignedUser().getId() : null;
+
+            if (assignedUserId == null) {
+                logger.warn("Promo code {} validation failed for user {}: Code is not assigned to any user but should be public",
+                        code, userId);
+            } else if (userId == null) {
+                logger.warn("Promo code {} validation failed: No user provided but code is assigned to user {}",
+                        code, assignedUserId);
+            } else {
+                logger.warn("Promo code {} validation failed: Code is assigned to user {} but attempted use by user {}",
+                        code, assignedUserId, userId);
+            }
+
             throw new IllegalStateException("Promo code is not assigned to this user");
         }
 
@@ -120,9 +131,28 @@ public class PromoCodeService {
                     return new RuntimeException("Invalid promo code: " + code);
                 });
 
-        if (!promoCode.isValid() || !promoCode.isAssignedToUser(payment.getUser())) {
-            logger.warn("Promo code {} is not valid or not assigned to the provided user", code);
-            throw new IllegalStateException("Promo code is not valid or not assigned to this user");
+        if (!promoCode.isValid()) {
+            logger.warn("Promo code {} is not valid. Expired: {}, Exhausted: {}, Status: {}",
+                    code, promoCode.isExpired(), promoCode.isExhausted(), promoCode.getStatus());
+            throw new IllegalStateException("Promo code is not valid (expired, exhausted, or inactive)");
+        }
+
+        if (!promoCode.isAssignedToUser(payment.getUser())) {
+            Long userId = payment.getUser() != null ? payment.getUser().getId() : null;
+            Long assignedUserId = promoCode.getAssignedUser() != null ? promoCode.getAssignedUser().getId() : null;
+
+            if (assignedUserId == null) {
+                logger.warn("Promo code {} application failed for user {}: Code is not assigned to any user but should be public",
+                        code, userId);
+            } else if (userId == null) {
+                logger.warn("Promo code {} application failed: No user provided but code is assigned to user {}",
+                        code, assignedUserId);
+            } else {
+                logger.warn("Promo code {} application failed: Code is assigned to user {} but attempted use by user {}",
+                        code, assignedUserId, userId);
+            }
+
+            throw new IllegalStateException("Promo code is not assigned to this user");
         }
 
         // Calculate discount

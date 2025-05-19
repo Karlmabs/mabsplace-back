@@ -40,9 +40,25 @@ public class PromoCode {
     @JoinColumn(name = "user_id", nullable = true)
     private User assignedUser;
 
-    // Modify the validation method
+    // Check if the promo code is assigned to the given user
+    // Returns true if:
+    // 1. The promo code is not assigned to any user (public promo code)
+    // 2. OR if the user is not null and has the same ID as the assigned user
     public boolean isAssignedToUser(User user) {
-        return assignedUser == null || (user != null && assignedUser.equals(user));
+        // If no user is assigned to this promo code, it's a public promo code
+        if (assignedUser == null) {
+            return true;
+        }
+
+        // If user is null, they can't use a user-specific promo code
+        if (user == null) {
+            return false;
+        }
+
+        // Compare by ID to avoid issues with different User object instances
+        return user.getId() != null &&
+               assignedUser.getId() != null &&
+               user.getId().equals(assignedUser.getId());
     }
 
     // Remove owner-related fields since codes are public
