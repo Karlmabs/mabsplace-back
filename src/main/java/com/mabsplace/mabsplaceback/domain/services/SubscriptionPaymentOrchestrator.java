@@ -106,8 +106,16 @@ public class SubscriptionPaymentOrchestrator {
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
-        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount)) {
-            throw new RuntimeException("Insufficient funds");
+        // Determine the final amount to charge
+        BigDecimal finalAmount = amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount;
+
+        // Skip balance check for zero-dollar transactions (100% discount promo codes)
+        if (finalAmount.compareTo(BigDecimal.ZERO) > 0) {
+            if (!walletService.checkBalance(user.getWallet().getBalance(), finalAmount)) {
+                throw new RuntimeException("Insufficient funds");
+            }
+        } else {
+            log.info("Skipping balance check for zero-dollar transaction due to 100% discount");
         }
 
         Payment payment = createPayment(user, paymentRequest, amountAfterDiscount);
@@ -140,8 +148,16 @@ public class SubscriptionPaymentOrchestrator {
 
         log.info("Amount after discount: " + amountAfterDiscount);
 
-        if (!walletService.checkBalance(user.getWallet().getBalance(), amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount)) {
-            throw new RuntimeException("Insufficient funds");
+        // Determine the final amount to charge
+        BigDecimal finalAmount = amountWithPromo.compareTo(BigDecimal.ZERO) != 0 ? amountWithPromo : amountAfterDiscount;
+
+        // Skip balance check for zero-dollar transactions (100% discount promo codes)
+        if (finalAmount.compareTo(BigDecimal.ZERO) > 0) {
+            if (!walletService.checkBalance(user.getWallet().getBalance(), finalAmount)) {
+                throw new RuntimeException("Insufficient funds");
+            }
+        } else {
+            log.info("Skipping balance check for zero-dollar transaction due to 100% discount");
         }
 
         Payment payment = createPayment(user, paymentRequest, amountAfterDiscount);
@@ -151,7 +167,7 @@ public class SubscriptionPaymentOrchestrator {
             SubscriptionPlan plan = subscriptionPlanRepository.findById(payment.getSubscriptionPlan().getId())
                     .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", payment.getSubscriptionPlan().getId()));
             boolean isTrial = plan.getName().equals("Trial");
-            
+
             createInitialSubscription(payment);
 
             // send email
@@ -167,7 +183,7 @@ public class SubscriptionPaymentOrchestrator {
                 User referrer = user.getReferrer();
 
                 // Check if this is the user's first non-trial payment
-                boolean isFirstNonTrialPayment = !isTrial && 
+                boolean isFirstNonTrialPayment = !isTrial &&
                     paymentRepository.countByUserIdAndSubscriptionPlanNameNot(user.getId(), "Trial") == 1;
 
                 if (isFirstNonTrialPayment) {
@@ -184,10 +200,10 @@ public class SubscriptionPaymentOrchestrator {
                             .transactionType(TransactionType.TRANSFER)
                             .build();
                     transactionRepository.save(transaction);
-                    
+
                     // Create expense entry for the referral reward
                     createReferralRewardExpense(referrer, rewardAmount, payment.getCurrency());
-                    
+
                     log.info("Referral reward of {} sent to referrer ID: {}", rewardAmount, referrer.getId());
                 } else {
                     String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
@@ -263,9 +279,13 @@ public class SubscriptionPaymentOrchestrator {
             promoCodeService.applyPromoCode(paymentRequestDto.getPromoCode(), entity);
         }
 
-        log.info("Debiting wallet");
-
-        walletService.debit(user.getWallet().getId(), entity.getAmount());
+        // Only debit wallet if the amount is greater than zero
+        if (entity.getAmount().compareTo(BigDecimal.ZERO) > 0) {
+            log.info("Debiting wallet with amount: {}", entity.getAmount());
+            walletService.debit(user.getWallet().getId(), entity.getAmount());
+        } else {
+            log.info("Skipping wallet debit for zero-dollar transaction");
+        }
 
         return paymentRepository.save(entity);
     }
@@ -309,7 +329,7 @@ public class SubscriptionPaymentOrchestrator {
             subscriptionDto.setProfileId(profileId);
             log.info("Auto-assigned profile ID: {} to subscription", profileId);
         } else {
-            log.info("No available profile found for user ID: {} and service ID: {}", 
+            log.info("No available profile found for user ID: {} and service ID: {}",
                     payment.getUser().getId(), payment.getService().getId());
         }
 
@@ -335,14 +355,14 @@ public class SubscriptionPaymentOrchestrator {
             subscriptionDto.setProfileId(profileId);
             log.info("Auto-assigned profile ID: {} to trial subscription", profileId);
         } else {
-            log.info("No available profile found for user ID: {} and service ID: {}", 
+            log.info("No available profile found for user ID: {} and service ID: {}",
                     payment.getUser().getId(), payment.getService().getId());
         }
 
         // Create subscription
         createSubscriptionFromDto(subscriptionDto);
     }
-    
+
     /**
      * Finds an available (inactive) profile for the given service
      * @param serviceId the service ID
@@ -352,12 +372,12 @@ public class SubscriptionPaymentOrchestrator {
         try {
             // Find available profiles with INACTIVE status
             List<Profile> availableProfiles = profileRepository.findAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
-            
+
             if (!availableProfiles.isEmpty()) {
                 // Return the first available profile ID
                 return availableProfiles.get(0).getId();
             }
-            
+
             return null;
         } catch (Exception e) {
             log.error("Error finding available profile for service ID: {}", serviceId, e);
@@ -432,13 +452,13 @@ public class SubscriptionPaymentOrchestrator {
             expenseRequest.setExpenseDate(LocalDateTime.now());
             expenseRequest.setPaymentMethod(PaymentMethod.MOBILE_MONEY);
             expenseRequest.setRecurring(false);
-            
+
             // You'll need to have a category ID for referral rewards in your database
             // This should be configured or retrieved from a repository
 
             Long referralExpenseCategoryId = expenseCategoryService.getCategoryByName("Referral Rewards");
             expenseRequest.setCategoryId(referralExpenseCategoryId);
-            
+
             expenseService.createExpense(expenseRequest, 1L); // Admin user ID (replace with actual admin ID)
             log.info("Created expense entry for referral reward to user ID: {}", referrer.getId());
         } catch (Exception e) {
