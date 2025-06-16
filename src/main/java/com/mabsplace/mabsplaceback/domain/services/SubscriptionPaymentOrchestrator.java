@@ -248,11 +248,14 @@ public class SubscriptionPaymentOrchestrator {
                 .paymentDate(new Date())
                 .build();
 
-        // Check if user has a personal promo code
+        // Check if user has a valid personal promo code
         String personalPromoCode = promoCodeService.getUserPersonalPromoCode(user);
         if (personalPromoCode != null && !personalPromoCode.isEmpty()) {
             renewalPayment.setPromoCode(personalPromoCode);
-            log.info("Applied personal promo code '{}' for user ID: {}", personalPromoCode, user.getId());
+            log.info("Applied personal promo code '{}' for user ID: {} during subscription renewal",
+                    personalPromoCode, user.getId());
+        } else {
+            log.info("No valid personal promo code found for user ID: {} during subscription renewal", user.getId());
         }
 
         try {
@@ -260,6 +263,37 @@ public class SubscriptionPaymentOrchestrator {
             return payment.getStatus() == PaymentStatus.PAID;
         } catch (Exception e) {
             log.error("Renewal payment failed for subscription {}: {}", subscription.getId(), e.getMessage(), e);
+
+            // If the failure was due to promo code issues and we had a promo code, try again without it
+            if (personalPromoCode != null && !personalPromoCode.isEmpty() &&
+                e.getMessage() != null && e.getMessage().toLowerCase().contains("promo")) {
+
+                log.warn("Retrying subscription renewal for subscription {} without promo code due to promo code error",
+                        subscription.getId());
+
+                // Create a new payment request without the promo code
+                PaymentRequestDto renewalPaymentWithoutPromo = PaymentRequestDto.builder()
+                        .amount(subscriptionDiscountService.getDiscountedPrice(nextPlan))
+                        .userId(user.getId())
+                        .currencyId(nextPlan.getCurrency().getId())
+                        .serviceId(subscription.getService().getId())
+                        .subscriptionPlanId(nextPlan.getId())
+                        .paymentDate(new Date())
+                        .build();
+
+                try {
+                    Payment retryPayment = processPaymentWithoutSubscription(renewalPaymentWithoutPromo);
+                    if (retryPayment.getStatus() == PaymentStatus.PAID) {
+                        log.info("Subscription renewal succeeded on retry without promo code for subscription {}",
+                                subscription.getId());
+                        return true;
+                    }
+                } catch (Exception retryException) {
+                    log.error("Retry payment also failed for subscription {}: {}",
+                            subscription.getId(), retryException.getMessage(), retryException);
+                }
+            }
+
             return false;
         }
     }

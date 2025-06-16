@@ -324,12 +324,31 @@ public class PromoCodeService {
 
         List<PromoCode> promoCodes = promoCodeRepository.findByAssignedUser(user);
         if (promoCodes.isEmpty()) {
-            logger.error("Promo code not found for user ID: {}", user.getId());
+            logger.info("No promo codes found for user ID: {}", user.getId());
             return null;
         }
-        PromoCode promoCode = promoCodes.get(0);
 
-        logger.info("Fetched personal promo code successfully: {}", promoCode);
-        return promoCode.getCode();
+        // Filter for valid promo codes only (not expired, not exhausted, and active)
+        List<PromoCode> validPromoCodes = promoCodes.stream()
+                .filter(PromoCode::isValid)
+                .collect(Collectors.toList());
+
+        if (validPromoCodes.isEmpty()) {
+            logger.info("No valid promo codes found for user ID: {}. Found {} total codes but all are expired, exhausted, or inactive.",
+                       user.getId(), promoCodes.size());
+
+            // Log details about why each promo code is invalid
+            for (PromoCode promoCode : promoCodes) {
+                logger.debug("Promo code {} for user {}: Status={}, Expired={}, Exhausted={}",
+                           promoCode.getCode(), user.getId(), promoCode.getStatus(),
+                           promoCode.isExpired(), promoCode.isExhausted());
+            }
+            return null;
+        }
+
+        PromoCode validPromoCode = validPromoCodes.get(0);
+        logger.info("Fetched valid personal promo code successfully for user ID {}: {}",
+                   user.getId(), validPromoCode.getCode());
+        return validPromoCode.getCode();
     }
 }
