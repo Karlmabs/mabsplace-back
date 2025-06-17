@@ -1,0 +1,73 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: test@test.com
+    password: test
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Disable external services for testing
+minio:
+  url: http://localhost:9000
+  access-key: test
+  secret-key: test
+  bucket-name: test
+
+mabsplace:
+  app:
+    jwtSecret: test-secret-key-for-testing-purposes-only
+    jwtExpirationMs: 86400000
+    baseUrl: http://localhost:8080
+    privateKey: test-private-key
+  openapi:
+    dev-url: http://localhost:8080
+    prod-url: http://localhost:8080
+  google:
+    clientId: test-client-id
+    clientSecret: test-client-secret
+
+app:
+  auth:
+    tokenSecret: test-token-secret-for-testing-purposes-only-must-be-long-enough-to-meet-requirements
+    tokenExpirationMsec: 864000000
+  cors:
+    allowedOrigins: http://localhost:3000
+  oauth2:
+    authorizedRedirectUris:
+      - http://localhost:3000/oauth2/redirect
+
+# Logging configuration for tests
+logging:
+  level:
+    com.mabsplace.mabsplaceback: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Test-specific configurations
+test:
+  security:
+    enabled: false
+  database:
+    cleanup: true
