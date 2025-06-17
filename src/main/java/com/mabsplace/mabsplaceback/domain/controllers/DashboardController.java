@@ -43,7 +43,7 @@ public class DashboardController {
 
         // Get active subscriptions count (subscriptions that are active and not expired)
         Integer activeSubscriptions = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM subscriptions " +
+                "SELECT COUNT(DISTINCT user_id) FROM subscriptions " +
                 "WHERE status = 'ACTIVE' AND endDate > CURRENT_DATE",
                 Integer.class
         );
@@ -311,7 +311,7 @@ public class DashboardController {
             Double result = jdbcTemplate.queryForObject(query, Double.class);
             return result != null ? result : 0.0;
         } catch (Exception e) {
-            // Log error and return 0 as fallback
+            logger.error("Error occurred while calculating growth rate for table: " + table, e);
             return 0.0;
         }
     }
