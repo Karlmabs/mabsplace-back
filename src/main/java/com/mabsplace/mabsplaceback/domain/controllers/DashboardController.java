@@ -41,11 +41,10 @@ public class DashboardController {
                 Double.class
         );
 
-        // Get active subscriptions count (users who made payments in current month)
+        // Get active subscriptions count (subscriptions that are active and not expired)
         Integer activeSubscriptions = jdbcTemplate.queryForObject(
-                "SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' " +
-                "AND MONTH(payment_date) = MONTH(CURRENT_DATE) " +
-                "AND YEAR(payment_date) = YEAR(CURRENT_DATE)",
+                "SELECT COUNT(*) FROM subscriptions " +
+                "WHERE status = 'ACTIVE' AND endDate > CURRENT_DATE",
                 Integer.class
         );
 
@@ -123,8 +122,8 @@ public class DashboardController {
                             COUNT(e.id) as transaction_count
                         FROM expense_categories ec
                         LEFT JOIN expenses e ON ec.id = e.category_id
-                        WHERE MONTH(e.expense_date) = MONTH(CURRENT_DATE)
-                        AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
+                            AND MONTH(e.expense_date) = MONTH(CURRENT_DATE)
+                            AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
                         GROUP BY ec.id, ec.name
                         ORDER BY amount DESC
                         """,
@@ -278,23 +277,43 @@ public class DashboardController {
     }
 
     private Double calculateGrowthRate(String table) {
-        String query = "";
-        if (table.equals("subscriptions")) {
-            query = "SELECT " +
-                    "CASE WHEN (SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
-                    "THEN 0 ELSE " +
-                    "((SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(CURRENT_DATE)) - " +
-                    "(SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
-                    "(SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
-        } else {
-            query = "SELECT " +
-                    "CASE WHEN (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
-                    "THEN 0 ELSE " +
-                    "((SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(CURRENT_DATE)) - " +
-                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
-                    "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
+        try {
+            String query = "";
+            if (table.equals("subscriptions")) {
+                query = "SELECT " +
+                        "CASE WHEN (SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)) " +
+                        "AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
+                        "THEN 0 ELSE " +
+                        "((SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(CURRENT_DATE) AND YEAR(payment_date) = YEAR(CURRENT_DATE)) - " +
+                        "(SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)) " +
+                        "AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
+                        "(SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)) " +
+                        "AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
+            } else {
+                query = "SELECT " +
+                        "CASE WHEN (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)) " +
+                        "AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) = 0 " +
+                        "THEN 0 ELSE " +
+                        "((SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(CURRENT_DATE) AND YEAR(payment_date) = YEAR(CURRENT_DATE)) - " +
+                        "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)) " +
+                        "AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))) / " +
+                        "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'PAID' " +
+                        "AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)) " +
+                        "AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))) * 100 END";
+            }
+            Double result = jdbcTemplate.queryForObject(query, Double.class);
+            return result != null ? result : 0.0;
+        } catch (Exception e) {
+            // Log error and return 0 as fallback
+            return 0.0;
         }
-        return jdbcTemplate.queryForObject(query, Double.class);
     }
 
     @GetMapping("/historical-metrics")
