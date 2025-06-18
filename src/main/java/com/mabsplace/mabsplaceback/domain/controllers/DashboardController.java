@@ -20,9 +20,9 @@ public class DashboardController {
 
     @GetMapping("/stats")
     public DashboardStats getStats() {
-        // Get total subscribers (count of currently active subscriptions)
+        // Get total subscribers (count of distinct users who have made payments)
         Integer totalSubscribers = jdbcTemplate.queryForObject(
-                "SELECT COUNT(DISTINCT user_id) FROM subscriptions WHERE status = 'ACTIVE' AND (endDate IS NULL OR endDate > CURRENT_DATE)",
+                "SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID'",
                 Integer.class
         );
 
@@ -35,17 +35,17 @@ public class DashboardController {
                 Double.class
         );
 
-        // Get average subscription value (based on current active subscription plans)
+        // Get average subscription value
         Double avgValue = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(AVG(sp.price), 0) FROM subscriptions s " +
-                "JOIN subscription_plans sp ON s.plan_id = sp.id " +
-                "WHERE s.status = 'ACTIVE'",
+                "SELECT COALESCE(AVG(amount), 0) FROM payments WHERE status = 'PAID'",
                 Double.class
         );
 
-        // Get active subscriptions count (currently active subscriptions)
+        // Get active subscriptions count (users who made payments in current month)
         Integer activeSubscriptions = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM subscriptions WHERE status = 'ACTIVE' AND (endDate IS NULL OR endDate > CURRENT_DATE)",
+                "SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' " +
+                "AND MONTH(payment_date) = MONTH(CURRENT_DATE) " +
+                "AND YEAR(payment_date) = YEAR(CURRENT_DATE)",
                 Integer.class
         );
 
@@ -99,8 +99,8 @@ public class DashboardController {
                             COALESCE(SUM(CASE WHEN e.is_recurring = FALSE THEN e.amount ELSE 0 END), 0) as one_time_expenses
                         FROM Months m
                         LEFT JOIN expenses e ON
-                            MONTH(e.expenseDate) = MONTH(m.date)
-                            AND YEAR(e.expenseDate) = YEAR(m.date)
+                            MONTH(e.expense_date) = MONTH(m.date)
+                            AND YEAR(e.expense_date) = YEAR(m.date)
                         GROUP BY m.date
                         ORDER BY m.date
                         """,
@@ -120,12 +120,12 @@ public class DashboardController {
                         SELECT
                             ec.name as category,
                             COALESCE(SUM(CASE
-                                WHEN MONTH(e.expenseDate) = MONTH(CURRENT_DATE)
-                                AND YEAR(e.expenseDate) = YEAR(CURRENT_DATE)
+                                WHEN MONTH(e.expense_date) = MONTH(CURRENT_DATE)
+                                AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
                                 THEN e.amount END), 0) as amount,
                             COUNT(CASE
-                                WHEN MONTH(e.expenseDate) = MONTH(CURRENT_DATE)
-                                AND YEAR(e.expenseDate) = YEAR(CURRENT_DATE)
+                                WHEN MONTH(e.expense_date) = MONTH(CURRENT_DATE)
+                                AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
                                 THEN e.id END) as transaction_count
                         FROM expense_categories ec
                         LEFT JOIN expenses e ON ec.id = e.category_id
@@ -150,13 +150,13 @@ public class DashboardController {
                                 COALESCE((
                                     SELECT SUM(e.amount)
                                     FROM expenses e
-                                    WHERE MONTH(e.expenseDate) = MONTH(CURRENT_DATE)
-                                    AND YEAR(e.expenseDate) = YEAR(CURRENT_DATE)
+                                    WHERE MONTH(e.expense_date) = MONTH(CURRENT_DATE)
+                                    AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
                                 ), 0) as expenses
                             FROM payments p
                             WHERE p.status = 'PAID'
-                            AND MONTH(p.paymentDate) = MONTH(CURRENT_DATE)
-                            AND YEAR(p.paymentDate) = YEAR(CURRENT_DATE)
+                            AND MONTH(p.payment_date) = MONTH(CURRENT_DATE)
+                            AND YEAR(p.payment_date) = YEAR(CURRENT_DATE)
                         )
                         SELECT
                             revenue,
@@ -216,7 +216,7 @@ public class DashboardController {
                         "FROM services s " +
                         "LEFT JOIN subscriptions sub ON s.id = sub.service_id " +
                         "    AND sub.status = 'ACTIVE' " +
-                        "    AND (sub.endDate IS NULL OR sub.endDate > CURRENT_DATE) " +
+                        "    AND (sub.end_date IS NULL OR sub.end_date > CURRENT_DATE) " +
                         "GROUP BY s.id, s.name",
                 (rs, rowNum) -> new ServiceDistribution(
                         rs.getString("name"),
@@ -245,8 +245,8 @@ public class DashboardController {
                         FROM services s
                         LEFT JOIN subscriptions sub ON s.id = sub.service_id
                             AND sub.status = 'ACTIVE'
-                            AND sub.startDate <= LAST_DAY(CURRENT_DATE)
-                            AND (sub.endDate IS NULL OR sub.endDate > LAST_DAY(CURRENT_DATE))
+                            AND sub.start_date <= LAST_DAY(CURRENT_DATE)
+                            AND (sub.end_date IS NULL OR sub.end_date > LAST_DAY(CURRENT_DATE))
                         GROUP BY s.id, s.name
                     ),
                     LastMonthStats AS (
@@ -256,8 +256,8 @@ public class DashboardController {
                         FROM services s
                         LEFT JOIN subscriptions sub ON s.id = sub.service_id
                             AND sub.status = 'ACTIVE'
-                            AND sub.startDate <= LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                            AND (sub.endDate IS NULL OR sub.endDate > LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))
+                            AND sub.start_date <= LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                            AND (sub.end_date IS NULL OR sub.end_date > LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))
                         GROUP BY s.id
                     )
                     SELECT
@@ -291,15 +291,15 @@ public class DashboardController {
                         SELECT COUNT(DISTINCT user_id) as count
                         FROM subscriptions
                         WHERE status = 'ACTIVE'
-                        AND startDate <= LAST_DAY(CURRENT_DATE)
-                        AND (endDate IS NULL OR endDate > LAST_DAY(CURRENT_DATE))
+                        AND start_date <= LAST_DAY(CURRENT_DATE)
+                        AND (end_date IS NULL OR end_date > LAST_DAY(CURRENT_DATE))
                     ),
                     PreviousMonth AS (
                         SELECT COUNT(DISTINCT user_id) as count
                         FROM subscriptions
                         WHERE status = 'ACTIVE'
-                        AND startDate <= LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                        AND (endDate IS NULL OR endDate > LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))
+                        AND start_date <= LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                        AND (end_date IS NULL OR end_date > LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))
                     )
                     SELECT
                         CASE WHEN p.count = 0 THEN 0
@@ -394,7 +394,7 @@ public class DashboardController {
                     LEFT JOIN payments p ON
                         s.id = p.service_id
                         AND p.status = 'PAID'
-                        AND p.paymentDate BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                        AND p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                     GROUP BY s.id, s.name, m.month_start
                 )
                 SELECT
@@ -432,7 +432,7 @@ public class DashboardController {
                         COUNT(DISTINCT p.user_id) as active_subscribers
                     FROM Months m
                     LEFT JOIN payments p ON
-                        p.paymentDate BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                        p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                         AND p.status = 'PAID'
                     GROUP BY m.month_start
                 )
