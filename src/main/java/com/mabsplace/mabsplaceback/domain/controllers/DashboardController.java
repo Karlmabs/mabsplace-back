@@ -119,16 +119,12 @@ public class DashboardController {
                 """
                         SELECT
                             ec.name as category,
-                            COALESCE(SUM(CASE
-                                WHEN MONTH(e.expense_date) = MONTH(CURRENT_DATE)
-                                AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
-                                THEN e.amount END), 0) as amount,
-                            COUNT(CASE
-                                WHEN MONTH(e.expense_date) = MONTH(CURRENT_DATE)
-                                AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
-                                THEN e.id END) as transaction_count
+                            COALESCE(SUM(e.amount), 0) as amount,
+                            COUNT(e.id) as transaction_count
                         FROM expense_categories ec
                         LEFT JOIN expenses e ON ec.id = e.category_id
+                        WHERE MONTH(e.expense_date) = MONTH(CURRENT_DATE)
+                        AND YEAR(e.expense_date) = YEAR(CURRENT_DATE)
                         GROUP BY ec.id, ec.name
                         ORDER BY amount DESC
                         """,
