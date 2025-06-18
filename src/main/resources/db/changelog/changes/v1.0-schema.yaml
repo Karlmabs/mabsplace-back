@@ -734,6 +734,116 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: create-expense-categories-table
+      author: Karlmabs
+      changes:
+        - createTable:
+            tableName: expense_categories
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(255)
+              - column:
+                  name: created_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: create-expenses-table
+      author: Karlmabs
+      changes:
+        - createTable:
+            tableName: expenses
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: category_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_expenses_category_id
+                    references: expense_categories(id)
+              - column:
+                  name: amount
+                  type: decimal(19, 2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(255)
+              - column:
+                  name: expense_date
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payment_method
+                  type: varchar(255)
+              - column:
+                  name: receipt_url
+                  type: varchar(255)
+              - column:
+                  name: is_recurring
+                  type: boolean
+                  defaultValue: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: recurrence_period
+                  type: varchar(255)
+              - column:
+                  name: next_recurrence_date
+                  type: datetime
+              - column:
+                  name: currency_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_expenses_currency_id
+                    references: currencies(id)
+              - column:
+                  name: created_by
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_expenses_created_by
+                    references: users(id)
+              - column:
+                  name: created_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+
 
 
   - changeSet:
@@ -780,7 +890,7 @@ databaseChangeLog:
               - column:
                   name: symbol
                   value: "XAF"
-                  
+
   - changeSet:
       id: add-referral-code-to-users
       author: Karlmabs
