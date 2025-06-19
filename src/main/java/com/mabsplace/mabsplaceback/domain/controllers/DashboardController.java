@@ -90,16 +90,16 @@ public class DashboardController {
                             UNION ALL
                             SELECT DATE_ADD(date, INTERVAL 1 MONTH)
                             FROM Months
-                            WHERE date <= CURRENT_DATE
+                            WHERE date < CURRENT_DATE
                         )
-                        SELECT
+                        SELECT 
                             DATE_FORMAT(m.date, '%b') as month,
                             COALESCE(SUM(e.amount), 0) as total_expenses,
                             COALESCE(SUM(CASE WHEN e.is_recurring = TRUE THEN e.amount ELSE 0 END), 0) as recurring_expenses,
                             COALESCE(SUM(CASE WHEN e.is_recurring = FALSE THEN e.amount ELSE 0 END), 0) as one_time_expenses
                         FROM Months m
-                        LEFT JOIN expenses e ON
-                            MONTH(e.expense_date) = MONTH(m.date)
+                        LEFT JOIN expenses e ON 
+                            MONTH(e.expense_date) = MONTH(m.date) 
                             AND YEAR(e.expense_date) = YEAR(m.date)
                         GROUP BY m.date
                         ORDER BY m.date
