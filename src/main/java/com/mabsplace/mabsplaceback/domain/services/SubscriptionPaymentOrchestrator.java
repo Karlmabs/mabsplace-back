@@ -182,9 +182,10 @@ public class SubscriptionPaymentOrchestrator {
             if (user.getReferrer() != null) {
                 User referrer = user.getReferrer();
 
-                // Check if this is the user's first non-trial payment
-                boolean isFirstNonTrialPayment = !isTrial &&
-                    paymentRepository.countByUserIdAndSubscriptionPlanNameNot(user.getId(), "Trial") == 1;
+                // Check if this is the user's first non-trial payment 
+                // Count excludes current payment since we want to check if this is THE first
+                long previousNonTrialPayments = paymentRepository.countByUserIdAndSubscriptionPlanNameNot(user.getId(), "Trial") - (isTrial ? 0 : 1);
+                boolean isFirstNonTrialPayment = !isTrial && previousNonTrialPayments == 0;
 
                 if (isFirstNonTrialPayment) {
                     BigDecimal rewardAmount = getReferralRewardAmount();
@@ -329,7 +330,8 @@ public class SubscriptionPaymentOrchestrator {
 
         if (Objects.equals(subscriptionPlan.getName(), "Trial")) {
             log.info("Creating trial subscription");
-            if (subscriptionRepository.existsByUserIdAndServiceIdAndIsTrial(payment.getUser().getId(), payment.getService().getId(), true)) {
+            // Check if user has ever had a trial for this service (even if deleted/cancelled)
+            if (subscriptionRepository.existsByUserIdAndServiceIdAndIsTrialTrue(payment.getUser().getId(), payment.getService().getId())) {
                 throw new RuntimeException("You have already used the trial for this service");
             }
             // Check if user has any active subscription (trial or paid) for this service

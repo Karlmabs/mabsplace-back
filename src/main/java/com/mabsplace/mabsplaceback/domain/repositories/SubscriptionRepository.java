@@ -24,5 +24,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     boolean existsByUserIdAndServiceIdAndIsTrial(Long id, Long id1, boolean b);
 
+    // Check if user has ever had a trial for this service (regardless of current status)
+    boolean existsByUserIdAndServiceIdAndIsTrialTrue(Long userId, Long serviceId);
+
     boolean existsByUserIdAndServiceIdAndStatusAndEndDateAfter(Long id, Long id1, SubscriptionStatus subscriptionStatus, Date date);
 }
