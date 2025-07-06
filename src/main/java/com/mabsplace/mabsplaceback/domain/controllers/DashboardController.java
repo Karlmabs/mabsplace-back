@@ -46,7 +46,16 @@ public class DashboardController {
 
         // Calculate Monthly Recurring Revenue (MRR) from active subscriptions
         Double monthlyRecurringRevenue = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(sp.price), 0) FROM subscriptions s " +
+                "SELECT COALESCE(SUM(" +
+                "  CASE sp.period " +
+                "    WHEN 'MONTHLY' THEN sp.price " +
+                "    WHEN 'YEARLY' THEN sp.price / 12 " +
+                "    WHEN 'QUARTERLY' THEN sp.price / 3 " +
+                "    WHEN 'SEMI_ANNUALLY' THEN sp.price / 6 " +
+                "    WHEN 'DAILY' THEN sp.price * 30 " +
+                "    ELSE sp.price " +
+                "  END" +
+                "), 0) FROM subscriptions s " +
                 "JOIN subscription_plans sp ON s.plan_id = sp.id " +
                 "WHERE s.status = 'ACTIVE' " +
                 "AND s.start_date <= CURRENT_DATE " +
@@ -54,7 +63,7 @@ public class DashboardController {
                 Double.class
         );
 
-        // Get average subscription value (based on subscription plans, not individual payments)
+        // Get average subscription value (average plan price chosen by active subscribers)
         Double avgSubscriptionValue = jdbcTemplate.queryForObject(
                 "SELECT COALESCE(AVG(sp.price), 0) FROM subscriptions s " +
                 "JOIN subscription_plans sp ON s.plan_id = sp.id " +
