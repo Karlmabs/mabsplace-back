@@ -20,9 +20,18 @@ public class DashboardController {
 
     @GetMapping("/stats")
     public DashboardStats getStats() {
-        // Get total subscribers (count of distinct users who have made payments)
-        Integer totalSubscribers = jdbcTemplate.queryForObject(
+        // Get total customers (count of distinct users who have made payments)
+        Integer totalCustomers = jdbcTemplate.queryForObject(
                 "SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID'",
+                Integer.class
+        );
+
+        // Get active subscribers (count of users with active subscription contracts)
+        Integer activeSubscribers = jdbcTemplate.queryForObject(
+                "SELECT COUNT(DISTINCT user_id) FROM subscriptions " +
+                "WHERE status = 'ACTIVE' " +
+                "AND start_date <= CURRENT_DATE " +
+                "AND (end_date IS NULL OR end_date > CURRENT_DATE)",
                 Integer.class
         );
 
@@ -35,14 +44,28 @@ public class DashboardController {
                 Double.class
         );
 
-        // Get average subscription value
-        Double avgValue = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(AVG(amount), 0) FROM payments WHERE status = 'PAID'",
+        // Calculate Monthly Recurring Revenue (MRR) from active subscriptions
+        Double monthlyRecurringRevenue = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(SUM(sp.price), 0) FROM subscriptions s " +
+                "JOIN subscription_plans sp ON s.subscription_plan_id = sp.id " +
+                "WHERE s.status = 'ACTIVE' " +
+                "AND s.start_date <= CURRENT_DATE " +
+                "AND (s.end_date IS NULL OR s.end_date > CURRENT_DATE)",
                 Double.class
         );
 
-        // Get active subscriptions count (users who made payments in current month)
-        Integer activeSubscriptions = jdbcTemplate.queryForObject(
+        // Get average subscription value (based on subscription plans, not individual payments)
+        Double avgSubscriptionValue = jdbcTemplate.queryForObject(
+                "SELECT COALESCE(AVG(sp.price), 0) FROM subscriptions s " +
+                "JOIN subscription_plans sp ON s.subscription_plan_id = sp.id " +
+                "WHERE s.status = 'ACTIVE' " +
+                "AND s.start_date <= CURRENT_DATE " +
+                "AND (s.end_date IS NULL OR s.end_date > CURRENT_DATE)",
+                Double.class
+        );
+
+        // Get paying customers this month (users who made payments in current month)  
+        Integer payingCustomersThisMonth = jdbcTemplate.queryForObject(
                 "SELECT COUNT(DISTINCT user_id) FROM payments WHERE status = 'PAID' " +
                 "AND MONTH(payment_date) = MONTH(CURRENT_DATE) " +
                 "AND YEAR(payment_date) = YEAR(CURRENT_DATE)",
@@ -50,7 +73,7 @@ public class DashboardController {
         );
 
         // Calculate growth percentages (comparing with previous month)
-        Double subscriptionGrowth = calculateGrowthRate("subscriptions");
+        Double subscriberGrowth = calculateSubscriberGrowthRate();
         Double revenueGrowth = calculateGrowthRate("payments");
 
         // New expense stats
@@ -64,16 +87,17 @@ public class DashboardController {
         // Calculate net profit
         Double netProfit = (monthlyRevenue != null ? monthlyRevenue : 0) - (monthlyExpenses != null ? monthlyExpenses : 0);
 
-
         // Calculate profit margin
         Double profitMargin = (monthlyRevenue != null && monthlyRevenue > 0) ? (netProfit / monthlyRevenue) * 100 : 0;
 
         return new DashboardStats(
-                totalSubscribers,
+                totalCustomers,
+                activeSubscribers,
                 monthlyRevenue,
-                avgValue,
-                activeSubscriptions,
-                subscriptionGrowth,
+                monthlyRecurringRevenue,
+                avgSubscriptionValue,
+                payingCustomersThisMonth,
+                subscriberGrowth,
                 revenueGrowth,
                 monthlyExpenses,
                 netProfit,
@@ -277,6 +301,32 @@ public class DashboardController {
                         rs.getDouble("growth")
                 )
         );
+    }
+
+    private Double calculateSubscriberGrowthRate() {
+        String query = """
+                WITH CurrentMonth AS (
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM subscriptions
+                    WHERE status = 'ACTIVE'
+                    AND start_date <= CURRENT_DATE
+                    AND (end_date IS NULL OR end_date > CURRENT_DATE)
+                ),
+                PreviousMonth AS (
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM subscriptions
+                    WHERE status = 'ACTIVE'
+                    AND start_date <= DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)
+                    AND (end_date IS NULL OR end_date > DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                )
+                SELECT
+                    CASE WHEN p.count = 0 THEN 0
+                         ELSE ((c.count - p.count) / p.count * 100)
+                    END as growth_rate
+                FROM CurrentMonth c, PreviousMonth p
+                """;
+
+        return jdbcTemplate.queryForObject(query, Double.class);
     }
 
     private Double calculateGrowthRate(String table) {
@@ -660,15 +710,17 @@ class TopPerformingMonth {
 @NoArgsConstructor
 @AllArgsConstructor
 class DashboardStats {
-    private Integer totalSubscribers;
-    private Double monthlyRevenue;
-    private Double avgSubscriptionValue;
-    private Integer activeSubscriptions;
-    private Double subscriptionGrowth;
-    private Double revenueGrowth;
-    private Double monthlyExpenses;
-    private Double netProfit;
-    private Double profitMargin;
+    private Integer totalCustomers;           // Total users who have ever made a payment
+    private Integer activeSubscribers;       // Users with active subscription contracts
+    private Double monthlyRevenue;           // Revenue from payments this month
+    private Double monthlyRecurringRevenue;  // MRR from active subscriptions
+    private Double avgSubscriptionValue;     // Average subscription plan price
+    private Integer payingCustomersThisMonth; // Users who paid this month
+    private Double subscriberGrowth;         // Growth rate of active subscribers
+    private Double revenueGrowth;           // Growth rate of monthly revenue
+    private Double monthlyExpenses;         // Total expenses this month
+    private Double netProfit;               // Revenue - Expenses
+    private Double profitMargin;            // (Net Profit / Revenue) * 100
 }
 
 @Data
