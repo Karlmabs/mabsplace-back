@@ -108,6 +108,17 @@ public class SubscriptionPlanService {
     return plans;
   }
 
+  public List<SubscriptionPlan> getNonTrialSubscriptionPlansByMyServiceId(Long myServiceId) {
+    logger.info("Fetching non-trial subscription plans by myService ID: {}", myServiceId);
+    List<SubscriptionPlan> plans = subscriptionPlanRepository.findByMyServiceId(myServiceId);
+    // Filter out trial plans
+    List<SubscriptionPlan> nonTrialPlans = plans.stream()
+        .filter(plan -> !plan.getName().equals("Trial"))
+        .toList();
+    logger.info("Fetched {} non-trial subscription plans for myService ID: {}", nonTrialPlans.size(), myServiceId);
+    return nonTrialPlans;
+  }
+
   public void deleteSubscriptionPlan(Long id) {
     logger.info("Deleting subscription plan with ID: {}", id);
     subscriptionPlanRepository.deleteById(id);

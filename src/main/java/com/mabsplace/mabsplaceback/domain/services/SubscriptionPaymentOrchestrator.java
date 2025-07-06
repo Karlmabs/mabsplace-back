@@ -226,12 +226,15 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     public boolean processSubscriptionRenewal(Subscription subscription, SubscriptionPlan nextPlan) {
-        // Prevent renewal of trial subscriptions
+        // Allow trial renewal only to non-trial plans
         if (subscription.getIsTrial()) {
-            log.info("Skipping renewal for trial subscription ID: {}", subscription.getId());
-            subscription.setStatus(SubscriptionStatus.CANCELLED);
-            subscriptionRepository.save(subscription);
-            return false;
+            if (nextPlan == null || nextPlan.getName().equals("Trial")) {
+                log.info("Preventing trial renewal to trial plan for subscription ID: {}", subscription.getId());
+                subscription.setStatus(SubscriptionStatus.CANCELLED);
+                subscriptionRepository.save(subscription);
+                return false;
+            }
+            log.info("Allowing trial renewal to non-trial plan for subscription ID: {}", subscription.getId());
         }
 
         User user = subscription.getUser();

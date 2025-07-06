@@ -53,6 +53,14 @@ public class SubscriptionPlanController {
         return new ResponseEntity<>(mapper.toDtoList(subscriptionPlans), HttpStatus.OK);
     }
 
+    @GetMapping("/myService/{myServiceId}/non-trial")
+    public ResponseEntity<List<SubscriptionPlanResponseDto>> getNonTrialSubscriptionPlansByMyServiceId(@PathVariable Long myServiceId) {
+        logger.info("Fetching non-trial subscription plans by myService ID: {}", myServiceId);
+        List<SubscriptionPlan> subscriptionPlans = subscriptionPlanService.getNonTrialSubscriptionPlansByMyServiceId(myServiceId);
+        logger.info("Fetched {} non-trial subscription plans for myService ID: {}", subscriptionPlans.size(), myServiceId);
+        return new ResponseEntity<>(mapper.toDtoList(subscriptionPlans), HttpStatus.OK);
+    }
+
     @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_SUBSCRIPTION_PLANS')")
     @GetMapping
     public ResponseEntity<List<SubscriptionPlanResponseDto>> getAllSubscriptionPlans() {
