@@ -241,8 +241,8 @@ public class DashboardController {
                         FROM services s
                         LEFT JOIN subscriptions sub ON s.id = sub.service_id
                             AND sub.status = 'ACTIVE'
-                            AND sub.start_date <= LAST_DAY(CURRENT_DATE)
-                            AND (sub.end_date IS NULL OR sub.end_date > LAST_DAY(CURRENT_DATE))
+                            AND sub.start_date <= CURRENT_DATE
+                            AND (sub.end_date IS NULL OR sub.end_date > CURRENT_DATE)
                         GROUP BY s.id, s.name
                     ),
                     LastMonthStats AS (
@@ -252,8 +252,8 @@ public class DashboardController {
                         FROM services s
                         LEFT JOIN subscriptions sub ON s.id = sub.service_id
                             AND sub.status = 'ACTIVE'
-                            AND sub.start_date <= LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
-                            AND (sub.end_date IS NULL OR sub.end_date > LAST_DAY(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)))
+                            AND sub.start_date <= DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)
+                            AND (sub.end_date IS NULL OR sub.end_date > DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
                         GROUP BY s.id
                     )
                     SELECT
