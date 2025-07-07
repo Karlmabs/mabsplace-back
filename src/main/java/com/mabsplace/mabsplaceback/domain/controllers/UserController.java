@@ -178,4 +178,28 @@ public class UserController {
                 .map(user -> ResponseEntity.ok(mapper.toDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    /**
+     * Get all users with basic info only (firstname, lastname, username, email, phone)
+     */
+    @GetMapping("/basic-info")
+    public ResponseEntity<List<Map<String, Object>>> getAllUsersBasicInfo() {
+        logger.info("Fetching all users with basic info");
+        List<User> users = userService.getAllUsers();
+        
+        List<Map<String, Object>> basicInfoList = users.stream()
+                .map(user -> {
+                    Map<String, Object> basicInfo = new HashMap<>();
+                    basicInfo.put("firstname", user.getFirstname());
+                    basicInfo.put("lastname", user.getLastname());
+                    basicInfo.put("username", user.getUsername());
+                    basicInfo.put("email", user.getEmail());
+                    basicInfo.put("phone", user.getPhonenumber());
+                    return basicInfo;
+                })
+                .toList();
+        
+        logger.info("Fetched basic info for {} users", basicInfoList.size());
+        return ResponseEntity.ok(basicInfoList);
+    }
 }
