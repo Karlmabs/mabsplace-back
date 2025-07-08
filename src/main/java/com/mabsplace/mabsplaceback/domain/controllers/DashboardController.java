@@ -26,12 +26,13 @@ public class DashboardController {
                 Integer.class
         );
 
-        // Get active subscribers (count of users with active subscription contracts)
+        // Get active subscribers (count of users with active non-trial subscription contracts)
         Integer activeSubscribers = jdbcTemplate.queryForObject(
                 "SELECT COUNT(DISTINCT user_id) FROM subscriptions " +
                 "WHERE status = 'ACTIVE' " +
                 "AND start_date <= CURRENT_DATE " +
-                "AND (end_date IS NULL OR end_date > CURRENT_DATE)",
+                "AND (end_date IS NULL OR end_date > CURRENT_DATE) " +
+                "AND (is_trial IS NULL OR is_trial = FALSE)",
                 Integer.class
         );
 
@@ -223,7 +224,8 @@ public class DashboardController {
                                        COALESCE((SELECT COUNT(DISTINCT user_id) FROM payments
                                                  WHERE status = 'PAID'\s
                                                  AND MONTH(payment_date) = MONTH(month_start)
-                                                 AND YEAR(payment_date) = YEAR(month_start)), 0) AS subscriptions
+                                                 AND YEAR(payment_date) = YEAR(month_start)
+                                                 AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')), 0) AS subscriptions
                                    FROM Months
                                    ORDER BY month_start;
                 """;
@@ -246,6 +248,7 @@ public class DashboardController {
                         "LEFT JOIN subscriptions sub ON s.id = sub.service_id " +
                         "    AND sub.status = 'ACTIVE' " +
                         "    AND (sub.end_date IS NULL OR sub.end_date > CURRENT_DATE) " +
+                        "    AND (sub.is_trial IS NULL OR sub.is_trial = FALSE) " +
                         "GROUP BY s.id, s.name",
                 (rs, rowNum) -> new ServiceDistribution(
                         rs.getString("name"),
@@ -270,36 +273,40 @@ public class DashboardController {
                         SELECT
                             s.id,
                             s.name,
-                            COUNT(DISTINCT sub.user_id) as current_subscribers
+                            COUNT(DISTINCT p.user_id) as current_month_subscribers
                         FROM services s
-                        LEFT JOIN subscriptions sub ON s.id = sub.service_id
-                            AND sub.status = 'ACTIVE'
-                            AND sub.start_date <= CURRENT_DATE
-                            AND (sub.end_date IS NULL OR sub.end_date > CURRENT_DATE)
+                        LEFT JOIN payments p ON s.id = p.service_id
+                            AND p.status = 'PAID'
+                            AND MONTH(p.payment_date) = MONTH(CURRENT_DATE)
+                            AND YEAR(p.payment_date) = YEAR(CURRENT_DATE)
+                            AND p.subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                         GROUP BY s.id, s.name
                     ),
                     LastMonthStats AS (
                         SELECT
                             s.id,
-                            COUNT(DISTINCT sub.user_id) as last_month_subscribers
+                            COUNT(DISTINCT p.user_id) as last_month_subscribers
                         FROM services s
-                        LEFT JOIN subscriptions sub ON s.id = sub.service_id
-                            AND sub.status = 'ACTIVE'
-                            AND sub.start_date <= DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)
-                            AND (sub.end_date IS NULL OR sub.end_date > DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                        LEFT JOIN payments p ON s.id = p.service_id
+                            AND p.status = 'PAID'
+                            AND MONTH(p.payment_date) = MONTH(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                            AND YEAR(p.payment_date) = YEAR(DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                            AND p.subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                         GROUP BY s.id
                     )
                     SELECT
                         cms.name,
-                        cms.current_subscribers as subscribers,
+                        cms.current_month_subscribers as subscribers,
                         CASE
-                            WHEN lms.last_month_subscribers > 0
-                            THEN ((cms.current_subscribers - lms.last_month_subscribers) / lms.last_month_subscribers * 100)
+                            WHEN COALESCE(lms.last_month_subscribers, 0) > 0
+                            THEN ((cms.current_month_subscribers - COALESCE(lms.last_month_subscribers, 0)) / lms.last_month_subscribers * 100)
+                            WHEN cms.current_month_subscribers > 0 AND COALESCE(lms.last_month_subscribers, 0) = 0
+                            THEN 100
                             ELSE 0
                         END as growth
                     FROM CurrentMonthStats cms
                     LEFT JOIN LastMonthStats lms ON cms.id = lms.id
-                    ORDER BY cms.current_subscribers DESC
+                    ORDER BY cms.current_month_subscribers DESC
                     LIMIT 4
                 """;
 
@@ -320,6 +327,7 @@ public class DashboardController {
                     WHERE status = 'ACTIVE'
                     AND start_date <= CURRENT_DATE
                     AND (end_date IS NULL OR end_date > CURRENT_DATE)
+                    AND (is_trial IS NULL OR is_trial = FALSE)
                 ),
                 PreviousMonth AS (
                     SELECT COUNT(DISTINCT user_id) as count
@@ -327,6 +335,7 @@ public class DashboardController {
                     WHERE status = 'ACTIVE'
                     AND start_date <= DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)
                     AND (end_date IS NULL OR end_date > DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                    AND (is_trial IS NULL OR is_trial = FALSE)
                 )
                 SELECT
                     CASE WHEN p.count = 0 THEN 0
@@ -450,6 +459,7 @@ public class DashboardController {
                         s.id = p.service_id
                         AND p.status = 'PAID'
                         AND p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
+                        AND p.subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     GROUP BY s.id, s.name, m.month_start
                 )
                 SELECT
@@ -489,6 +499,7 @@ public class DashboardController {
                     LEFT JOIN payments p ON
                         p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                         AND p.status = 'PAID'
+                        AND p.subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     GROUP BY m.month_start
                 )
                 SELECT
@@ -532,6 +543,7 @@ public class DashboardController {
                         FROM payments
                         WHERE status = 'PAID'
                         AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                        AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     ), 0) as new_subscriptions,
                     COALESCE((
                         SELECT SUM(amount)
@@ -543,6 +555,7 @@ public class DashboardController {
                         FROM payments
                         WHERE status = 'PAID'
                         AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                        AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     ), 0) as active_subscribers
                 FROM CurrentMonth
                 """,
@@ -575,6 +588,7 @@ public class DashboardController {
                         FROM payments
                         WHERE status = 'PAID'
                         AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                        AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     ), 0) as new_subscriptions,
                     COALESCE((
                         SELECT SUM(amount)
@@ -586,6 +600,7 @@ public class DashboardController {
                         FROM payments
                         WHERE status = 'PAID'
                         AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                        AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     ), 0) as active_subscribers
                 FROM PreviousMonth
                 """,
@@ -622,6 +637,7 @@ public class DashboardController {
                         FROM payments
                         WHERE status = 'PAID'
                         AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                        AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     ), 0) as new_subscriptions,
                     COALESCE((
                         SELECT SUM(amount)
@@ -633,6 +649,7 @@ public class DashboardController {
                         FROM payments
                         WHERE status = 'PAID'
                         AND payment_date BETWEEN month_start AND LAST_DAY(month_start)
+                        AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
                     ), 0) as active_subscribers
                 FROM Months
                 ORDER BY month_start
