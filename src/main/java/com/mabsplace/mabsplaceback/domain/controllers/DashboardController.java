@@ -215,7 +215,7 @@ public class DashboardController {
                                        UNION ALL
                                        SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
                                        FROM Months
-                                       WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+                                       WHERE month_start <= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                                    )
                                    SELECT DATE_FORMAT(month_start, '%b') AS month,
                                        COALESCE((SELECT SUM(amount) FROM payments\s
@@ -443,14 +443,14 @@ public class DashboardController {
                     UNION ALL
                     SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
                     FROM Months
-                    WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+                    WHERE month_start <= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 ),
                 ServiceStats AS (
                     SELECT
                         s.id as service_id,
                         s.name as service_name,
                         m.month_start,
-                        DATE_FORMAT(m.month_start, '%M %Y') as month_display,
+                        DATE_FORMAT(m.month_start, '%b %Y') as month_display,
                         COUNT(DISTINCT p.user_id) as subscriptions,
                         COALESCE(SUM(p.amount), 0) as revenue
                     FROM Months m
@@ -460,7 +460,7 @@ public class DashboardController {
                         AND p.status = 'PAID'
                         AND p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                         AND p.subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
-                    GROUP BY s.id, s.name, m.month_start
+                    GROUP BY s.id, s.name, m.month_start, month_display
                 )
                 SELECT
                     service_name as serviceName,
@@ -486,12 +486,12 @@ public class DashboardController {
                     UNION ALL
                     SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
                     FROM Months
-                    WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+                    WHERE month_start <= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 ),
                 MonthlyStats AS (
                     SELECT
-                        DATE_FORMAT(m.month_start, '%Y%m') AS month_key,
-                        DATE_FORMAT(m.month_start, '%M %Y') AS month_display,
+                        m.month_start,
+                        DATE_FORMAT(m.month_start, '%b %Y') AS month_display,
                         COALESCE(SUM(p.amount), 0) as revenue,
                         COUNT(DISTINCT p.user_id) as new_subscriptions,
                         COUNT(DISTINCT p.user_id) as active_subscribers
@@ -500,7 +500,7 @@ public class DashboardController {
                         p.payment_date BETWEEN m.month_start AND LAST_DAY(m.month_start)
                         AND p.status = 'PAID'
                         AND p.subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
-                    GROUP BY m.month_start
+                    GROUP BY m.month_start, month_display
                 )
                 SELECT
                     month_display as month,
@@ -622,10 +622,10 @@ public class DashboardController {
                     UNION ALL
                     SELECT DATE_ADD(month_start, INTERVAL 1 MONTH)
                     FROM Months
-                    WHERE month_start < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+                    WHERE month_start <= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
                 )
                 SELECT
-                    DATE_FORMAT(month_start, '%M %Y') as month,
+                    DATE_FORMAT(month_start, '%b %Y') as month,
                     COALESCE((
                         SELECT SUM(amount)
                         FROM payments
