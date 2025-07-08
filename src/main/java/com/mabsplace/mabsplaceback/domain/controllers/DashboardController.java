@@ -100,6 +100,15 @@ public class DashboardController {
         // Calculate profit margin
         Double profitMargin = (monthlyRevenue != null && monthlyRevenue > 0) ? (netProfit / monthlyRevenue) * 100 : 0;
 
+        // Calculate churn rate (percentage of customers who cancelled in the current month)
+        Double churnRate = calculateChurnRate();
+
+        // Calculate Customer Lifetime Value (CLV)
+        Double customerLifetimeValue = calculateCustomerLifetimeValue();
+
+        // Calculate Customer Acquisition Cost (CAC)
+        Double customerAcquisitionCost = calculateCustomerAcquisitionCost();
+
         return new DashboardStats(
                 totalCustomers,
                 activeSubscribers,
@@ -111,7 +120,10 @@ public class DashboardController {
                 revenueGrowth,
                 monthlyExpenses,
                 netProfit,
-                profitMargin
+                profitMargin,
+                churnRate,
+                customerLifetimeValue,
+                customerAcquisitionCost
         );
     }
 
@@ -665,6 +677,98 @@ public class DashboardController {
 
         return new MonthlyPerformance(currentMonth, previousMonth, trends);
     }
+
+    private Double calculateChurnRate() {
+        String query = """
+                WITH CurrentMonthActive AS (
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM subscriptions
+                    WHERE status = 'ACTIVE'
+                    AND start_date <= DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH)
+                    AND (end_date IS NULL OR end_date > DATE_SUB(CURRENT_DATE, INTERVAL 1 MONTH))
+                    AND (is_trial IS NULL OR is_trial = FALSE)
+                ),
+                ChurnedThisMonth AS (
+                    SELECT COUNT(DISTINCT user_id) as count
+                    FROM subscriptions
+                    WHERE status IN ('CANCELLED', 'EXPIRED')
+                    AND (end_date IS NOT NULL AND MONTH(end_date) = MONTH(CURRENT_DATE) AND YEAR(end_date) = YEAR(CURRENT_DATE))
+                    AND (is_trial IS NULL OR is_trial = FALSE)
+                )
+                SELECT
+                    CASE WHEN cma.count = 0 THEN 0
+                         ELSE (ctm.count * 100.0 / cma.count)
+                    END as churn_rate
+                FROM CurrentMonthActive cma, ChurnedThisMonth ctm
+                """;
+
+        return jdbcTemplate.queryForObject(query, Double.class);
+    }
+
+    private Double calculateCustomerLifetimeValue() {
+        String query = """
+                WITH CustomerMetrics AS (
+                    SELECT 
+                        AVG(total_revenue) as avg_revenue_per_customer,
+                        AVG(subscription_months) as avg_lifetime_months
+                    FROM (
+                        SELECT 
+                            p.user_id,
+                            SUM(p.amount) as total_revenue,
+                            DATEDIFF(
+                                COALESCE(MAX(s.end_date), CURRENT_DATE),
+                                MIN(s.start_date)
+                            ) / 30.0 as subscription_months
+                        FROM payments p
+                        JOIN subscriptions s ON p.user_id = s.user_id
+                        WHERE p.status = 'PAID'
+                        AND (s.is_trial IS NULL OR s.is_trial = FALSE)
+                        GROUP BY p.user_id
+                        HAVING subscription_months > 0
+                    ) customer_data
+                )
+                SELECT 
+                    COALESCE(avg_revenue_per_customer, 0) as clv
+                FROM CustomerMetrics
+                """;
+
+        return jdbcTemplate.queryForObject(query, Double.class);
+    }
+
+    private Double calculateCustomerAcquisitionCost() {
+        String query = """
+                WITH MonthlyMetrics AS (
+                    SELECT
+                        COALESCE(SUM(e.amount), 0) as total_marketing_expenses,
+                        COUNT(DISTINCT p.user_id) as new_customers
+                    FROM expenses e
+                    RIGHT JOIN (
+                        SELECT DISTINCT user_id
+                        FROM payments
+                        WHERE status = 'PAID'
+                        AND MONTH(payment_date) = MONTH(CURRENT_DATE)
+                        AND YEAR(payment_date) = YEAR(CURRENT_DATE)
+                        AND subscription_plan_id NOT IN (SELECT id FROM subscription_plans WHERE name = 'Trial')
+                        AND user_id NOT IN (
+                            SELECT DISTINCT user_id
+                            FROM payments
+                            WHERE status = 'PAID'
+                            AND payment_date < DATE_FORMAT(CURRENT_DATE, '%Y-%m-01')
+                        )
+                    ) p ON 1=1
+                    LEFT JOIN expense_categories ec ON e.category_id = ec.id
+                    WHERE e.expense_date BETWEEN DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') AND LAST_DAY(CURRENT_DATE)
+                    AND (ec.name LIKE '%marketing%' OR ec.name LIKE '%advertising%' OR ec.name LIKE '%promotion%')
+                )
+                SELECT
+                    CASE WHEN new_customers = 0 THEN 0
+                         ELSE total_marketing_expenses / new_customers
+                    END as cac
+                FROM MonthlyMetrics
+                """;
+
+        return jdbcTemplate.queryForObject(query, Double.class);
+    }
 }
 
 @Data
@@ -747,6 +851,9 @@ class DashboardStats {
     private Double monthlyExpenses;         // Total expenses this month
     private Double netProfit;               // Revenue - Expenses
     private Double profitMargin;            // (Net Profit / Revenue) * 100
+    private Double churnRate;               // Monthly churn rate percentage
+    private Double customerLifetimeValue;   // Average CLV in XAF
+    private Double customerAcquisitionCost; // Average CAC in XAF
 }
 
 @Data
