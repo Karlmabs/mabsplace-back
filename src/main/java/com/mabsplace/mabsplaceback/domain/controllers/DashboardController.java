@@ -758,7 +758,7 @@ public class DashboardController {
                     ) p ON 1=1
                     LEFT JOIN expense_categories ec ON e.category_id = ec.id
                     WHERE e.expense_date BETWEEN DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') AND LAST_DAY(CURRENT_DATE)
-                    AND (ec.name LIKE '%marketing%' OR ec.name LIKE '%advertising%' OR ec.name LIKE '%promotion%')
+                    AND (ec.name LIKE '%marketing%' OR ec.name LIKE '%advertising%' OR ec.name LIKE '%promotion%' OR ec.name LIKE '%publicite%' OR ec.name LIKE '%devs%' OR ec.name LIKE '%rewards%')
                 )
                 SELECT
                     CASE WHEN new_customers = 0 THEN 0
