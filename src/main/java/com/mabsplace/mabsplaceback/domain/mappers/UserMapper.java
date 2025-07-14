@@ -72,5 +72,7 @@ public interface UserMapper {
     List<UserResponseDto> toDtoList(List<User> users);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "referralCode", ignore = true)  // Referral code is handled manually in service
+    @Mapping(target = "password", ignore = true)      // Password is handled manually with encoding in service
     User partialUpdate(UserRequestDto userRequestDto, @MappingTarget User user);
 }

@@ -180,6 +180,26 @@ public class UserController {
     }
 
     /**
+     * Set a referrer for a user using a referral code
+     */
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'UPDATE_USER')")
+    @PostMapping("/{id}/set-referrer")
+    public ResponseEntity<UserResponseDto> setUserReferrer(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        logger.info("Setting referrer for user ID: {} with referral code: {}", id, request.get("referralCode"));
+        try {
+            String referralCode = request.get("referralCode");
+            if (referralCode == null || referralCode.isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+            User updated = userService.setUserReferrer(id, referralCode);
+            return ResponseEntity.ok(mapper.toDto(updated));
+        } catch (Exception e) {
+            logger.error("Failed to set referrer for user ID: {}", id, e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
      * Get all users with basic info only (firstname, lastname, username, email, phone)
      */
     @GetMapping("/basic-info")

@@ -64,35 +64,88 @@ public class UserService {
     public User updateUser(Long id, UserRequestDto updatedUser) throws EntityNotFoundException {
         logger.info("Updating user with ID: {}", id);
         User target = userRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("User not found"));
+        
+        // Validate unique constraints before updating
+        if (updatedUser.getEmail() != null && !updatedUser.getEmail().equals(target.getEmail())) {
+            if (userRepository.existsByEmail(updatedUser.getEmail())) {
+                throw new IllegalArgumentException("Email already exists: " + updatedUser.getEmail());
+            }
+        }
+        
+        if (updatedUser.getUsername() != null && !updatedUser.getUsername().equals(target.getUsername())) {
+            if (userRepository.existsByUsername(updatedUser.getUsername())) {
+                throw new IllegalArgumentException("Username already exists: " + updatedUser.getUsername());
+            }
+        }
+        
+        if (updatedUser.getPhonenumber() != null && !updatedUser.getPhonenumber().equals(target.getPhonenumber())) {
+            if (userRepository.existsByPhonenumber(updatedUser.getPhonenumber())) {
+                throw new IllegalArgumentException("Phone number already exists: " + updatedUser.getPhonenumber());
+            }
+        }
+        
+        // Store the original referral code to preserve it
+        String originalReferralCode = target.getReferralCode();
+        
         User updated = mapper.partialUpdate(updatedUser, target);
+        
+        // Handle password encoding if password is provided
+        if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
+            logger.info("Encoding new password for user ID: {}", id);
+            updated.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+        }
         
         if (updatedUser.getProfileName() != null && !updatedUser.getProfileName().isEmpty()) {
             UserProfile defaultProfile = userProfileRepository.findByName(updatedUser.getProfileName()).orElseThrow(() -> new EntityNotFoundException("Profile not found"));
             updated.setUserProfile(defaultProfile);
         }
         
+        // Handle referral code properly - preserve the user's own referral code
+        // The referralCode in the request represents the user's own code, not a referrer lookup
         if (updatedUser.getReferralCode() != null && !updatedUser.getReferralCode().isEmpty()) {
-            logger.info("Updating user referrer using referral code: {}", updatedUser.getReferralCode());
-            User referrer = userRepository.findByReferralCode(updatedUser.getReferralCode())
-                    .orElseThrow(() -> new EntityNotFoundException("Referrer not found with code: " + updatedUser.getReferralCode()));
-
-            // Prevent self-referral
-            if (referrer.getId().equals(updated.getId()) ||
-                referrer.getUsername().equals(updated.getUsername()) ||
-                referrer.getEmail().equals(updated.getEmail())) {
-                logger.warn("User {} attempted to use their own referral code", updated.getUsername());
-                throw new IllegalArgumentException("Cannot use your own referral code");
-            }
-
-            // Check if the user already has a referrer and remove from the referrer's referrals
-            if (updated.getReferrer() != null) {
-                updated.getReferrer().getReferrals().remove(updated);
-            }
-
-            updated.setReferrer(referrer);
-            logger.info("User {} is now referred by {}", updated.getUsername(), referrer.getUsername());
+            // If a referral code is provided, update the user's own referral code
+            logger.info("Updating user's own referral code from {} to {}", originalReferralCode, updatedUser.getReferralCode());
+            updated.setReferralCode(updatedUser.getReferralCode());
+        } else if (originalReferralCode != null) {
+            // If no referral code provided but user had one, preserve the original
+            logger.info("Preserving user's original referral code: {}", originalReferralCode);
+            updated.setReferralCode(originalReferralCode);
         }
+        
         return userRepository.save(updated);
+    }
+
+    /**
+     * Sets a referrer for a user using a referral code
+     * This is separate from regular user updates to avoid confusion
+     */
+    @Transactional
+    public User setUserReferrer(Long userId, String referrerCode) throws EntityNotFoundException {
+        logger.info("Setting referrer for user ID: {} using referral code: {}", userId, referrerCode);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        
+        User referrer = userRepository.findByReferralCode(referrerCode)
+                .orElseThrow(() -> new EntityNotFoundException("Referrer not found with code: " + referrerCode));
+
+        // Prevent self-referral
+        if (referrer.getId().equals(user.getId()) ||
+            referrer.getUsername().equals(user.getUsername()) ||
+            referrer.getEmail().equals(user.getEmail())) {
+            logger.warn("User {} attempted to use their own referral code", user.getUsername());
+            throw new IllegalArgumentException("Cannot use your own referral code");
+        }
+
+        // Check if the user already has a referrer and remove from the referrer's referrals
+        if (user.getReferrer() != null) {
+            user.getReferrer().getReferrals().remove(user);
+        }
+
+        user.setReferrer(referrer);
+        logger.info("User {} is now referred by {}", user.getUsername(), referrer.getUsername());
+        
+        return userRepository.save(user);
     }
 
     public List<User> getAllUsers() {
