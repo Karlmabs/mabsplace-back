@@ -16,6 +16,7 @@ import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -28,6 +29,7 @@ import java.util.Objects;
 import static com.mysql.cj.conf.PropertyKey.logger;
 
 @Service
+@Transactional
 public class SubscriptionPaymentOrchestrator {
     private final WalletService walletService;
     private final SubscriptionRepository subscriptionRepository;
@@ -130,9 +132,14 @@ public class SubscriptionPaymentOrchestrator {
         return payment;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public Payment processPaymentAndCreateSubscription(PaymentRequestDto paymentRequest) throws MessagingException {
+        log.info("Starting payment and subscription creation for user: {}, amount: {}",
+                paymentRequest.getUserId(), paymentRequest.getAmount());
+
         // Handle payment processing
-        User user = userRepository.findById(paymentRequest.getUserId()).orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequest.getUserId()));
+        User user = userRepository.findById(paymentRequest.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", paymentRequest.getUserId()));
         double discount = discountService.getDiscountForUser(user.getId());
 
         BigDecimal amountAfterDiscount = paymentRequest.getAmount().subtract(BigDecimal.valueOf(discount));
@@ -160,60 +167,76 @@ public class SubscriptionPaymentOrchestrator {
             log.info("Skipping balance check for zero-dollar transaction due to 100% discount");
         }
 
-        Payment payment = createPayment(user, paymentRequest, amountAfterDiscount);
+        try {
+            // Create payment and debit wallet - this is now part of the transaction
+            Payment payment = createPayment(user, paymentRequest, amountAfterDiscount);
+            log.info("Payment created successfully: {}, Status: {}", payment.getId(), payment.getStatus());
 
-        // Create subscription if payment successful
-        if (payment.getStatus() == PaymentStatus.PAID) {
-            SubscriptionPlan plan = subscriptionPlanRepository.findById(payment.getSubscriptionPlan().getId())
-                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", payment.getSubscriptionPlan().getId()));
-            boolean isTrial = plan.getName().equals("Trial");
+            // Create subscription if payment successful
+            if (payment.getStatus() == PaymentStatus.PAID) {
+                SubscriptionPlan plan = subscriptionPlanRepository.findById(payment.getSubscriptionPlan().getId())
+                        .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", payment.getSubscriptionPlan().getId()));
+                boolean isTrial = plan.getName().equals("Trial");
 
-            createInitialSubscription(payment);
+                // This will throw an exception if subscription creation fails (e.g., duplicate profile)
+                // The @Transactional annotation will automatically rollback the wallet debit
+                createInitialSubscription(payment);
+                log.info("Subscription created successfully for payment: {}", payment.getId());
 
-            // send email
-            emailService.sendEmail(EmailRequest.builder()
-                    .to("mabsplace2024@gmail.com")
-                    .subject("Payment Confirmation")
-                    .headerText("Payment Confirmation")
-                    .body(" <p>A payment of $" + payment.getAmount() + " from " + user.getUsername() + " for " + payment.getService().getName() + " has been successfully processed.</p>")
-                    .companyName("MabsPlace")
-                    .build());
+                // send email
+                emailService.sendEmail(EmailRequest.builder()
+                        .to("mabsplace2024@gmail.com")
+                        .subject("Payment Confirmation")
+                        .headerText("Payment Confirmation")
+                        .body(" <p>A payment of $" + payment.getAmount() + " from " + user.getUsername() + " for " + payment.getService().getName() + " has been successfully processed.</p>")
+                        .companyName("MabsPlace")
+                        .build());
 
-            if (user.getReferrer() != null) {
-                User referrer = user.getReferrer();
+                if (user.getReferrer() != null) {
+                    User referrer = user.getReferrer();
 
-                // Check if this is the user's first non-trial payment 
-                // Count excludes current payment since we want to check if this is THE first
-                long previousNonTrialPayments = paymentRepository.countByUserIdAndSubscriptionPlanNameNot(user.getId(), "Trial") - (isTrial ? 0 : 1);
-                boolean isFirstNonTrialPayment = !isTrial && previousNonTrialPayments == 0;
+                    // Check if this is the user's first non-trial payment
+                    // Count excludes current payment since we want to check if this is THE first
+                    long previousNonTrialPayments = paymentRepository.countByUserIdAndSubscriptionPlanNameNot(user.getId(), "Trial") - (isTrial ? 0 : 1);
+                    boolean isFirstNonTrialPayment = !isTrial && previousNonTrialPayments == 0;
 
-                if (isFirstNonTrialPayment) {
-                    BigDecimal rewardAmount = getReferralRewardAmount();
-                    walletService.credit(referrer.getWallet().getId(), rewardAmount);
-                    Transaction transaction = Transaction.builder()
-                            .amount(rewardAmount)
-                            .currency(payment.getCurrency())
-                            .receiverWallet(referrer.getWallet())
-                            .senderWallet(user.getWallet())
-                            .transactionDate(new Date())
-                            .transactionRef(null)
-                            .transactionStatus(TransactionStatus.COMPLETED)
-                            .transactionType(TransactionType.TRANSFER)
-                            .build();
-                    transactionRepository.save(transaction);
+                    if (isFirstNonTrialPayment) {
+                        BigDecimal rewardAmount = getReferralRewardAmount();
+                        walletService.credit(referrer.getWallet().getId(), rewardAmount);
+                        Transaction transaction = Transaction.builder()
+                                .amount(rewardAmount)
+                                .currency(payment.getCurrency())
+                                .receiverWallet(referrer.getWallet())
+                                .senderWallet(user.getWallet())
+                                .transactionDate(new Date())
+                                .transactionRef(null)
+                                .transactionStatus(TransactionStatus.COMPLETED)
+                                .transactionType(TransactionType.TRANSFER)
+                                .build();
+                        transactionRepository.save(transaction);
 
-                    // Create expense entry for the referral reward
-                    createReferralRewardExpense(referrer, rewardAmount, payment.getCurrency());
+                        // Create expense entry for the referral reward
+                        createReferralRewardExpense(referrer, rewardAmount, payment.getCurrency());
 
-                    log.info("Referral reward of {} sent to referrer ID: {}", rewardAmount, referrer.getId());
-                } else {
-                    String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
-                    notificationService.notifyReferrerOfPromoCode(referrer, promoCode);
+                        log.info("Referral reward of {} sent to referrer ID: {}", rewardAmount, referrer.getId());
+                    } else {
+                        String promoCode = promoCodeService.generatePromoCodeForReferrer2(referrer, getReferralDiscountRate());
+                        notificationService.notifyReferrerOfPromoCode(referrer, promoCode);
+                    }
                 }
             }
-        }
 
-        return payment;
+            log.info("Payment and subscription process completed successfully for user: {}", user.getId());
+            return payment;
+
+        } catch (Exception e) {
+            log.error("Error during payment and subscription creation for user: {}. Error: {}",
+                    user.getId(), e.getMessage(), e);
+
+            // The @Transactional annotation will automatically rollback the entire transaction
+            // including the wallet debit when any exception is thrown
+            throw new RuntimeException("Payment and subscription creation failed: " + e.getMessage(), e);
+        }
     }
 
     // Utility Methods for Configurations
@@ -403,7 +426,7 @@ public class SubscriptionPaymentOrchestrator {
     }
 
     /**
-     * Finds an available (inactive) profile for the given service
+     * Finds an available (inactive) profile for the given service with better concurrency handling
      * @param serviceId the service ID
      * @return profile ID if available, otherwise null
      */
@@ -413,10 +436,24 @@ public class SubscriptionPaymentOrchestrator {
             List<Profile> availableProfiles = profileRepository.findAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
 
             if (!availableProfiles.isEmpty()) {
-                // Return the first available profile ID
-                return availableProfiles.get(0).getId();
+                // Double-check that the profile is still available by checking for active subscriptions
+                for (Profile profile : availableProfiles) {
+                    // Check if there's already an active subscription using this profile
+                    boolean hasActiveSubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
+                            profile.getId(),
+                            List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE)
+                    );
+
+                    if (!hasActiveSubscription) {
+                        log.info("Found available profile ID: {} for service ID: {}", profile.getId(), serviceId);
+                        return profile.getId();
+                    } else {
+                        log.warn("Profile ID: {} appears inactive but has active subscription, skipping", profile.getId());
+                    }
+                }
             }
 
+            log.info("No available profiles found for service ID: {}", serviceId);
             return null;
         } catch (Exception e) {
             log.error("Error finding available profile for service ID: {}", serviceId, e);
@@ -447,29 +484,51 @@ public class SubscriptionPaymentOrchestrator {
         }
 
         if (subscription.getProfileId() != 0L) {
-            log.info("Checking existing subscriptions for profile ID: {}", subscription.getProfileId());
-            List<Subscription> subscriptions = subscriptionRepository.findByProfileId(subscription.getProfileId());
-            for (Subscription sub : subscriptions) {
-                if (sub.getStatus() == SubscriptionStatus.EXPIRED || sub.getStatus() == SubscriptionStatus.INACTIVE) {
-                    log.info("Deleting expired or inactive subscription with ID: {}", sub.getId());
-                    subscriptionRepository.delete(sub);
+            log.info("Attempting to assign profile ID: {} to subscription", subscription.getProfileId());
+
+            try {
+                // Clean up any expired or inactive subscriptions for this profile first
+                List<Subscription> existingSubscriptions = subscriptionRepository.findByProfileId(subscription.getProfileId());
+                for (Subscription sub : existingSubscriptions) {
+                    if (sub.getStatus() == SubscriptionStatus.EXPIRED || sub.getStatus() == SubscriptionStatus.INACTIVE) {
+                        log.info("Deleting expired or inactive subscription with ID: {}", sub.getId());
+                        subscriptionRepository.delete(sub);
+                    }
                 }
+
+                // Fetch the profile and validate its availability
+                Profile profile = profileRepository.findById(subscription.getProfileId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", subscription.getProfileId()));
+
+                // Double-check that no active subscription is using this profile
+                boolean hasActiveSubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
+                        profile.getId(),
+                        List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE)
+                );
+
+                if (hasActiveSubscription) {
+                    log.error("Profile ID: {} is already in use by another active subscription", subscription.getProfileId());
+                    throw new IllegalStateException("The profile is already in use by another subscription. Please try again.");
+                }
+
+                if (profile.getStatus() == ProfileStatus.ACTIVE) {
+                    log.error("Profile with ID: {} is already marked as active", subscription.getProfileId());
+                    throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
+                }
+
+                // Mark profile as active and assign to subscription
+                profile.setStatus(ProfileStatus.ACTIVE);
+                profile = profileRepository.save(profile);
+                newSubscription.setProfile(profile);
+
+                // Set subscription status to ACTIVE since we found an available profile
+                newSubscription.setStatus(SubscriptionStatus.ACTIVE);
+                log.info("Successfully assigned profile ID: {} to subscription and set status to ACTIVE", profile.getId());
+
+            } catch (Exception e) {
+                log.error("Failed to assign profile ID: {} to subscription. Error: {}", subscription.getProfileId(), e.getMessage());
+                throw new RuntimeException("Failed to assign profile to subscription: " + e.getMessage(), e);
             }
-
-            Profile profile = profileRepository.findById(subscription.getProfileId()).orElseThrow(() -> new ResourceNotFoundException("Profile", "id", subscription.getProfileId()));
-
-            if (profile.getStatus() == ProfileStatus.ACTIVE) {
-                log.error("Profile with ID: {} is already active", subscription.getProfileId());
-                throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
-            }
-
-            profile.setStatus(ProfileStatus.ACTIVE);
-            profile = profileRepository.save(profile);
-            newSubscription.setProfile(profile);
-
-            // Set subscription status to ACTIVE since we found an available profile
-            newSubscription.setStatus(SubscriptionStatus.ACTIVE);
-            log.info("Setting subscription status to ACTIVE because an available profile was found");
         }
 
         log.info("Sending notification to user ID: {}", newSubscription.getUser().getId());

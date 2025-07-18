@@ -28,4 +28,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     boolean existsByUserIdAndServiceIdAndIsTrialTrue(Long userId, Long serviceId);
 
     boolean existsByUserIdAndServiceIdAndStatusAndEndDateAfter(Long id, Long id1, SubscriptionStatus subscriptionStatus, Date date);
+
+    // Check if a profile is already in use by subscriptions with specific statuses
+    boolean existsByProfileIdAndStatusIn(Long profileId, List<SubscriptionStatus> statuses);
 }
