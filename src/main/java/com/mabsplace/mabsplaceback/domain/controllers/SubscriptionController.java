@@ -2,10 +2,12 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionLightweightResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Profile;
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
+import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionRepository;
 import com.mabsplace.mabsplaceback.domain.services.SubscriptionService;
@@ -26,14 +28,17 @@ public class SubscriptionController {
 
   private final SubscriptionService subscriptionService;
   private final SubscriptionMapper mapper;
+  private final SubscriptionLightweightMapper lightweightMapper;
   private final SubscriptionRepository subscriptionRepository;
   private final ProfileRepository profileRepository;
 
   public SubscriptionController(SubscriptionService subscriptionService, SubscriptionMapper mapper,
+                                SubscriptionLightweightMapper lightweightMapper,
                                 SubscriptionRepository subscriptionRepository,
                                 ProfileRepository profileRepository) {
     this.subscriptionService = subscriptionService;
     this.mapper = mapper;
+    this.lightweightMapper = lightweightMapper;
     this.subscriptionRepository = subscriptionRepository;
     this.profileRepository = profileRepository;
   }
@@ -54,6 +59,14 @@ public class SubscriptionController {
     return ResponseEntity.ok(mapper.toDto(subscription));
   }
 
+  @GetMapping("/{id}/lightweight")
+  public ResponseEntity<SubscriptionLightweightResponseDto> getSubscriptionByIdLightweight(@PathVariable Long id) {
+    logger.info("Fetching lightweight subscription with ID: {}", id);
+    Subscription subscription = subscriptionService.getSubscriptionById(id);
+    logger.info("Fetched lightweight subscription: {}", subscription);
+    return ResponseEntity.ok(lightweightMapper.toDto(subscription));
+  }
+
   @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_SUBSCRIPTIONS')")
   @GetMapping
   public ResponseEntity<List<SubscriptionResponseDto>> getAllSubscriptions() {
@@ -61,6 +74,15 @@ public class SubscriptionController {
     List<Subscription> subscriptions = subscriptionService.getAllSubscriptions();
     logger.info("Fetched {} subscriptions", subscriptions.size());
     return new ResponseEntity<>(mapper.toDtoList(subscriptions), HttpStatus.OK);
+  }
+
+  @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_SUBSCRIPTIONS')")
+  @GetMapping("/lightweight")
+  public ResponseEntity<List<SubscriptionLightweightResponseDto>> getAllSubscriptionsLightweight() {
+    logger.info("Fetching all subscriptions lightweight");
+    List<Subscription> subscriptions = subscriptionService.getAllSubscriptions();
+    logger.info("Fetched {} subscriptions lightweight", subscriptions.size());
+    return new ResponseEntity<>(lightweightMapper.toDtoList(subscriptions), HttpStatus.OK);
   }
 
   @PutMapping("/{id}")
@@ -89,6 +111,14 @@ public class SubscriptionController {
     List<Subscription> subscriptions = subscriptionService.getSubscriptionsByUserId(userId);
     logger.info("Fetched {} subscriptions for user ID: {}", subscriptions.size(), userId);
     return ResponseEntity.ok(mapper.toDtoList(subscriptions));
+  }
+
+  @GetMapping("/user/{userId}/lightweight")
+  public ResponseEntity<List<SubscriptionLightweightResponseDto>> getSubscriptionsByUserIdLightweight(@PathVariable Long userId) {
+    logger.info("Fetching lightweight subscriptions for user ID: {}", userId);
+    List<Subscription> subscriptions = subscriptionService.getSubscriptionsByUserId(userId);
+    logger.info("Fetched {} lightweight subscriptions for user ID: {}", subscriptions.size(), userId);
+    return ResponseEntity.ok(lightweightMapper.toDtoList(subscriptions));
   }
 
 }

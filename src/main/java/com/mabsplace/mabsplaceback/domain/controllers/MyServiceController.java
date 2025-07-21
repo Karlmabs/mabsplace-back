@@ -2,9 +2,11 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.myService.MyServiceLightweightResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscriptionPlan.SubscriptionPlanResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.MyService;
 import com.mabsplace.mabsplaceback.domain.mappers.MyServiceMapper;
+import com.mabsplace.mabsplaceback.domain.mappers.MyServiceLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionPlanMapper;
 import com.mabsplace.mabsplaceback.domain.services.MyServiceService;
 import org.slf4j.Logger;
@@ -27,11 +29,16 @@ public class MyServiceController {
 
   private final MyServiceMapper mapper;
 
+  private final MyServiceLightweightMapper lightweightMapper;
+
   private final SubscriptionPlanMapper subscriptionPlanMapper;
 
-  public MyServiceController(MyServiceService myServiceService, MyServiceMapper mapper, @Qualifier("customSubscriptionPlanMapper") SubscriptionPlanMapper subscriptionPlanMapper) {
+  public MyServiceController(MyServiceService myServiceService, MyServiceMapper mapper,
+                            MyServiceLightweightMapper lightweightMapper,
+                            @Qualifier("customSubscriptionPlanMapper") SubscriptionPlanMapper subscriptionPlanMapper) {
     this.myServiceService = myServiceService;
     this.mapper = mapper;
+    this.lightweightMapper = lightweightMapper;
     this.subscriptionPlanMapper = subscriptionPlanMapper;
   }
 
@@ -51,6 +58,14 @@ public class MyServiceController {
       return ResponseEntity.ok(mapper.toDto(service));
   }
 
+  @GetMapping("/{id}/lightweight")
+  public ResponseEntity<MyServiceLightweightResponseDto> getServiceByIdLightweight(@PathVariable Long id) {
+      logger.info("Fetching lightweight service with ID: {}", id);
+      MyService service = myServiceService.getService(id);
+      logger.info("Fetched lightweight service: {}", lightweightMapper.toDto(service));
+      return ResponseEntity.ok(lightweightMapper.toDto(service));
+  }
+
   @GetMapping("/{id}/subscriptionPlans")
   public ResponseEntity<List<SubscriptionPlanResponseDto>> getSubscriptionPlansByServiceId(@PathVariable Long id) {
       logger.info("Fetching subscription plans for service ID: {}", id);
@@ -66,6 +81,15 @@ public class MyServiceController {
       List<MyService> services = myServiceService.getAllServices();
       logger.info("Fetched {} services", services.size());
       return ResponseEntity.ok(mapper.toDtoList(services));
+  }
+
+  @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_SERVICES')")
+  @GetMapping("/lightweight")
+  public ResponseEntity<List<MyServiceLightweightResponseDto>> getAllServicesLightweight() {
+      logger.info("Fetching all services lightweight");
+      List<MyService> services = myServiceService.getAllServices();
+      logger.info("Fetched {} services lightweight", services.size());
+      return ResponseEntity.ok(lightweightMapper.toDtoList(services));
   }
 
   @PutMapping("/{id}")

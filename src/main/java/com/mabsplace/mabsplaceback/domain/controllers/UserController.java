@@ -4,9 +4,11 @@ import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponse
 import com.mabsplace.mabsplaceback.domain.dtos.user.PasswordChangeDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.user.UserLightweightResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
+import com.mabsplace.mabsplaceback.domain.mappers.UserLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.services.UserService;
 import com.mabsplace.mabsplaceback.security.response.MessageResponse;
 import com.mabsplace.mabsplaceback.utils.PageDto;
@@ -31,13 +33,15 @@ import java.util.Map;
 public class UserController {
     private final UserService userService;
     private final UserMapper mapper;
+    private final UserLightweightMapper lightweightMapper;
     private final SubscriptionMapper subscriptionMapper;
 
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
-    public UserController(UserService userService, UserMapper mapper, SubscriptionMapper subscriptionMapper) {
+    public UserController(UserService userService, UserMapper mapper, UserLightweightMapper lightweightMapper, SubscriptionMapper subscriptionMapper) {
         this.userService = userService;
         this.mapper = mapper;
+        this.lightweightMapper = lightweightMapper;
         this.subscriptionMapper = subscriptionMapper;
     }
 
@@ -59,6 +63,14 @@ public class UserController {
         logger.info("Fetching user with ID: {}", id);
         UserResponseDto user = mapper.toDto(userService.getById(id));
         logger.info("Fetched user: {}", user);
+        return ResponseEntity.ok(user);
+    }
+
+    @GetMapping("/{id}/lightweight")
+    public ResponseEntity<UserLightweightResponseDto> getUserByIdLightweight(@PathVariable Long id) {
+        logger.info("Fetching lightweight user with ID: {}", id);
+        UserLightweightResponseDto user = lightweightMapper.toDto(userService.getById(id));
+        logger.info("Fetched lightweight user: {}", user);
         return ResponseEntity.ok(user);
     }
 
@@ -89,6 +101,15 @@ public class UserController {
         return new ResponseEntity<>(mapper.toDtoList(users), HttpStatus.OK);
     }
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_USERS')")
+    @GetMapping("/lightweight")
+    public ResponseEntity<List<UserLightweightResponseDto>> getAllUsersLightweight() {
+        logger.info("Fetching all users lightweight");
+        List<User> users = userService.getAllUsers();
+        logger.info("Fetched {} users lightweight", users.size());
+        return new ResponseEntity<>(lightweightMapper.toDtoList(users), HttpStatus.OK);
+    }
+
     // get user by username
     @GetMapping("/username/{username}")
     public ResponseEntity<UserResponseDto> getUserByUsername(@PathVariable String username) {
@@ -96,6 +117,20 @@ public class UserController {
         try {
             UserResponseDto user = mapper.toDto(userService.getUserByUsername(username));
             logger.info("Fetched user: {}", user);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            logger.warn("User not found with username: {}", username);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // get user by username - lightweight
+    @GetMapping("/username/{username}/lightweight")
+    public ResponseEntity<UserLightweightResponseDto> getUserByUsernameLightweight(@PathVariable String username) {
+        logger.info("Fetching lightweight user with username: {}", username);
+        try {
+            UserLightweightResponseDto user = lightweightMapper.toDto(userService.getUserByUsername(username));
+            logger.info("Fetched lightweight user: {}", user);
             return ResponseEntity.ok(user);
         } catch (RuntimeException e) {
             logger.warn("User not found with username: {}", username);

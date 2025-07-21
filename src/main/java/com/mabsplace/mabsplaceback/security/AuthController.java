@@ -8,9 +8,11 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.mabsplace.mabsplaceback.domain.dtos.auth.OAuth2AuthRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.user.UserLightweightResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.*;
 import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
+import com.mabsplace.mabsplaceback.domain.mappers.UserLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.CurrencyRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.RoleRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserProfileRepository;
@@ -107,14 +109,17 @@ public class AuthController {
 
     private final UserMapper userMapper;
 
+    private final UserLightweightMapper userLightweightMapper;
+
     private final PromoCodeService promoCodeService;
 
     private final UserProfileRepository userProfileRepository;
 
 
-    public AuthController(UserService userService, UserMapper userMapper, PromoCodeService promoCodeService, UserProfileRepository userProfileRepository) {
+    public AuthController(UserService userService, UserMapper userMapper, UserLightweightMapper userLightweightMapper, PromoCodeService promoCodeService, UserProfileRepository userProfileRepository) {
         this.userService = userService;
         this.userMapper = userMapper;
+        this.userLightweightMapper = userLightweightMapper;
         this.promoCodeService = promoCodeService;
         this.userProfileRepository = userProfileRepository;
     }
@@ -256,6 +261,13 @@ public class AuthController {
 //    @PreAuthorize("hasRole('USER')")
     public UserResponseDto getCurrentUser(@CurrentUser UserPrincipal userPrincipal) {
         return userMapper.toDto(userRepository.findById(userPrincipal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userPrincipal.getId())));
+    }
+
+    @GetMapping("/user/me/lightweight")
+//    @PreAuthorize("hasRole('USER')")
+    public UserLightweightResponseDto getCurrentUserLightweight(@CurrentUser UserPrincipal userPrincipal) {
+        return userLightweightMapper.toDto(userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userPrincipal.getId())));
     }
 

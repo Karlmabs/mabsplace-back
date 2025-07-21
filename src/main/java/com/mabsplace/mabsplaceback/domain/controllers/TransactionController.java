@@ -2,10 +2,12 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.transaction.TransactionLightweightResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Transaction;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
 import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import com.mabsplace.mabsplaceback.domain.mappers.TransactionMapper;
+import com.mabsplace.mabsplaceback.domain.mappers.TransactionLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.services.TransactionService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -24,12 +26,14 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final TransactionMapper mapper;
+    private final TransactionLightweightMapper lightweightMapper;
 
     private static final Logger logger = LoggerFactory.getLogger(TransactionController.class);
 
-    public TransactionController(TransactionService transactionService, TransactionMapper mapper) {
+    public TransactionController(TransactionService transactionService, TransactionMapper mapper, TransactionLightweightMapper lightweightMapper) {
         this.transactionService = transactionService;
         this.mapper = mapper;
+        this.lightweightMapper = lightweightMapper;
     }
 
     @PostMapping("/top-up")
@@ -102,6 +106,14 @@ public class TransactionController {
         return ResponseEntity.ok(mapper.toDto(transaction));
     }
 
+    @GetMapping("/{id}/lightweight")
+    public ResponseEntity<TransactionLightweightResponseDto> getTransactionByIdLightweight(@PathVariable Long id) {
+        logger.info("Fetching lightweight transaction by ID: {}", id);
+        Transaction transaction = transactionService.getTransactionById(id);
+        logger.info("Fetched lightweight transaction: {}", transaction);
+        return ResponseEntity.ok(lightweightMapper.toDto(transaction));
+    }
+
     @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_TRANSACTIONS')")
     @GetMapping
     public ResponseEntity<List<TransactionResponseDto>> getAllTransactions() {
@@ -109,6 +121,15 @@ public class TransactionController {
         List<Transaction> transactions = transactionService.getAllTransactions();
         logger.info("Fetched {} transactions", transactions.size());
         return new ResponseEntity<>(mapper.toDtoList(transactions), HttpStatus.OK);
+    }
+
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_TRANSACTIONS')")
+    @GetMapping("/lightweight")
+    public ResponseEntity<List<TransactionLightweightResponseDto>> getAllTransactionsLightweight() {
+        logger.info("Fetching all transactions lightweight");
+        List<Transaction> transactions = transactionService.getAllTransactions();
+        logger.info("Fetched {} transactions lightweight", transactions.size());
+        return new ResponseEntity<>(lightweightMapper.toDtoList(transactions), HttpStatus.OK);
     }
 
     @PutMapping("/{id}")
@@ -137,6 +158,14 @@ public class TransactionController {
         List<Transaction> transactions = transactionService.getTransactionsByUserId(userId);
         logger.info("Fetched {} transactions for user ID: {}", transactions.size(), userId);
         return new ResponseEntity<>(mapper.toDtoList(transactions), HttpStatus.OK);
+    }
+
+    @GetMapping("/user/{userId}/lightweight")
+    public ResponseEntity<List<TransactionLightweightResponseDto>> getTransactionsByUserIdLightweight(@PathVariable Long userId) {
+        logger.info("Fetching lightweight transactions for user ID: {}", userId);
+        List<Transaction> transactions = transactionService.getTransactionsByUserId(userId);
+        logger.info("Fetched {} lightweight transactions for user ID: {}", transactions.size(), userId);
+        return new ResponseEntity<>(lightweightMapper.toDtoList(transactions), HttpStatus.OK);
     }
 
     @PostMapping("/transfer-to-user/{userId}/{receiverId}")

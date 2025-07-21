@@ -2,6 +2,8 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.expense.ExpenseRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.expense.ExpenseResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.expense.ExpenseLightweightResponseDto;
+import com.mabsplace.mabsplaceback.domain.mappers.ExpenseLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.services.ExpenseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,6 +31,8 @@ public class ExpenseController {
 
     private final ExpenseService expenseService;
 
+    private final ExpenseLightweightMapper lightweightMapper;
+
     private static final Logger logger = LoggerFactory.getLogger(ExpenseController.class);
 
     @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_EXPENSES')")
@@ -42,6 +46,17 @@ public class ExpenseController {
         return ResponseEntity.ok(expenses);
     }
 
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_EXPENSES')")
+    @GetMapping("/lightweight")
+    @Operation(summary = "Get all expenses - lightweight")
+    @ApiResponse(responseCode = "200", description = "List of lightweight expenses retrieved successfully")
+    public ResponseEntity<List<ExpenseLightweightResponseDto>> getAllExpensesLightweight() {
+        logger.info("Fetching all expenses lightweight");
+        List<ExpenseLightweightResponseDto> expenses = lightweightMapper.toDtoList(expenseService.getAllExpensesEntities());
+        logger.info("Fetched {} expenses lightweight", expenses.size());
+        return ResponseEntity.ok(expenses);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get expense by ID")
     @ApiResponse(responseCode = "200", description = "Expense retrieved successfully")
@@ -50,6 +65,17 @@ public class ExpenseController {
         logger.info("Fetching expense with ID: {}", id);
         ExpenseResponseDto expense = expenseService.getExpenseById(id);
         logger.info("Fetched expense: {}", expense);
+        return ResponseEntity.ok(expense);
+    }
+
+    @GetMapping("/{id}/lightweight")
+    @Operation(summary = "Get expense by ID - lightweight")
+    @ApiResponse(responseCode = "200", description = "Lightweight expense retrieved successfully")
+    @ApiResponse(responseCode = "404", description = "Expense not found")
+    public ResponseEntity<ExpenseLightweightResponseDto> getExpenseByIdLightweight(@PathVariable Long id) {
+        logger.info("Fetching lightweight expense with ID: {}", id);
+        ExpenseLightweightResponseDto expense = lightweightMapper.toDto(expenseService.getExpenseEntityById(id));
+        logger.info("Fetched lightweight expense: {}", expense);
         return ResponseEntity.ok(expense);
     }
 
@@ -65,6 +91,18 @@ public class ExpenseController {
         return ResponseEntity.ok(expenses);
     }
 
+    @GetMapping("/by-date-range/lightweight")
+    @Operation(summary = "Get expenses by date range - lightweight")
+    @ApiResponse(responseCode = "200", description = "List of lightweight expenses retrieved successfully")
+    public ResponseEntity<List<ExpenseLightweightResponseDto>> getExpensesByDateRangeLightweight(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        logger.info("Fetching lightweight expenses between dates {} and {}", startDate, endDate);
+        List<ExpenseLightweightResponseDto> expenses = lightweightMapper.toDtoList(expenseService.getExpenseEntitiesByDateRange(startDate, endDate));
+        logger.info("Fetched {} lightweight expenses", expenses.size());
+        return ResponseEntity.ok(expenses);
+    }
+
     @GetMapping("/by-category/{categoryId}")
     @Operation(summary = "Get expenses by category")
     @ApiResponse(responseCode = "200", description = "List of expenses retrieved successfully")
@@ -72,6 +110,16 @@ public class ExpenseController {
         logger.info("Fetching expenses for category ID: {}", categoryId);
         List<ExpenseResponseDto> expenses = expenseService.getExpensesByCategory(categoryId);
         logger.info("Fetched {} expenses for category ID: {}", expenses.size(), categoryId);
+        return ResponseEntity.ok(expenses);
+    }
+
+    @GetMapping("/by-category/{categoryId}/lightweight")
+    @Operation(summary = "Get expenses by category - lightweight")
+    @ApiResponse(responseCode = "200", description = "List of lightweight expenses retrieved successfully")
+    public ResponseEntity<List<ExpenseLightweightResponseDto>> getExpensesByCategoryLightweight(@PathVariable Long categoryId) {
+        logger.info("Fetching lightweight expenses for category ID: {}", categoryId);
+        List<ExpenseLightweightResponseDto> expenses = lightweightMapper.toDtoList(expenseService.getExpenseEntitiesByCategory(categoryId));
+        logger.info("Fetched {} lightweight expenses for category ID: {}", expenses.size(), categoryId);
         return ResponseEntity.ok(expenses);
     }
 

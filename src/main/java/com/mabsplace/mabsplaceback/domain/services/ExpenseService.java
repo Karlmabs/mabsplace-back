@@ -142,6 +142,37 @@ public class ExpenseService {
         return expenses;
     }
 
+    // Lightweight methods that return entities for lightweight mapping
+    public List<Expense> getAllExpensesEntities() {
+        logger.info("Retrieving all expenses entities for lightweight mapping");
+        List<Expense> expenses = expenseRepository.findAll();
+        logger.info("Retrieved {} expense entities", expenses.size());
+        return expenses;
+    }
+
+    public Expense getExpenseEntityById(Long id) {
+        logger.info("Retrieving expense entity with ID: {}", id);
+        return expenseRepository.findById(id)
+                .orElseThrow(() -> {
+                    logger.error("Expense not found with ID: {}", id);
+                    return new EntityNotFoundException("Expense not found with id: " + id);
+                });
+    }
+
+    public List<Expense> getExpenseEntitiesByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        logger.info("Retrieving expense entities from {} to {}", startDate, endDate);
+        List<Expense> expenses = expenseRepository.findByExpenseDateBetween(startDate, endDate);
+        logger.info("Retrieved {} expense entities for the specified date range", expenses.size());
+        return expenses;
+    }
+
+    public List<Expense> getExpenseEntitiesByCategory(Long categoryId) {
+        logger.info("Retrieving expense entities by category ID: {}", categoryId);
+        List<Expense> expenses = expenseRepository.findByCategoryId(categoryId);
+        logger.info("Retrieved {} expense entities for category ID: {}", expenses.size(), categoryId);
+        return expenses;
+    }
+
     @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
     public void processRecurringExpenses() {
         logger.info("Processing recurring expenses");

@@ -2,9 +2,11 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentResponseDto;
+import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentLightweightResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
 import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
 import com.mabsplace.mabsplaceback.domain.mappers.PaymentMapper;
+import com.mabsplace.mabsplaceback.domain.mappers.PaymentLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.services.PaymentService;
 import jakarta.mail.MessagingException;
 import org.slf4j.Logger;
@@ -24,10 +26,12 @@ public class PaymentController {
 
   private final PaymentService paymentService;
   private final PaymentMapper mapper;
+  private final PaymentLightweightMapper lightweightMapper;
 
-  public PaymentController(PaymentService paymentService, PaymentMapper paymentMapper) {
+  public PaymentController(PaymentService paymentService, PaymentMapper paymentMapper, PaymentLightweightMapper lightweightMapper) {
     this.paymentService = paymentService;
     this.mapper = paymentMapper;
+    this.lightweightMapper = lightweightMapper;
   }
 
   @PostMapping
@@ -48,6 +52,16 @@ public class PaymentController {
       return ResponseEntity.ok(mapper.toDtoList(payments));
     }
 
+  // get all payments of a user - lightweight
+  @GetMapping("/user/{userId}/lightweight")
+  public ResponseEntity<List<PaymentLightweightResponseDto>> getPaymentsByUserIdLightweight(@PathVariable Long userId)
+    {
+      logger.info("Fetching lightweight payments for user ID: {}", userId);
+      List<Payment> payments = paymentService.getPaymentsByUserId(userId);
+      logger.info("Fetched {} lightweight payments for user ID: {}", payments.size(), userId);
+      return ResponseEntity.ok(lightweightMapper.toDtoList(payments));
+    }
+
   @GetMapping("/{id}")
   public ResponseEntity<PaymentResponseDto> getPaymentById(@PathVariable Long id) {
     logger.info("Fetching payment with ID: {}", id);
@@ -63,6 +77,15 @@ public class PaymentController {
     List<Payment> payments = paymentService.getAllPayments();
     logger.info("Fetched {} payments", payments.size());
     return ResponseEntity.ok(mapper.toDtoList(payments));
+  }
+
+  @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'GET_PAYMENTS')")
+  @GetMapping("/lightweight")
+  public ResponseEntity<List<PaymentLightweightResponseDto>> getAllPaymentsLightweight() {
+    logger.info("Fetching all payments lightweight");
+    List<Payment> payments = paymentService.getAllPayments();
+    logger.info("Fetched {} payments lightweight", payments.size());
+    return ResponseEntity.ok(lightweightMapper.toDtoList(payments));
   }
 
   @PutMapping("/{id}")
