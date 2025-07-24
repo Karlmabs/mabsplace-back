@@ -21,6 +21,7 @@ public class UserLightweightResponseDto implements Serializable {
     private String email;
     private String firstname;
     private String lastname;
+    private String phonenumber;
     private String image;
     private String referralCode;
     private Long referrerId;
