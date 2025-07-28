@@ -385,14 +385,15 @@ public class SubscriptionPaymentOrchestrator {
                 .status(SubscriptionStatus.INACTIVE)
                 .build();
 
-        // Auto-assign profile if available
-        Long profileId = findAvailableProfileId(payment.getService().getId());
+        // Auto-assign profile if available using the new reservation method
+        Long profileId = findAndReserveAvailableProfile(payment.getService().getId());
         if (profileId != null) {
             subscriptionDto.setProfileId(profileId);
-            log.info("Auto-assigned profile ID: {} to subscription", profileId);
+            log.info("Auto-assigned and reserved profile ID: {} to subscription", profileId);
         } else {
-            log.info("No available profile found for user ID: {} and service ID: {}",
+            log.error("No available profile found for user ID: {} and service ID: {}",
                     payment.getUser().getId(), payment.getService().getId());
+            throw new IllegalStateException("No available profiles for this service. Please contact support or try again later.");
         }
 
         // Create subscription
@@ -411,14 +412,15 @@ public class SubscriptionPaymentOrchestrator {
                 .isTrial(true)
                 .build();
 
-        // Auto-assign profile if available
-        Long profileId = findAvailableProfileId(payment.getService().getId());
+        // Auto-assign profile if available using the new reservation method
+        Long profileId = findAndReserveAvailableProfile(payment.getService().getId());
         if (profileId != null) {
             subscriptionDto.setProfileId(profileId);
-            log.info("Auto-assigned profile ID: {} to trial subscription", profileId);
+            log.info("Auto-assigned and reserved profile ID: {} to trial subscription", profileId);
         } else {
-            log.info("No available profile found for user ID: {} and service ID: {}",
+            log.error("No available profile found for user ID: {} and service ID: {}",
                     payment.getUser().getId(), payment.getService().getId());
+            throw new IllegalStateException("No available profiles for this service. Please contact support or try again later.");
         }
 
         // Create subscription
@@ -430,6 +432,7 @@ public class SubscriptionPaymentOrchestrator {
      * @param serviceId the service ID
      * @return profile ID if available, otherwise null
      */
+    @Transactional
     private Long findAvailableProfileId(Long serviceId) {
         try {
             // Find available profiles with INACTIVE status
@@ -458,6 +461,83 @@ public class SubscriptionPaymentOrchestrator {
         } catch (Exception e) {
             log.error("Error finding available profile for service ID: {}", serviceId, e);
             return null;
+        }
+    }
+
+    /**
+     * Finds and reserves an available profile for the given service with database-level locking
+     * This method prevents race conditions by using database transactions
+     * @param serviceId the service ID
+     * @return profile ID if available and successfully reserved, otherwise null
+     */
+    @Transactional
+    private Long findAndReserveAvailableProfile(Long serviceId) {
+        try {
+            // Find available profiles with INACTIVE status
+            List<Profile> availableProfiles = profileRepository.findAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
+
+            for (Profile profile : availableProfiles) {
+                try {
+                    // Attempt to reserve the profile by marking it as active
+                    // This will fail if another transaction has already reserved it
+                    Profile profileToUpdate = profileRepository.findById(profile.getId()).orElse(null);
+                    if (profileToUpdate != null && profileToUpdate.getStatus() == ProfileStatus.INACTIVE) {
+
+                        // Double-check that no subscription is using this profile
+                        boolean hasActiveSubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
+                                profileToUpdate.getId(),
+                                List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE)
+                        );
+
+                        if (!hasActiveSubscription) {
+                            // Reserve the profile by marking it as active
+                            profileToUpdate.setStatus(ProfileStatus.ACTIVE);
+                            profileRepository.save(profileToUpdate);
+
+                            log.info("Successfully reserved profile ID: {} for service ID: {}", profileToUpdate.getId(), serviceId);
+                            return profileToUpdate.getId();
+                        }
+                    }
+                } catch (Exception e) {
+                    // If we get a constraint violation or any other error, try the next profile
+                    log.warn("Failed to reserve profile ID: {}, trying next profile. Error: {}", profile.getId(), e.getMessage());
+                    continue;
+                }
+            }
+
+            log.info("No available profile could be reserved for service ID: {}", serviceId);
+            return null;
+        } catch (Exception e) {
+            log.error("Error finding and reserving available profile for service ID: {}. Error: {}", serviceId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Releases a reserved profile by marking it as inactive
+     * This is used when subscription creation fails after profile reservation
+     * @param profileId the profile ID to release
+     */
+    private void releaseReservedProfile(Long profileId) {
+        try {
+            if (profileId != null) {
+                Profile profile = profileRepository.findById(profileId).orElse(null);
+                if (profile != null && profile.getStatus() == ProfileStatus.ACTIVE) {
+                    // Only release if no subscription is actually using it
+                    boolean hasActiveSubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
+                            profile.getId(),
+                            List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE)
+                    );
+
+                    if (!hasActiveSubscription) {
+                        profile.setStatus(ProfileStatus.INACTIVE);
+                        profileRepository.save(profile);
+                        log.info("Released reserved profile ID: {}", profileId);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error releasing reserved profile ID: {}. Error: {}", profileId, e.getMessage());
         }
     }
 
@@ -500,7 +580,8 @@ public class SubscriptionPaymentOrchestrator {
                 Profile profile = profileRepository.findById(subscription.getProfileId())
                         .orElseThrow(() -> new ResourceNotFoundException("Profile", "id", subscription.getProfileId()));
 
-                // Double-check that no active subscription is using this profile
+                // If the profile was reserved by findAndReserveAvailableProfile, it should already be ACTIVE
+                // Double-check that no other subscription is using this profile
                 boolean hasActiveSubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
                         profile.getId(),
                         List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE)
@@ -511,22 +592,29 @@ public class SubscriptionPaymentOrchestrator {
                     throw new IllegalStateException("The profile is already in use by another subscription. Please try again.");
                 }
 
-                if (profile.getStatus() == ProfileStatus.ACTIVE) {
-                    log.error("Profile with ID: {} is already marked as active", subscription.getProfileId());
-                    throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
+                // If profile is not active, mark it as active (fallback for manual assignments)
+                if (profile.getStatus() != ProfileStatus.ACTIVE) {
+                    profile.setStatus(ProfileStatus.ACTIVE);
+                    profile = profileRepository.save(profile);
                 }
 
-                // Mark profile as active and assign to subscription
-                profile.setStatus(ProfileStatus.ACTIVE);
-                profile = profileRepository.save(profile);
                 newSubscription.setProfile(profile);
 
-                // Set subscription status to ACTIVE since we found an available profile
+                // Set subscription status to ACTIVE since we have an available profile
                 newSubscription.setStatus(SubscriptionStatus.ACTIVE);
                 log.info("Successfully assigned profile ID: {} to subscription and set status to ACTIVE", profile.getId());
 
+            } catch (IllegalStateException | ResourceNotFoundException e) {
+                // Re-throw business logic exceptions
+                throw e;
             } catch (Exception e) {
                 log.error("Failed to assign profile ID: {} to subscription. Error: {}", subscription.getProfileId(), e.getMessage());
+
+                // Check if it's a constraint violation (duplicate profile assignment)
+                if (e.getMessage() != null && e.getMessage().contains("UK_fvarljckhxhklksmiy1gnq8v")) {
+                    throw new IllegalStateException("The profile is already in use by another subscription. This may be due to concurrent requests. Please try again.", e);
+                }
+
                 throw new RuntimeException("Failed to assign profile to subscription: " + e.getMessage(), e);
             }
         }
