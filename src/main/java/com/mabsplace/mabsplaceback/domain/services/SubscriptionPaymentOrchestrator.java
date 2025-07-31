@@ -435,28 +435,38 @@ public class SubscriptionPaymentOrchestrator {
     @Transactional
     private Long findAvailableProfileId(Long serviceId) {
         try {
-            // Find available profiles with INACTIVE status
+            // First, try to find profiles that are truly available (not referenced by any subscription)
+            List<Profile> trulyAvailableProfiles = profileRepository.findTrulyAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
+
+            if (!trulyAvailableProfiles.isEmpty()) {
+                Profile selectedProfile = trulyAvailableProfiles.get(0);
+                log.info("Found truly available profile ID: {} for service ID: {}", selectedProfile.getId(), serviceId);
+                return selectedProfile.getId();
+            }
+
+            // Fallback: Find profiles with INACTIVE status that might be reusable
             List<Profile> availableProfiles = profileRepository.findAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
 
             if (!availableProfiles.isEmpty()) {
-                // Double-check that the profile is still available by checking for active subscriptions
+                // Double-check that the profile is not being used by any subscription
                 for (Profile profile : availableProfiles) {
-                    // Check if there's already an active subscription using this profile
-                    boolean hasActiveSubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
+                    // Check if there's any subscription using this profile (check all statuses)
+                    boolean hasAnySubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
                             profile.getId(),
-                            List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE)
+                            List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE,
+                                   SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED)
                     );
 
-                    if (!hasActiveSubscription) {
-                        log.info("Found available profile ID: {} for service ID: {}", profile.getId(), serviceId);
+                    if (!hasAnySubscription) {
+                        log.info("Found reusable profile ID: {} for service ID: {}", profile.getId(), serviceId);
                         return profile.getId();
                     } else {
-                        log.warn("Profile ID: {} appears inactive but has active subscription, skipping", profile.getId());
+                        log.warn("Profile ID: {} appears inactive but is referenced by existing subscription, skipping", profile.getId());
                     }
                 }
             }
 
-            log.info("No available profiles found for service ID: {}", serviceId);
+            log.warn("No available profiles found for service ID: {}. Consider creating more profiles for this service.", serviceId);
             return null;
         } catch (Exception e) {
             log.error("Error finding available profile for service ID: {}", serviceId, e);
@@ -473,29 +483,53 @@ public class SubscriptionPaymentOrchestrator {
     @Transactional
     private Long findAndReserveAvailableProfile(Long serviceId) {
         try {
-            // Find available profiles with INACTIVE status
+            // First, try to find profiles that are truly available (not referenced by any subscription)
+            List<Profile> trulyAvailableProfiles = profileRepository.findTrulyAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
+
+            for (Profile profile : trulyAvailableProfiles) {
+                try {
+                    // Attempt to reserve the profile by marking it as active
+                    Profile profileToUpdate = profileRepository.findById(profile.getId()).orElse(null);
+                    if (profileToUpdate != null && profileToUpdate.getStatus() == ProfileStatus.INACTIVE) {
+                        // Reserve the profile by marking it as active
+                        profileToUpdate.setStatus(ProfileStatus.ACTIVE);
+                        profileRepository.save(profileToUpdate);
+
+                        log.info("Successfully reserved truly available profile ID: {} for service ID: {}", profileToUpdate.getId(), serviceId);
+                        return profileToUpdate.getId();
+                    }
+                } catch (Exception e) {
+                    // If we get a constraint violation or any other error, try the next profile
+                    log.warn("Failed to reserve truly available profile ID: {}, trying next profile. Error: {}", profile.getId(), e.getMessage());
+                    continue;
+                }
+            }
+
+            // Fallback: Find profiles with INACTIVE status that might be reusable (old logic as backup)
             List<Profile> availableProfiles = profileRepository.findAvailableProfilesByServiceId(serviceId, ProfileStatus.INACTIVE);
 
             for (Profile profile : availableProfiles) {
                 try {
                     // Attempt to reserve the profile by marking it as active
-                    // This will fail if another transaction has already reserved it
                     Profile profileToUpdate = profileRepository.findById(profile.getId()).orElse(null);
                     if (profileToUpdate != null && profileToUpdate.getStatus() == ProfileStatus.INACTIVE) {
 
-                        // Double-check that no subscription is using this profile
-                        boolean hasActiveSubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
+                        // Double-check that no subscription is using this profile (check all statuses)
+                        boolean hasAnySubscription = subscriptionRepository.existsByProfileIdAndStatusIn(
                                 profileToUpdate.getId(),
-                                List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE)
+                                List.of(SubscriptionStatus.ACTIVE, SubscriptionStatus.INACTIVE,
+                                       SubscriptionStatus.EXPIRED, SubscriptionStatus.CANCELLED)
                         );
 
-                        if (!hasActiveSubscription) {
+                        if (!hasAnySubscription) {
                             // Reserve the profile by marking it as active
                             profileToUpdate.setStatus(ProfileStatus.ACTIVE);
                             profileRepository.save(profileToUpdate);
 
-                            log.info("Successfully reserved profile ID: {} for service ID: {}", profileToUpdate.getId(), serviceId);
+                            log.info("Successfully reserved reusable profile ID: {} for service ID: {}", profileToUpdate.getId(), serviceId);
                             return profileToUpdate.getId();
+                        } else {
+                            log.warn("Profile ID: {} appears inactive but is referenced by existing subscription, skipping", profileToUpdate.getId());
                         }
                     }
                 } catch (Exception e) {

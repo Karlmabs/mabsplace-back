@@ -29,4 +29,11 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 //            "JOIN Subscription s ON s.service.id = sa.myService.id " +
 //            "WHERE s.user.id = :userId AND sa.myService.id = :serviceId AND p.status = :status")
 //    List<Profile> findAvailableProfilesByUserIdAndServiceId(@Param("userId") Long userId, @Param("serviceId") Long serviceId, @Param("status") ProfileStatus status);
+
+    // Find profiles that are truly available (not referenced by any subscription)
+    @Query("SELECT p FROM Profile p " +
+            "JOIN ServiceAccount sa ON sa.id = p.serviceAccount.id " +
+            "WHERE sa.myService.id = :serviceId AND p.status = :status " +
+            "AND p.id NOT IN (SELECT DISTINCT s.profile.id FROM Subscription s WHERE s.profile.id IS NOT NULL)")
+    List<Profile> findTrulyAvailableProfilesByServiceId(@Param("serviceId") Long serviceId, @Param("status") ProfileStatus status);
 }
