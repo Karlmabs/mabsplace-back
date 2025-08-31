@@ -339,6 +339,32 @@ public class SubscriptionService {
     }
 
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
+    public void notifyExpiringSubscriptions() throws MessagingException {
+        Date startDate = Utils.addDays(new Date(), 7);
+        Date endDate = Utils.addDays(new Date(), 8);
+        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBetweenAndStatusNotAndAutoRenewFalse(startDate, endDate, SubscriptionStatus.EXPIRED);
+        for (Subscription subscription : subscriptions) {
+            EmailRequest emailRequest = EmailRequest.builder()
+                    .to("maboukarl2@gmail.com")
+                    .cc(List.of("yvanos510@gmail.com"))
+                    .subject("Subscription Expiring Soon")
+                    .headerText("Subscription Expiring Soon")
+                    .body(String.format(
+                            "<p>The subscription of %s for %s will expire on %s. The Account he is using is %s on the profile %s.</p>",
+                            subscription.getUser().getUsername(),
+                            subscription.getService().getName(),
+                            subscription.getEndDate(),
+                            subscription.getProfile().getServiceAccount().getLogin(),
+                            subscription.getProfile().getProfileName()
+                    ))
+                    .companyName("MabsPlace")
+                    .build();
+
+            emailService.sendEmail(emailRequest);
+        }
+    }
+
+    @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
     public void expireSubscriptions() throws MessagingException {
         List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNotAndAutoRenewFalse(new Date(), SubscriptionStatus.EXPIRED);
         for (Subscription subscription : subscriptions) {
