@@ -125,7 +125,7 @@ public class SubscriptionService {
 
         EmailRequest emailRequest = EmailRequest.builder()
                 .to("maboukarl2@gmail.com")
-                .cc(List.of("yvanos510@gmail.com"))
+                .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
                 .subject("Subscription Renewed")
                 .headerText("Subscription Renewed")
                 .body(String.format(
@@ -152,7 +152,7 @@ public class SubscriptionService {
 
             EmailRequest emailRequest = EmailRequest.builder()
                     .to("maboukarl2@gmail.com")
-                    .cc(List.of("yvanos510@gmail.com"))
+                    .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
                     .subject("Subscription Renewal Failed")
                     .headerText("Subscription Renewal Failed")
                     .body(String.format(
@@ -188,7 +188,7 @@ public class SubscriptionService {
         logger.debug("Preparing email notification about expired subscription");
         EmailRequest emailRequest = EmailRequest.builder()
                 .to("maboukarl2@gmail.com")
-                .cc(List.of("yvanos510@gmail.com"))
+                .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
                 .subject("Subscription Expired")
                 .headerText("Subscription Expired")
                 .body(String.format(
@@ -344,6 +344,12 @@ public class SubscriptionService {
         Date endDate = Utils.addDays(new Date(), 8);
         List<Subscription> subscriptions = subscriptionRepository.findByEndDateBetweenAndStatusNotAndAutoRenewFalse(startDate, endDate, SubscriptionStatus.EXPIRED);
         for (Subscription subscription : subscriptions) {
+            Profile profile = subscription.getProfile();
+            if (profile == null || profile.getServiceAccount() == null) {
+                logger.debug("Skipping subscription {} due to missing profile or service account", subscription.getId());
+                continue;
+            }
+
             EmailRequest emailRequest = EmailRequest.builder()
                     .to("maboukarl2@gmail.com")
                     .cc(List.of("yvanos510@gmail.com"))
@@ -354,8 +360,8 @@ public class SubscriptionService {
                             subscription.getUser().getUsername(),
                             subscription.getService().getName(),
                             subscription.getEndDate(),
-                            subscription.getProfile().getServiceAccount().getLogin(),
-                            subscription.getProfile().getProfileName()
+                            profile.getServiceAccount().getLogin(),
+                            profile.getProfileName()
                     ))
                     .companyName("MabsPlace")
                     .build();
@@ -377,7 +383,7 @@ public class SubscriptionService {
 
             EmailRequest emailRequest = EmailRequest.builder()
                     .to("maboukarl2@gmail.com")
-                    .cc(List.of("yvanos510@gmail.com"))
+                    .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
                     .subject("Subscription Expired")
                     .headerText("Subscription Expired")
                     .body(String.format(

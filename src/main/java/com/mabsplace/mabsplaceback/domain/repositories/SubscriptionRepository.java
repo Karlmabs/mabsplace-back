@@ -22,8 +22,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findByEndDateBeforeAndStatusNotAndAutoRenewFalse(Date date, SubscriptionStatus subscriptionStatus);
 
-    List<Subscription> findByEndDateBetweenAndStatusNotAndAutoRenewFalse(Date startDate, Date endDate, SubscriptionStatus subscriptionStatus);
-
     boolean existsByUserIdAndServiceIdAndIsTrial(Long id, Long id1, boolean b);
 
     // Check if user has ever had a trial for this service (regardless of current status)
@@ -33,4 +31,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     // Check if a profile is already in use by subscriptions with specific statuses
     boolean existsByProfileIdAndStatusIn(Long profileId, List<SubscriptionStatus> statuses);
+
+    List<Subscription> findByEndDateBetweenAndStatusNotAndAutoRenewFalse(Date startDate, Date endDate, SubscriptionStatus subscriptionStatus);
 }
