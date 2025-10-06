@@ -23,11 +23,13 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
     private final ServiceAccountRepository serviceAccountRepository;
+    private final DiscordService discordService;
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
-    public EmailService(JavaMailSender mailSender, ServiceAccountRepository serviceAccountRepository) {
+    public EmailService(JavaMailSender mailSender, ServiceAccountRepository serviceAccountRepository, DiscordService discordService) {
         this.mailSender = mailSender;
         this.serviceAccountRepository = serviceAccountRepository;
+        this.discordService = discordService;
     }
 
     @Async
@@ -277,6 +279,15 @@ public class EmailService {
                             .build();
 
                     sendEmail(request);
+
+                    // Send Discord notification
+                    discordService.sendPaymentReminderNotification(
+                            serviceAccount.getMyService().getName(),
+                            serviceAccount.getLogin(),
+                            serviceAccount.getPaymentDate().toString(),
+                            (int) diff
+                    );
+
                     logger.info("7-day payment reminder sent for service account ID: {}", serviceAccount.getId());
                 } else if (diff <= 3) {
                     logger.info("Sending 3-day payment reminder for service account ID: {}, due in {} days.", serviceAccount.getId(), diff);
@@ -291,6 +302,15 @@ public class EmailService {
                             .build();
 
                     sendEmail(request);
+
+                    // Send Discord notification
+                    discordService.sendPaymentReminderNotification(
+                            serviceAccount.getMyService().getName(),
+                            serviceAccount.getLogin(),
+                            serviceAccount.getPaymentDate().toString(),
+                            (int) diff
+                    );
+
                     logger.info("3-day payment reminder sent for service account ID: {}", serviceAccount.getId());
                 }
             }
