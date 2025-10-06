@@ -264,20 +264,34 @@ public class EmailService {
                 long diffInMillies = Math.abs(serviceAccount.getPaymentDate().getTime() - today.getTime());
                 long diff = TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
 
-                if (diff <= 3) {
-                    logger.info("Sending payment reminder for service account ID: {}, due in {} days.", serviceAccount.getId(), diff);
+                if (diff <= 7 && diff > 3) {
+                    logger.info("Sending 7-day payment reminder for service account ID: {}, due in {} days.", serviceAccount.getId(), diff);
 
                     EmailRequest request = EmailRequest.builder()
                             .to("maboukarl2@gmail.com")
                             .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
-                            .subject("Upcoming Subscription Payment Reminder")
+                            .subject("Upcoming Subscription Payment Reminder - " + diff + " Days")
                             .headerText("Upcoming Subscription Payment Reminder")
                             .body("<p>This is a reminder that your subscription for " + serviceAccount.getMyService().getName() + " on the account " + serviceAccount.getLogin() + " is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.</p>")
                             .companyName("MabsPlace")
                             .build();
 
                     sendEmail(request);
-                    logger.info("Payment reminder sent for service account ID: {}", serviceAccount.getId());
+                    logger.info("7-day payment reminder sent for service account ID: {}", serviceAccount.getId());
+                } else if (diff <= 3) {
+                    logger.info("Sending 3-day payment reminder for service account ID: {}, due in {} days.", serviceAccount.getId(), diff);
+
+                    EmailRequest request = EmailRequest.builder()
+                            .to("maboukarl2@gmail.com")
+                            .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
+                            .subject("Urgent: Subscription Payment Due Soon - " + diff + " Days")
+                            .headerText("Urgent: Subscription Payment Due Soon")
+                            .body("<p>This is a reminder that your subscription for " + serviceAccount.getMyService().getName() + " on the account " + serviceAccount.getLogin() + " is due for renewal on " + serviceAccount.getPaymentDate() + ".\n\nPlease make sure to renew your subscription to avoid any interruptions.\n\nThank you.</p>")
+                            .companyName("MabsPlace")
+                            .build();
+
+                    sendEmail(request);
+                    logger.info("3-day payment reminder sent for service account ID: {}", serviceAccount.getId());
                 }
             }
         }
