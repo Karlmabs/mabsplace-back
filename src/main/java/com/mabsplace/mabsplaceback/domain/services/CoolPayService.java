@@ -152,7 +152,7 @@ public class CoolPayService {
     }
 
     public Object generatePaymentLink(PaymentRequest paymentRequest) {
-        String url = baseUrl + "/paylink?ref=" + paymentRequest.getApp_transaction_ref();
+        String url = baseUrl + "/paylink";
 
         logger.info("Generating payment link for transactionRef: {}", paymentRequest.getApp_transaction_ref());
 

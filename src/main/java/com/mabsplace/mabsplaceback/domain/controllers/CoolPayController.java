@@ -57,4 +57,12 @@ public class CoolPayController {
         return balance;
     }
 
+    @PostMapping("/paylink")
+    public Object generatePaymentLink(@RequestBody PaymentRequest paymentRequest) {
+        logger.info("Received paylink request: {}", paymentRequest);
+        Object response = coolPayService.generatePaymentLink(paymentRequest);
+        logger.info("Paylink response: {}", response);
+        return response;
+    }
+
 }
