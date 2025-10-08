@@ -1,0 +1,175 @@
+package com.mabsplace.mabsplaceback.domain.services;
+
+import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.DigitalGoodsOrderDto;
+import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.OrderRequestDto;
+import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.PriceCalculationDto;
+import com.mabsplace.mabsplaceback.domain.entities.DigitalGoodsOrder;
+import com.mabsplace.mabsplaceback.domain.entities.DigitalProduct;
+import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.mappers.DigitalGoodsOrderMapper;
+import com.mabsplace.mabsplaceback.domain.repositories.DigitalGoodsOrderRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.DigitalProductRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
+import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+
+@Service
+@Transactional
+public class DigitalGoodsOrderService {
+
+    private final DigitalGoodsOrderRepository orderRepository;
+    private final DigitalProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final WalletService walletService;
+    private final PriceCalculationService priceCalculationService;
+    private final DigitalGoodsOrderMapper orderMapper;
+    private static final Logger logger = LoggerFactory.getLogger(DigitalGoodsOrderService.class);
+
+    public DigitalGoodsOrderService(DigitalGoodsOrderRepository orderRepository,
+                                     DigitalProductRepository productRepository,
+                                     UserRepository userRepository,
+                                     WalletService walletService,
+                                     PriceCalculationService priceCalculationService,
+                                     DigitalGoodsOrderMapper orderMapper) {
+        this.orderRepository = orderRepository;
+        this.productRepository = productRepository;
+        this.userRepository = userRepository;
+        this.walletService = walletService;
+        this.priceCalculationService = priceCalculationService;
+        this.orderMapper = orderMapper;
+    }
+
+    public PriceCalculationDto calculateOrderPrice(Long productId, BigDecimal amount) {
+        logger.info("Calculating price for product ID: {} with amount: {}", productId, amount);
+        DigitalProduct product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("DigitalProduct", "id", productId));
+
+        return priceCalculationService.calculatePrice(product, amount);
+    }
+
+    public DigitalGoodsOrderDto createOrder(OrderRequestDto orderRequest) {
+        logger.info("Creating digital goods order for user ID: {}", orderRequest.getUserId());
+
+        // Get user and product
+        User user = userRepository.findById(orderRequest.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", orderRequest.getUserId()));
+
+        DigitalProduct product = productRepository.findById(orderRequest.getProductId())
+                .orElseThrow(() -> new ResourceNotFoundException("DigitalProduct", "id", orderRequest.getProductId()));
+
+        // Calculate price
+        PriceCalculationDto priceCalc = priceCalculationService.calculatePrice(product, orderRequest.getAmount());
+
+        // Check wallet balance
+        if (!walletService.checkBalance(user.getId(), priceCalc.getTotalAmount())) {
+            throw new IllegalStateException("Insufficient wallet balance. Required: " + priceCalc.getTotalAmount() + " XAF");
+        }
+
+        // Create order
+        DigitalGoodsOrder order = DigitalGoodsOrder.builder()
+                .user(user)
+                .product(product)
+                .amount(orderRequest.getAmount())
+                .baseCurrency(product.getBaseCurrency())
+                .baseCurrencyPrice(priceCalc.getBaseCurrencyPrice())
+                .exchangeRate(priceCalc.getExchangeRate())
+                .convertedPrice(priceCalc.getConvertedPrice())
+                .serviceFee(priceCalc.getServiceFee())
+                .totalAmount(priceCalc.getTotalAmount())
+                .profit(priceCalc.getServiceFee()) // Profit = service fee for now
+                .orderStatus(DigitalGoodsOrder.OrderStatus.PENDING)
+                .paymentMethod("WALLET")
+                .build();
+
+        DigitalGoodsOrder savedOrder = orderRepository.save(order);
+        logger.info("Order created with ID: {}", savedOrder.getId());
+
+        // Debit wallet
+        walletService.debit(user.getId(), priceCalc.getTotalAmount());
+        logger.info("Wallet debited for user ID: {}", user.getId());
+
+        // Update order status
+        savedOrder.setOrderStatus(DigitalGoodsOrder.OrderStatus.PAID);
+        savedOrder.setPaidAt(new Date());
+        orderRepository.save(savedOrder);
+
+        return orderMapper.toDto(savedOrder);
+    }
+
+    public DigitalGoodsOrderDto deliverOrder(Long orderId, String deliveryInfo, String adminNotes, Long adminId) {
+        logger.info("Delivering order ID: {} by admin ID: {}", orderId, adminId);
+
+        DigitalGoodsOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("DigitalGoodsOrder", "id", orderId));
+
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", adminId));
+
+        order.setDeliveryInfo(deliveryInfo);
+        order.setAdminNotes(adminNotes);
+        order.setDeliveredBy(admin);
+        order.setOrderStatus(DigitalGoodsOrder.OrderStatus.DELIVERED);
+        order.setDeliveredAt(new Date());
+
+        DigitalGoodsOrder updated = orderRepository.save(order);
+        logger.info("Order delivered: {}", orderId);
+
+        return orderMapper.toDto(updated);
+    }
+
+    public DigitalGoodsOrderDto updateOrderStatus(Long orderId, DigitalGoodsOrder.OrderStatus newStatus) {
+        logger.info("Updating order ID: {} to status: {}", orderId, newStatus);
+
+        DigitalGoodsOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("DigitalGoodsOrder", "id", orderId));
+
+        order.setOrderStatus(newStatus);
+        DigitalGoodsOrder updated = orderRepository.save(order);
+
+        return orderMapper.toDto(updated);
+    }
+
+    public DigitalGoodsOrderDto getOrderById(Long id) {
+        logger.info("Fetching order ID: {}", id);
+        DigitalGoodsOrder order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("DigitalGoodsOrder", "id", id));
+        return orderMapper.toDto(order);
+    }
+
+    public List<DigitalGoodsOrderDto> getAllOrders() {
+        logger.info("Fetching all orders");
+        List<DigitalGoodsOrder> orders = orderRepository.findAll();
+        logger.info("Found {} orders", orders.size());
+        return orderMapper.toDtoList(orders);
+    }
+
+    public List<DigitalGoodsOrderDto> getOrdersByUser(Long userId) {
+        logger.info("Fetching orders for user ID: {}", userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        List<DigitalGoodsOrder> orders = orderRepository.findByUser(user);
+        logger.info("Found {} orders", orders.size());
+        return orderMapper.toDtoList(orders);
+    }
+
+    public List<DigitalGoodsOrderDto> getOrdersByStatus(DigitalGoodsOrder.OrderStatus status) {
+        logger.info("Fetching orders with status: {}", status);
+        List<DigitalGoodsOrder> orders = orderRepository.findByOrderStatus(status);
+        logger.info("Found {} orders", orders.size());
+        return orderMapper.toDtoList(orders);
+    }
+
+    public BigDecimal getTotalProfit() {
+        logger.info("Calculating total profit");
+        BigDecimal profit = orderRepository.calculateTotalProfit();
+        logger.info("Total profit: {}", profit);
+        return profit != null ? profit : BigDecimal.ZERO;
+    }
+}
