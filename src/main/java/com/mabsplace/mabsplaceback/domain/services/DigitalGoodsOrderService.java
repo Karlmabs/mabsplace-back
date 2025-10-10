@@ -130,10 +130,47 @@ public class DigitalGoodsOrderService {
         DigitalGoodsOrder order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("DigitalGoodsOrder", "id", orderId));
 
+        DigitalGoodsOrder.OrderStatus currentStatus = order.getOrderStatus();
+
+        // Validate status transition
+        validateStatusTransition(currentStatus, newStatus);
+
+        // Handle wallet refund for CANCELLED or REFUNDED status
+        if ((newStatus == DigitalGoodsOrder.OrderStatus.CANCELLED
+            || newStatus == DigitalGoodsOrder.OrderStatus.REFUNDED)
+            && (currentStatus == DigitalGoodsOrder.OrderStatus.PAID
+                || currentStatus == DigitalGoodsOrder.OrderStatus.PROCESSING
+                || currentStatus == DigitalGoodsOrder.OrderStatus.DELIVERED)) {
+
+            // Refund to wallet
+            walletService.credit(order.getUser().getId(), order.getTotalAmount());
+            logger.info("Refunded {} XAF to user ID: {}", order.getTotalAmount(), order.getUser().getId());
+        }
+
         order.setOrderStatus(newStatus);
         DigitalGoodsOrder updated = orderRepository.save(order);
 
         return orderMapper.toDto(updated);
+    }
+
+    private void validateStatusTransition(DigitalGoodsOrder.OrderStatus currentStatus, DigitalGoodsOrder.OrderStatus newStatus) {
+        // Define valid transitions
+        boolean isValidTransition = switch (currentStatus) {
+            case PENDING -> newStatus == DigitalGoodsOrder.OrderStatus.CANCELLED;
+            case PAID -> newStatus == DigitalGoodsOrder.OrderStatus.PROCESSING
+                    || newStatus == DigitalGoodsOrder.OrderStatus.CANCELLED
+                    || newStatus == DigitalGoodsOrder.OrderStatus.REFUNDED;
+            case PROCESSING -> newStatus == DigitalGoodsOrder.OrderStatus.DELIVERED
+                    || newStatus == DigitalGoodsOrder.OrderStatus.CANCELLED;
+            case DELIVERED -> newStatus == DigitalGoodsOrder.OrderStatus.REFUNDED;
+            case CANCELLED, REFUNDED -> false; // Terminal states
+        };
+
+        if (!isValidTransition) {
+            throw new IllegalStateException(
+                String.format("Invalid status transition from %s to %s", currentStatus, newStatus)
+            );
+        }
     }
 
     public DigitalGoodsOrderDto getOrderById(Long id) {
@@ -171,5 +208,23 @@ public class DigitalGoodsOrderService {
         BigDecimal profit = orderRepository.calculateTotalProfit();
         logger.info("Total profit: {}", profit);
         return profit != null ? profit : BigDecimal.ZERO;
+    }
+
+    public void deleteOrder(Long orderId) {
+        logger.info("Deleting order ID: {}", orderId);
+
+        DigitalGoodsOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("DigitalGoodsOrder", "id", orderId));
+
+        // Check if order can be deleted (only PENDING or CANCELLED orders should be deletable)
+        if (order.getOrderStatus() == DigitalGoodsOrder.OrderStatus.PAID
+            || order.getOrderStatus() == DigitalGoodsOrder.OrderStatus.PROCESSING
+            || order.getOrderStatus() == DigitalGoodsOrder.OrderStatus.DELIVERED) {
+            throw new IllegalStateException("Cannot delete order with status: " + order.getOrderStatus() +
+                ". Only PENDING or CANCELLED orders can be deleted.");
+        }
+
+        orderRepository.delete(order);
+        logger.info("Order deleted: {}", orderId);
     }
 }

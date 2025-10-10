@@ -98,4 +98,11 @@ public class DigitalGoodsOrderController {
         BigDecimal profit = orderService.getTotalProfit();
         return ResponseEntity.ok(Map.of("totalProfit", profit));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+        logger.info("Deleting order ID: {}", id);
+        orderService.deleteOrder(id);
+        return ResponseEntity.noContent().build();
+    }
 }
