@@ -23,6 +23,9 @@ public class DiscordService {
     @Value("${discord.webhook.payment-reminders:}")
     private String paymentRemindersWebhook;
 
+    @Value("${discord.webhook.subscription-renewals:}")
+    private String subscriptionRenewalsWebhook;
+
     private final RestTemplate restTemplate;
 
     public DiscordService(RestTemplate restTemplate) {
@@ -101,6 +104,162 @@ public class DiscordService {
             logger.info("Custom Discord notification sent successfully");
         } catch (Exception e) {
             logger.error("Failed to send custom Discord notification: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendSubscriptionRenewedNotification(String username, String serviceName, String newEndDate) {
+        if (subscriptionRenewalsWebhook == null || subscriptionRenewalsWebhook.isEmpty()) {
+            logger.warn("Discord webhook URL not configured for subscription renewals");
+            return;
+        }
+
+        try {
+            logger.info("Sending Discord notification for subscription renewal: {} - {}", username, serviceName);
+
+            Map<String, Object> embed = new HashMap<>();
+            embed.put("title", "✅ Subscription Renewed");
+            embed.put("description", String.format(
+                    "**User:** %s\n**Service:** %s\n**New End Date:** %s",
+                    username, serviceName, newEndDate
+            ));
+            embed.put("color", 5763719); // Green color
+            embed.put("timestamp", Instant.now().toString());
+
+            Map<String, Object> footer = new HashMap<>();
+            footer.put("text", "MabsPlace Subscription Renewals");
+            embed.put("footer", footer);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("embeds", List.of(embed));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(subscriptionRenewalsWebhook, request, String.class);
+
+            logger.info("Discord notification sent successfully for subscription renewal");
+        } catch (Exception e) {
+            logger.error("Failed to send Discord notification for renewal: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendSubscriptionRenewalFailedNotification(String username, String serviceName, int attemptNumber) {
+        if (subscriptionRenewalsWebhook == null || subscriptionRenewalsWebhook.isEmpty()) {
+            logger.warn("Discord webhook URL not configured for subscription renewals");
+            return;
+        }
+
+        try {
+            logger.info("Sending Discord notification for failed renewal: {} - {}", username, serviceName);
+
+            Map<String, Object> embed = new HashMap<>();
+            embed.put("title", "⚠️ Subscription Renewal Failed");
+            embed.put("description", String.format(
+                    "**User:** %s\n**Service:** %s\n**Attempt:** %d/4\n**Status:** Will retry in 24 hours",
+                    username, serviceName, attemptNumber
+            ));
+            embed.put("color", 16776960); // Yellow/Orange color
+            embed.put("timestamp", Instant.now().toString());
+
+            Map<String, Object> footer = new HashMap<>();
+            footer.put("text", "MabsPlace Subscription Renewals");
+            embed.put("footer", footer);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("embeds", List.of(embed));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(subscriptionRenewalsWebhook, request, String.class);
+
+            logger.info("Discord notification sent successfully for failed renewal");
+        } catch (Exception e) {
+            logger.error("Failed to send Discord notification for failed renewal: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendSubscriptionExpiredNotification(String username, String serviceName, String accountLogin, String profileName) {
+        if (subscriptionRenewalsWebhook == null || subscriptionRenewalsWebhook.isEmpty()) {
+            logger.warn("Discord webhook URL not configured for subscription renewals");
+            return;
+        }
+
+        try {
+            logger.info("Sending Discord notification for expired subscription: {} - {}", username, serviceName);
+
+            Map<String, Object> embed = new HashMap<>();
+            embed.put("title", "❌ Subscription Expired");
+            embed.put("description", String.format(
+                    "**User:** %s\n**Service:** %s\n**Account:** %s\n**Profile:** %s\n\n⚠️ **Action Required:** Change account password/PIN",
+                    username, serviceName, accountLogin, profileName
+            ));
+            embed.put("color", 15158332); // Red color
+            embed.put("timestamp", Instant.now().toString());
+
+            Map<String, Object> footer = new HashMap<>();
+            footer.put("text", "MabsPlace Subscription Renewals");
+            embed.put("footer", footer);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("embeds", List.of(embed));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(subscriptionRenewalsWebhook, request, String.class);
+
+            logger.info("Discord notification sent successfully for expired subscription");
+        } catch (Exception e) {
+            logger.error("Failed to send Discord notification for expired subscription: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendSubscriptionExpiringNotification(String username, String serviceName, String expirationDate, String accountLogin, String profileName) {
+        if (subscriptionRenewalsWebhook == null || subscriptionRenewalsWebhook.isEmpty()) {
+            logger.warn("Discord webhook URL not configured for subscription renewals");
+            return;
+        }
+
+        try {
+            logger.info("Sending Discord notification for expiring subscription: {} - {}", username, serviceName);
+
+            Map<String, Object> embed = new HashMap<>();
+            embed.put("title", "⏰ Subscription Expiring Soon");
+            embed.put("description", String.format(
+                    "**User:** %s\n**Service:** %s\n**Expiration Date:** %s\n**Account:** %s\n**Profile:** %s",
+                    username, serviceName, expirationDate, accountLogin, profileName
+            ));
+            embed.put("color", 3447003); // Blue color
+            embed.put("timestamp", Instant.now().toString());
+
+            Map<String, Object> footer = new HashMap<>();
+            footer.put("text", "MabsPlace Subscription Renewals");
+            embed.put("footer", footer);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("embeds", List.of(embed));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(subscriptionRenewalsWebhook, request, String.class);
+
+            logger.info("Discord notification sent successfully for expiring subscription");
+        } catch (Exception e) {
+            logger.error("Failed to send Discord notification for expiring subscription: {}", e.getMessage(), e);
         }
     }
 }

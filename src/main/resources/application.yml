@@ -67,4 +67,5 @@ app:
 discord:
   webhook:
     payment-reminders: https://discord.com/api/webhooks/1424714395564642364/2YgOrgi4ZXabfoYRqH_hZUgKl2I-21th_o56ug7-JKxKtgoSCRGK-oV2tgyH4Qf45rNm
+    subscription-renewals: https://discord.com/api/webhooks/1426666147431973017/ljJdSkvdDO8LnyuARqBWxU1sWx1x4FJaMhSXcPoswjbT9dBx3ZpM97B92DQw9OOQqq8A
 
