@@ -340,9 +340,16 @@ public class SubscriptionService {
 
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
     public void notifyExpiringSubscriptions() throws MessagingException {
-        Date startDate = Utils.addDays(new Date(), 7);
-        Date endDate = Utils.addDays(new Date(), 8);
-        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBetweenAndStatusNotAndAutoRenewFalse(startDate, endDate, SubscriptionStatus.EXPIRED);
+        logger.info("Starting notification for expiring subscriptions");
+        Date today = new Date();
+        Date sevenDaysFromNow = Utils.addDays(today, 7);
+
+        // Find subscriptions expiring between now and 7 days from now (with autoRenew=false and not yet notified)
+        List<Subscription> subscriptions = subscriptionRepository
+                .findByEndDateBetweenAndStatusNotAndAutoRenewFalseAndExpirationNotifiedFalse(
+                        today, sevenDaysFromNow, SubscriptionStatus.EXPIRED);
+        logger.info("Found {} subscriptions expiring within 7 days that haven't been notified", subscriptions.size());
+
         for (Subscription subscription : subscriptions) {
             Profile profile = subscription.getProfile();
             if (profile == null || profile.getServiceAccount() == null) {
@@ -350,23 +357,33 @@ public class SubscriptionService {
                 continue;
             }
 
-            EmailRequest emailRequest = EmailRequest.builder()
-                    .to("maboukarl2@gmail.com")
-                    .cc(List.of("yvanos510@gmail.com"))
-                    .subject("Subscription Expiring Soon")
-                    .headerText("Subscription Expiring Soon")
-                    .body(String.format(
-                            "<p>The subscription of %s for %s will expire on %s. The Account he is using is %s on the profile %s.</p>",
-                            subscription.getUser().getUsername(),
-                            subscription.getService().getName(),
-                            subscription.getEndDate(),
-                            profile.getServiceAccount().getLogin(),
-                            profile.getProfileName()
-                    ))
-                    .companyName("MabsPlace")
-                    .build();
+            try {
+                EmailRequest emailRequest = EmailRequest.builder()
+                        .to("maboukarl2@gmail.com")
+                        .cc(List.of("yvanos510@gmail.com"))
+                        .subject("Subscription Expiring Soon")
+                        .headerText("Subscription Expiring Soon")
+                        .body(String.format(
+                                "<p>The subscription of %s for %s will expire on %s. The Account he is using is %s on the profile %s.</p>",
+                                subscription.getUser().getUsername(),
+                                subscription.getService().getName(),
+                                subscription.getEndDate(),
+                                profile.getServiceAccount().getLogin(),
+                                profile.getProfileName()
+                        ))
+                        .companyName("MabsPlace")
+                        .build();
 
-            emailService.sendEmail(emailRequest);
+                emailService.sendEmail(emailRequest);
+
+                // Mark as notified to avoid sending duplicate emails
+                subscription.setExpirationNotified(true);
+                subscriptionRepository.save(subscription);
+
+                logger.info("Sent expiring notification email for subscription ID: {}", subscription.getId());
+            } catch (Exception e) {
+                logger.error("Failed to send expiration notification for subscription ID: {}", subscription.getId(), e);
+            }
         }
     }
 

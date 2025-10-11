@@ -57,10 +57,17 @@ public class Subscription {
   @Column(name = "is_trial")
   private Boolean isTrial = false;
 
+  // Track whether expiration notification has been sent
+  @Column(name = "expiration_notified")
+  private Boolean expirationNotified = false;
+
   @PrePersist
   protected void onCreate() {
     if (renewalAttempts == null) {
       renewalAttempts = 0;
+    }
+    if (expirationNotified == null) {
+      expirationNotified = false;
     }
   }
 
