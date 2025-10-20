@@ -451,6 +451,50 @@ public class SubscriptionService {
         }
     }
 
+    @Scheduled(cron = "0 0 1 * * ?") // Runs every day at 1:00 AM
+    public void auditExpiredSubscriptionProfiles() {
+        logger.info("Starting profile security audit for expired subscriptions");
+
+        // Find all expired subscriptions with linked profiles
+        List<Subscription> expiredSubscriptions = subscriptionRepository.findByStatus(SubscriptionStatus.EXPIRED);
+
+        int alertCount = 0;
+        for (Subscription subscription : expiredSubscriptions) {
+            Profile profile = subscription.getProfile();
+
+            // Check if subscription has a profile
+            if (profile == null) {
+                continue;
+            }
+
+            String profileName = profile.getProfileName();
+
+            // Check if profile name is NOT changed to "empty" (case-insensitive)
+            if (profileName != null && !profileName.toLowerCase().startsWith("empty")) {
+                // Profile not reset - send security alert
+                String username = subscription.getUser().getUsername();
+                String serviceName = subscription.getService().getName();
+                String expiryDate = subscription.getEndDate() != null ? subscription.getEndDate().toString() : "N/A";
+
+                logger.warn("Security Alert: Expired subscription {} has profile '{}' not reset to 'empty'",
+                           subscription.getId(), profileName);
+
+                // Send Discord notification
+                discordService.sendProfileSecurityAuditAlert(
+                    subscription.getId(),
+                    username,
+                    serviceName,
+                    profileName,
+                    expiryDate
+                );
+
+                alertCount++;
+            }
+        }
+
+        logger.info("Profile security audit completed. {} alerts sent.", alertCount);
+    }
+
     // Update Subscription Status
     public Subscription updateSubscriptionStatus(Long id, SubscriptionStatus newStatus) {
         Subscription subscription = subscriptionRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", id));

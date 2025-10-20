@@ -68,4 +68,5 @@ discord:
   webhook:
     payment-reminders: https://discord.com/api/webhooks/1424714395564642364/2YgOrgi4ZXabfoYRqH_hZUgKl2I-21th_o56ug7-JKxKtgoSCRGK-oV2tgyH4Qf45rNm
     subscription-renewals: https://discord.com/api/webhooks/1426666147431973017/ljJdSkvdDO8LnyuARqBWxU1sWx1x4FJaMhSXcPoswjbT9dBx3ZpM97B92DQw9OOQqq8A
+    profile-security-audit: https://discord.com/api/webhooks/1429947685737205901/ilGhUQ-kAQTH8DKPK9QQ8VQgSFb06w3g7pUOIqI5UF_2RuhAR0hF9srNh7dls7VbvXCZ
 

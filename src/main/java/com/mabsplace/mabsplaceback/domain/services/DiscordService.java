@@ -26,6 +26,9 @@ public class DiscordService {
     @Value("${discord.webhook.subscription-renewals:}")
     private String subscriptionRenewalsWebhook;
 
+    @Value("${discord.webhook.profile-security-audit:}")
+    private String profileSecurityAuditWebhook;
+
     private final RestTemplate restTemplate;
 
     public DiscordService(RestTemplate restTemplate) {
@@ -260,6 +263,56 @@ public class DiscordService {
             logger.info("Discord notification sent successfully for expiring subscription");
         } catch (Exception e) {
             logger.error("Failed to send Discord notification for expiring subscription: {}", e.getMessage(), e);
+        }
+    }
+
+    @Async
+    public void sendProfileSecurityAuditAlert(Long subscriptionId, String username, String serviceName,
+                                               String profileName, String expiryDate) {
+        if (profileSecurityAuditWebhook == null || profileSecurityAuditWebhook.isEmpty()) {
+            logger.warn("Discord webhook URL not configured for profile security audit");
+            return;
+        }
+
+        try {
+            logger.info("Sending Discord security audit alert for subscription: {} - {} - {}",
+                        subscriptionId, username, serviceName);
+
+            Map<String, Object> embed = new HashMap<>();
+            embed.put("title", "🔒 Security Alert: Profile Not Reset");
+            embed.put("description", String.format(
+                    "**⚠️ User may still have access to expired subscription**\n\n" +
+                    "**Subscription ID:** %d\n" +
+                    "**User:** %s\n" +
+                    "**Service:** %s\n" +
+                    "**Profile Name:** %s\n" +
+                    "**Expired On:** %s\n\n" +
+                    "**Action Required:**\n" +
+                    "• Change profile name to 'empty' or 'empty2'\n" +
+                    "• Reset profile PIN\n" +
+                    "• Update service account password if necessary",
+                    subscriptionId, username, serviceName, profileName, expiryDate
+            ));
+            embed.put("color", 15158332); // Red color for security alert
+            embed.put("timestamp", Instant.now().toString());
+
+            Map<String, Object> footer = new HashMap<>();
+            footer.put("text", "MabsPlace Profile Security Audit");
+            embed.put("footer", footer);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("embeds", List.of(embed));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(profileSecurityAuditWebhook, request, String.class);
+
+            logger.info("Discord security audit alert sent successfully for subscription: {}", subscriptionId);
+        } catch (Exception e) {
+            logger.error("Failed to send Discord security audit alert: {}", e.getMessage(), e);
         }
     }
 }
