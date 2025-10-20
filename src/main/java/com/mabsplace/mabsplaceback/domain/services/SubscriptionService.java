@@ -488,4 +488,105 @@ public class SubscriptionService {
     public List<Subscription> getSubscriptionsByUserId(Long userId) {
         return subscriptionRepository.findByUserId(userId);
     }
+
+    /**
+     * Manually renew a subscription (typically for expired subscriptions)
+     * @param subscriptionId The ID of the subscription to renew
+     * @param newPlanId Optional new plan ID, if null uses current plan
+     * @return The renewed subscription
+     * @throws MessagingException if email notification fails
+     */
+    @Transactional
+    public Subscription renewSubscriptionManually(Long subscriptionId, Long newPlanId) throws MessagingException {
+        logger.info("Manual renewal requested for subscription ID: {}", subscriptionId);
+
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", subscriptionId));
+
+        // Validate subscription can be renewed
+        if (subscription.getStatus() != SubscriptionStatus.EXPIRED &&
+            subscription.getStatus() != SubscriptionStatus.INACTIVE) {
+            logger.warn("Attempted to manually renew non-expired subscription ID: {}", subscriptionId);
+            throw new IllegalStateException("Only expired or inactive subscriptions can be manually renewed");
+        }
+
+        // Determine which plan to use
+        SubscriptionPlan planToUse;
+        if (newPlanId != null) {
+            planToUse = subscriptionPlanRepository.findById(newPlanId)
+                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", newPlanId));
+            logger.info("Using new plan ID: {} for manual renewal", newPlanId);
+        } else {
+            planToUse = subscription.getSubscriptionPlan();
+            logger.info("Using current plan ID: {} for manual renewal", planToUse.getId());
+        }
+
+        // Prevent trial-to-trial renewals
+        if (subscription.getIsTrial() && planToUse.getName().equals("Trial")) {
+            logger.warn("Attempted to renew trial subscription to another trial for subscription ID: {}", subscriptionId);
+            throw new IllegalStateException("Trial subscriptions cannot be renewed to another trial plan");
+        }
+
+        // Process the renewal payment
+        boolean renewalSuccess = orchestrator.processSubscriptionRenewal(subscription, planToUse);
+
+        if (!renewalSuccess) {
+            logger.error("Manual renewal payment failed for subscription ID: {}", subscriptionId);
+            throw new IllegalStateException("Renewal payment failed. Please check your wallet balance and try again.");
+        }
+
+        // Update subscription with new dates and status
+        Date newStartDate = new Date();
+        Date newEndDate = Utils.addPeriod(newStartDate, planToUse.getPeriod());
+
+        logger.info("Manual renewal successful - new period: {} to {}", newStartDate, newEndDate);
+
+        subscription.setStartDate(newStartDate);
+        subscription.setEndDate(newEndDate);
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
+        subscription.setSubscriptionPlan(planToUse);
+        subscription.setRenewalAttempts(0);
+        subscription.setLastRenewalAttempt(null);
+        subscription.setNextSubscriptionPlan(null);
+        subscription.setExpirationNotified(false);
+        subscription.setIsTrial(false); // No longer trial after first renewal
+
+        // Reactivate profile if it exists
+        Profile profile = subscription.getProfile();
+        if (profile != null) {
+            profile.setStatus(ProfileStatus.ACTIVE);
+            profileRepository.save(profile);
+            logger.info("Reactivated profile ID: {}", profile.getId());
+        }
+
+        subscription = subscriptionRepository.save(subscription);
+        logger.info("Successfully saved renewed subscription ID: {}", subscription.getId());
+
+        // Send email notification
+        EmailRequest emailRequest = EmailRequest.builder()
+                .to("maboukarl2@gmail.com")
+                .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
+                .subject("Subscription Manually Renewed")
+                .headerText("Subscription Manually Renewed")
+                .body(String.format(
+                        "<p>The subscription for %s of %s has been manually renewed. The new end date is %s.</p>",
+                        subscription.getService().getName(),
+                        subscription.getUser().getUsername(),
+                        newEndDate
+                ))
+                .companyName("MabsPlace")
+                .build();
+
+        emailService.sendEmail(emailRequest);
+        logger.info("Sent manual renewal confirmation email for subscription ID: {}", subscription.getId());
+
+        // Send Discord notification
+        discordService.sendSubscriptionRenewedNotification(
+                subscription.getUser().getUsername(),
+                subscription.getService().getName(),
+                newEndDate.toString()
+        );
+
+        return subscription;
+    }
 }

@@ -11,6 +11,7 @@ import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionLightweightMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.SubscriptionRepository;
 import com.mabsplace.mabsplaceback.domain.services.SubscriptionService;
+import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -119,6 +120,27 @@ public class SubscriptionController {
     List<Subscription> subscriptions = subscriptionService.getSubscriptionsByUserId(userId);
     logger.info("Fetched {} lightweight subscriptions for user ID: {}", subscriptions.size(), userId);
     return ResponseEntity.ok(lightweightMapper.toDtoList(subscriptions));
+  }
+
+  @PostMapping("/{id}/renew")
+  public ResponseEntity<?> renewSubscription(
+          @PathVariable Long id,
+          @RequestParam(required = false) Long planId) {
+    logger.info("Manual renewal requested for subscription ID: {}, with plan ID: {}", id, planId);
+    try {
+      Subscription renewedSubscription = subscriptionService.renewSubscriptionManually(id, planId);
+      logger.info("Successfully renewed subscription ID: {}", id);
+      return new ResponseEntity<>(mapper.toDto(renewedSubscription), HttpStatus.OK);
+    } catch (IllegalStateException e) {
+      logger.error("Renewal failed for subscription ID: {} - {}", id, e.getMessage());
+      return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
+    } catch (ResourceNotFoundException e) {
+      logger.error("Subscription not found for renewal - ID: {}", id);
+      return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+    } catch (Exception e) {
+      logger.error("Unexpected error renewing subscription ID: {}", id, e);
+      return new ResponseEntity<>("An unexpected error occurred while renewing the subscription", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
 }
