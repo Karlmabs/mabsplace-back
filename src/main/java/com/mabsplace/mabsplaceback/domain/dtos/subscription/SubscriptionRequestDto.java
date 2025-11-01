@@ -35,4 +35,6 @@ public class SubscriptionRequestDto implements Serializable {
 
     private Boolean isTrial = false;
 
+    private String accessInstructions;
+
 }

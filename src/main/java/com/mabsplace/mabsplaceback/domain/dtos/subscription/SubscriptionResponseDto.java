@@ -61,4 +61,13 @@ public class SubscriptionResponseDto implements Serializable {
     private long nextSubscriptionPlanId;
 
     private boolean isTrial = false;
+
+    private String accessInstructions;
+
+    // Service credential visibility configuration
+    private Boolean showAccountCredentials;
+
+    private Boolean showProfileName;
+
+    private Boolean showProfilePin;
 }

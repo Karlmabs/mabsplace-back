@@ -27,6 +27,16 @@ public class MyService {
   private String image;
   private String description;
 
+  // Credential visibility configuration for end users
+  @Column(name = "show_account_credentials")
+  private Boolean showAccountCredentials = true;
+
+  @Column(name = "show_profile_name")
+  private Boolean showProfileName = true;
+
+  @Column(name = "show_profile_pin")
+  private Boolean showProfilePin = true;
+
   @OneToMany(mappedBy = "myService", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ServiceAccount> serviceAccounts;
 

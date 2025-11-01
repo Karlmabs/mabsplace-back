@@ -61,6 +61,10 @@ public class Subscription {
   @Column(name = "expiration_notified")
   private Boolean expirationNotified = false;
 
+  // Custom instructions for accessing this subscription
+  @Column(name = "access_instructions", columnDefinition = "TEXT")
+  private String accessInstructions;
+
   @PrePersist
   protected void onCreate() {
     if (renewalAttempts == null) {

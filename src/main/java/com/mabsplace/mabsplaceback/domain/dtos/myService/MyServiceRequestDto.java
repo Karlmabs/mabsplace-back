@@ -17,5 +17,8 @@ public class MyServiceRequestDto implements Serializable {
   private String logo;
   private String image;
   private String description;
+  private Boolean showAccountCredentials;
+  private Boolean showProfileName;
+  private Boolean showProfilePin;
 
 }
