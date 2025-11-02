@@ -24,6 +24,7 @@ public class MyServiceResponseDto implements Serializable {
   private Boolean showAccountCredentials;
   private Boolean showProfileName;
   private Boolean showProfilePin;
+  private Boolean isActive;
   private List<ServiceAccountResponseDto> serviceAccounts;
   private Set<SubscriptionPlanResponseDto> subscriptionPlans;
 }

@@ -14,4 +14,6 @@ public interface MyServiceRepository extends JpaRepository<MyService, Long> {
 
   @Query("SELECT s.subscriptionPlans FROM MyService s WHERE s.id = ?1")
   List<SubscriptionPlan> getSubscriptionPlansByServiceId(Long id);
+
+  List<MyService> findByIsActive(Boolean isActive);
 }

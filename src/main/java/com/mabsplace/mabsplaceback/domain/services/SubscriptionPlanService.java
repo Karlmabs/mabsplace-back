@@ -102,20 +102,20 @@ public class SubscriptionPlanService {
   }
 
   public List<SubscriptionPlan> getSubscriptionPlansByMyServiceId(Long myServiceId) {
-    logger.info("Fetching subscription plans by myService ID: {}", myServiceId);
-    List<SubscriptionPlan> plans = subscriptionPlanRepository.findByMyServiceId(myServiceId);
-    logger.info("Fetched {} subscription plans for myService ID: {}", plans.size(), myServiceId);
+    logger.info("Fetching active subscription plans by myService ID: {}", myServiceId);
+    List<SubscriptionPlan> plans = subscriptionPlanRepository.findByMyServiceIdAndIsActive(myServiceId, true);
+    logger.info("Fetched {} active subscription plans for myService ID: {}", plans.size(), myServiceId);
     return plans;
   }
 
   public List<SubscriptionPlan> getNonTrialSubscriptionPlansByMyServiceId(Long myServiceId) {
-    logger.info("Fetching non-trial subscription plans by myService ID: {}", myServiceId);
-    List<SubscriptionPlan> plans = subscriptionPlanRepository.findByMyServiceId(myServiceId);
+    logger.info("Fetching active non-trial subscription plans by myService ID: {}", myServiceId);
+    List<SubscriptionPlan> plans = subscriptionPlanRepository.findByMyServiceIdAndIsActive(myServiceId, true);
     // Filter out trial plans
     List<SubscriptionPlan> nonTrialPlans = plans.stream()
         .filter(plan -> !plan.getName().equals("Trial"))
         .toList();
-    logger.info("Fetched {} non-trial subscription plans for myService ID: {}", nonTrialPlans.size(), myServiceId);
+    logger.info("Fetched {} active non-trial subscription plans for myService ID: {}", nonTrialPlans.size(), myServiceId);
     return nonTrialPlans;
   }
 

@@ -37,6 +37,10 @@ public class MyService {
   @Column(name = "show_profile_pin")
   private Boolean showProfilePin = true;
 
+  // Service visibility - controls if service is shown to users
+  @Column(name = "is_active")
+  private Boolean isActive = true;
+
   @OneToMany(mappedBy = "myService", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<ServiceAccount> serviceAccounts;
 

@@ -11,6 +11,8 @@ import java.util.List;
 public interface SubscriptionPlanRepository extends JpaRepository<SubscriptionPlan, Long> {
     List<SubscriptionPlan> findByMyServiceId(Long myServiceId);
 
+    List<SubscriptionPlan> findByMyServiceIdAndIsActive(Long myServiceId, Boolean isActive);
+
     boolean existsByMyServiceIdAndPeriodAndIdNot(Long myServiceId, Period period, Long id);
     boolean existsByMyServiceIdAndNameIgnoreCaseAndIdNot(Long myServiceId, String name, Long id);
 

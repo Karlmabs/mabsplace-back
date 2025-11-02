@@ -20,5 +20,6 @@ public class MyServiceRequestDto implements Serializable {
   private Boolean showAccountCredentials;
   private Boolean showProfileName;
   private Boolean showProfilePin;
+  private Boolean isActive;
 
 }

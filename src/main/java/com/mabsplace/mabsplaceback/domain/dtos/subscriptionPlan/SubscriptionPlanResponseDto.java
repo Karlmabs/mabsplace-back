@@ -27,6 +27,8 @@ public class SubscriptionPlanResponseDto implements Serializable {
 
     private boolean hasActiveDiscount;
 
+    private Boolean isActive;
+
     private Period period;
 
     private String description;

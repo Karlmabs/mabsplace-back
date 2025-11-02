@@ -23,6 +23,8 @@ public class SubscriptionPlanRequestDto implements Serializable {
 
   private String description;
 
+  private Boolean isActive;
+
   private long myServiceId;
 
   private long currencyId;

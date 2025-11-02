@@ -38,6 +38,10 @@ public class SubscriptionPlan {
   @Column(nullable = false)
   private String description;
 
+  // Plan visibility - controls if plan is shown to users
+  @Column(name = "is_active")
+  private Boolean isActive = true;
+
   @ManyToOne
   @JoinColumn(name = "service_id", referencedColumnName = "id")
   private MyService myService;
