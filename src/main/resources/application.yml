@@ -70,3 +70,16 @@ discord:
     subscription-renewals: https://discord.com/api/webhooks/1426666147431973017/ljJdSkvdDO8LnyuARqBWxU1sWx1x4FJaMhSXcPoswjbT9dBx3ZpM97B92DQw9OOQqq8A
     profile-security-audit: https://discord.com/api/webhooks/1429947685737205901/ilGhUQ-kAQTH8DKPK9QQ8VQgSFb06w3g7pUOIqI5UF_2RuhAR0hF9srNh7dls7VbvXCZ
 
+whatsapp:
+  api:
+    url: https://graph.facebook.com/v22.0
+    token: EAAQxDeXZAlxsBPxzUlaV7ZBHxcGhj18OJZAPEesKuS0obs7MRHqb18ZAb8uL2QZCJScZCgIo4kckeJmdTiZBUVJGVamOmZCbYptZA5cpj3l2Qd57dQr9FJXI1lcHrotTZCZBrPuNkebwuxOTQxpVvZCHLIFT04avbxoWy1VVkil8k8CWeF4mcPnqPbwRhW9TGMLZCeMAHaGAe5YMnz3Jso0jP1EbZC1JqEhlWEIgcf3TujHLU4ZBVNinUNnsaWNmnldHYt8Ie8laZCZChdDN29k3NYe2vhic95QItioAruC3JNnxhlAZDZD
+  phone:
+    number:
+      id: 675211405670204
+  templates:
+    subscription-renewed: subscription_renewed
+    subscription-renewal-failed: subscription_renewal_failed
+    subscription-expired: subscription_expired
+    subscription-expiring-soon: subscription_expiring_soon
+
