@@ -5,10 +5,14 @@ import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.OrderRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.PriceCalculationDto;
 import com.mabsplace.mabsplaceback.domain.entities.DigitalGoodsOrder;
 import com.mabsplace.mabsplaceback.domain.entities.DigitalProduct;
+import com.mabsplace.mabsplaceback.domain.entities.Transaction;
 import com.mabsplace.mabsplaceback.domain.entities.User;
+import com.mabsplace.mabsplaceback.domain.enums.TransactionStatus;
+import com.mabsplace.mabsplaceback.domain.enums.TransactionType;
 import com.mabsplace.mabsplaceback.domain.mappers.DigitalGoodsOrderMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.DigitalGoodsOrderRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.DigitalProductRepository;
+import com.mabsplace.mabsplaceback.domain.repositories.TransactionRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
 import org.slf4j.Logger;
@@ -28,6 +32,7 @@ public class DigitalGoodsOrderService {
     private final DigitalProductRepository productRepository;
     private final UserRepository userRepository;
     private final WalletService walletService;
+    private final TransactionRepository transactionRepository;
     private final PriceCalculationService priceCalculationService;
     private final DigitalGoodsOrderMapper orderMapper;
     private static final Logger logger = LoggerFactory.getLogger(DigitalGoodsOrderService.class);
@@ -36,12 +41,14 @@ public class DigitalGoodsOrderService {
                                      DigitalProductRepository productRepository,
                                      UserRepository userRepository,
                                      WalletService walletService,
+                                     TransactionRepository transactionRepository,
                                      PriceCalculationService priceCalculationService,
                                      DigitalGoodsOrderMapper orderMapper) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.walletService = walletService;
+        this.transactionRepository = transactionRepository;
         this.priceCalculationService = priceCalculationService;
         this.orderMapper = orderMapper;
     }
@@ -67,8 +74,8 @@ public class DigitalGoodsOrderService {
         // Calculate price
         PriceCalculationDto priceCalc = priceCalculationService.calculatePrice(product, orderRequest.getAmount());
 
-        // Check wallet balance
-        if (!walletService.checkBalance(user.getId(), priceCalc.getTotalAmount())) {
+        // Check wallet balance (using correct wallet ID)
+        if (!walletService.checkBalance(user.getWallet().getId(), priceCalc.getTotalAmount())) {
             throw new IllegalStateException("Insufficient wallet balance. Required: " + priceCalc.getTotalAmount() + " XAF");
         }
 
@@ -91,9 +98,26 @@ public class DigitalGoodsOrderService {
         DigitalGoodsOrder savedOrder = orderRepository.save(order);
         logger.info("Order created with ID: {}", savedOrder.getId());
 
-        // Debit wallet
-        walletService.debit(user.getId(), priceCalc.getTotalAmount());
-        logger.info("Wallet debited for user ID: {}", user.getId());
+        // Create transaction record
+        Transaction transaction = Transaction.builder()
+                .senderWallet(user.getWallet())
+                .receiverWallet(null) // Payment to system
+                .amount(priceCalc.getTotalAmount())
+                .transactionDate(new Date())
+                .currency(null) // Currency stored in order baseCurrency field
+                .transactionType(TransactionType.PAYMENT)
+                .transactionStatus(TransactionStatus.COMPLETED)
+                .transactionRef("DGO-" + savedOrder.getId())
+                .build();
+        Transaction savedTransaction = transactionRepository.save(transaction);
+        logger.info("Transaction created with ID: {} for order ID: {}", savedTransaction.getId(), savedOrder.getId());
+
+        // Debit wallet (using correct wallet ID, not user ID)
+        walletService.debit(user.getWallet().getId(), priceCalc.getTotalAmount());
+        logger.info("Wallet debited for user ID: {}, wallet ID: {}", user.getId(), user.getWallet().getId());
+
+        // Link transaction to order
+        savedOrder.setTransactionId(savedTransaction.getId());
 
         // Update order status
         savedOrder.setOrderStatus(DigitalGoodsOrder.OrderStatus.PAID);
@@ -142,9 +166,24 @@ public class DigitalGoodsOrderService {
                 || currentStatus == DigitalGoodsOrder.OrderStatus.PROCESSING
                 || currentStatus == DigitalGoodsOrder.OrderStatus.DELIVERED)) {
 
-            // Refund to wallet
-            walletService.credit(order.getUser().getId(), order.getTotalAmount());
-            logger.info("Refunded {} XAF to user ID: {}", order.getTotalAmount(), order.getUser().getId());
+            // Create refund transaction record
+            Transaction refundTransaction = Transaction.builder()
+                    .senderWallet(null) // Refund from system
+                    .receiverWallet(order.getUser().getWallet())
+                    .amount(order.getTotalAmount())
+                    .transactionDate(new Date())
+                    .currency(null) // Currency stored in order baseCurrency field
+                    .transactionType(TransactionType.REFUND)
+                    .transactionStatus(TransactionStatus.COMPLETED)
+                    .transactionRef("DGO-REFUND-" + order.getId())
+                    .build();
+            transactionRepository.save(refundTransaction);
+            logger.info("Refund transaction created for order ID: {}", order.getId());
+
+            // Refund to wallet (using correct wallet ID, not user ID)
+            walletService.credit(order.getUser().getWallet().getId(), order.getTotalAmount());
+            logger.info("Refunded {} XAF to user ID: {}, wallet ID: {}",
+                order.getTotalAmount(), order.getUser().getId(), order.getUser().getWallet().getId());
         }
 
         order.setOrderStatus(newStatus);
