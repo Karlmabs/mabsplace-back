@@ -270,8 +270,8 @@ public class NotificationService {
         List<User> allUsers = userRepository.findAll();
 
         List<User> admins = allUsers.stream()
-                .filter(user -> user.getRoles() != null &&
-                        user.getRoles().stream()
+                .filter(user -> user.getUserProfile() != null &&
+                        user.getUserProfile().getRoles().stream()
                                 .anyMatch(role ->
                                         // Check if user has admin role OR the specific permission
                                         role.getCode().equals("ROLE_ADMIN") ||
