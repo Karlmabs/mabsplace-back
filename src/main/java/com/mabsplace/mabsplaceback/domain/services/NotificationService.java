@@ -50,9 +50,9 @@ public class NotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
 
-    public List<Notification> getUserNotifications(String email) {
-        logger.info("Getting notifications for user: {}", email);
-        User user = userRepository.findByEmail(email)
+    public List<Notification> getUserNotifications(String username) {
+        logger.info("Getting notifications for user: {}", username);
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         logger.info("User found: {}", user.getEmail());
         return notificationRepository.findByUserOrderByCreatedAtDesc(user);
@@ -65,16 +65,16 @@ public class NotificationService {
         return count;
     }
 
-    public User getUserByEmail(String email) {
-        logger.info("Getting user by email: {}", email);
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+    public User getUserByUsername(String username) {
+        logger.info("Getting user by username: {}", username);
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
     }
 
-    public void markAsRead(Long notificationId, String email) {
+    public void markAsRead(Long notificationId, String username) {
         logger.info("Marking notification as read: {}", notificationId);
 
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         logger.info("User found: {}", user.getEmail());
@@ -96,9 +96,9 @@ public class NotificationService {
     }
 
 
-    public void markAllAsRead(String email) {
-        logger.info("Marking all notifications as read for user: {}", email);
-        User user = userRepository.findByEmail(email)
+    public void markAllAsRead(String username) {
+        logger.info("Marking all notifications as read for user: {}", username);
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         logger.info("User found: {}", user.getEmail());
         logger.info("Marking all notifications as read");
@@ -109,9 +109,9 @@ public class NotificationService {
         notificationRepository.saveAll(notifications);
     }
 
-    public void updateUserPushToken(String email, String pushToken) {
-        logger.info("Updating push token for user: {}", email);
-        User user = userRepository.findByEmail(email)
+    public void updateUserPushToken(String username, String pushToken) {
+        logger.info("Updating push token for user: {}", username);
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         logger.info("User found: {}", user.getEmail());
         user.setPushToken(pushToken);

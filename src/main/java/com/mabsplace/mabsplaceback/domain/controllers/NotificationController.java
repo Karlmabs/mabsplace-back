@@ -164,7 +164,7 @@ public class NotificationController {
     public ResponseEntity<Long> getUnreadCount(Authentication authentication) {
         logger.info("Fetching unread notification count for user: {}", authentication.getName());
         try {
-            User user = getUserByEmail(authentication.getName());
+            User user = notificationService.getUserByUsername(authentication.getName());
             Long count = notificationService.getUnreadCount(user.getId());
             logger.info("Unread notification count for user {}: {}", authentication.getName(), count);
             return ResponseEntity.ok(count);
@@ -185,10 +185,5 @@ public class NotificationController {
                 .createdAt(notification.getCreatedAt())
                 .data(notification.getData())
                 .build();
-    }
-
-    // Helper method to get user by email
-    private User getUserByEmail(String email) {
-        return notificationService.getUserByEmail(email);
     }
 }
