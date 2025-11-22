@@ -6,6 +6,7 @@ import com.mabsplace.mabsplaceback.domain.dtos.notification.NotificationDTO;
 import com.mabsplace.mabsplaceback.domain.entities.DigitalGoodsOrder;
 import com.mabsplace.mabsplaceback.domain.entities.Notification;
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
+import com.mabsplace.mabsplaceback.domain.entities.Subscription;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.NotificationType;
 import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
@@ -533,6 +534,70 @@ public class NotificationService {
 
         } catch (Exception e) {
             logger.error("Failed to notify admins of payment status change for payment ID: {}", payment.getId(), e);
+        }
+    }
+
+    @Async
+    public void notifyAdminsOfNewSubscription(Subscription newSubscription) {
+        try {
+            logger.info("Notifying admins of new subscription ID: {}", newSubscription.getId());
+
+            List<User> admins = getAdminsByPermission("GET_SUBSCRIPTIONS");
+
+            if (admins.isEmpty()) {
+                logger.warn("No admins found with GET_SUBSCRIPTIONS permission");
+                return;
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "SUBSCRIPTION");
+            data.put("subscriptionId", newSubscription.getId());
+            if (newSubscription.getUser() != null) {
+                data.put("customerName", newSubscription.getUser().getName());
+                data.put("customerId", newSubscription.getUser().getId());
+            }
+            if (newSubscription.getSubscriptionPlan() != null) {
+                data.put("planName", newSubscription.getSubscriptionPlan().getName());
+                data.put("planId", newSubscription.getSubscriptionPlan().getId());
+            }
+            if (newSubscription.getService() != null) {
+                data.put("serviceName", newSubscription.getService().getName());
+                data.put("serviceId", newSubscription.getService().getId());
+            }
+
+            String planName = newSubscription.getSubscriptionPlan() != null
+                    ? newSubscription.getSubscriptionPlan().getName()
+                    : "subscription";
+            String serviceSuffix = newSubscription.getService() != null
+                    ? String.format(" for %s", newSubscription.getService().getName())
+                    : "";
+            String customerName = newSubscription.getUser() != null
+                    ? newSubscription.getUser().getName()
+                    : "A user";
+
+            String title = "New Subscription Created";
+            String message = String.format("%s subscribed to %s%s", customerName, planName, serviceSuffix);
+
+            List<Notification> notifications = admins.stream()
+                    .map(admin -> createNotification(admin, title, message, data))
+                    .collect(Collectors.toList());
+
+            notificationRepository.saveAll(notifications);
+
+            NotificationDTO notificationDTO = NotificationDTO.builder()
+                    .id(notifications.get(0).getId())
+                    .title(title)
+                    .message(message)
+                    .type("SUBSCRIPTION")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .data(objectMapper.writeValueAsString(data))
+                    .build();
+
+            webSocketNotificationController.sendNotificationToAdmins(notificationDTO);
+
+        } catch (Exception e) {
+            logger.error("Failed to notify admins of new subscription ID: {}", newSubscription.getId(), e);
         }
     }
 }

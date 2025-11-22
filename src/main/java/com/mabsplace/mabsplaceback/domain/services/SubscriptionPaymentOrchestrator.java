@@ -661,6 +661,7 @@ public class SubscriptionPaymentOrchestrator {
 
         log.info("Sending notification to user ID: {}", newSubscription.getUser().getId());
         notificationService.sendNotificationToUser(newSubscription.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());
+        notificationService.notifyAdminsOfNewSubscription(newSubscription);
         return subscriptionRepository.save(newSubscription);
     }
 
