@@ -327,7 +327,7 @@ public class NotificationService {
 
             String title = "New Digital Goods Order";
             String message = String.format("%s ordered %s %s (Total: %s XAF)",
-                    order.getUser().getName(),
+                    order.getUser().getUsername(),
                     order.getAmount(),
                     order.getProduct().getName(),
                     order.getTotalAmount());
@@ -391,7 +391,7 @@ public class NotificationService {
 
             String title = "New Payment Received";
             String message = String.format("%s paid %s %s for %s",
-                    payment.getUser().getName(),
+                    payment.getUser().getUsername(),
                     payment.getAmount(),
                     payment.getCurrency() != null ? payment.getCurrency().getName() : "",
                     payment.getService() != null ? payment.getService().getName() : "subscription");
@@ -572,7 +572,7 @@ public class NotificationService {
                     ? String.format(" for %s", newSubscription.getService().getName())
                     : "";
             String customerName = newSubscription.getUser() != null
-                    ? newSubscription.getUser().getName()
+                    ? newSubscription.getUser().getUsername()
                     : "A user";
 
             String title = "New Subscription Created";
