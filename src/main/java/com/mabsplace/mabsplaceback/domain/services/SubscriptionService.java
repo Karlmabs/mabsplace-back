@@ -42,10 +42,11 @@ public class SubscriptionService {
     private final SubscriptionPaymentOrchestrator orchestrator;
     private final DiscordService discordService;
     private final WhatsAppService whatsAppService;
+    private final TaskService taskService;
 
     private final SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, EmailService emailService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, EmailService emailService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -60,6 +61,7 @@ public class SubscriptionService {
         this.orchestrator = orchestrator;
         this.discordService = discordService;
         this.whatsAppService = whatsAppService;
+        this.taskService = taskService;
         this.subscriptionPaymentOrchestrator = subscriptionPaymentOrchestrator;
     }
 
@@ -458,6 +460,16 @@ public class SubscriptionService {
                 // Mark as notified to avoid sending duplicate emails
                 subscription.setExpirationNotified(true);
                 subscriptionRepository.save(subscription);
+
+                // Create task for admin to follow up with customer
+                try {
+                    long diffInMillies = Math.abs(subscription.getEndDate().getTime() - new Date().getTime());
+                    int daysRemaining = (int) (diffInMillies / (1000 * 60 * 60 * 24));
+                    taskService.createSubscriptionReminderTask(subscription, daysRemaining);
+                    logger.info("Created task for subscription ID: {}", subscription.getId());
+                } catch (Exception taskEx) {
+                    logger.error("Failed to create task for subscription ID: {}", subscription.getId(), taskEx);
+                }
 
                 logger.info("Sent expiring notification email for subscription ID: {}", subscription.getId());
             } catch (Exception e) {
