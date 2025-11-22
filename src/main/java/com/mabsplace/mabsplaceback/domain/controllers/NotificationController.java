@@ -5,6 +5,7 @@ import com.mabsplace.mabsplaceback.domain.dtos.notification.NotificationDTO;
 import com.mabsplace.mabsplaceback.domain.dtos.notification.PushNotificationRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.notification.UpdatePushTokenRequest;
 import com.mabsplace.mabsplaceback.domain.entities.Notification;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.services.NotificationService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -156,6 +157,23 @@ public class NotificationController {
         }
     }
 
+    /**
+     * Get unread notifications count for current user
+     */
+    @GetMapping("/unread/count")
+    public ResponseEntity<Long> getUnreadCount(Authentication authentication) {
+        logger.info("Fetching unread notification count for user: {}", authentication.getName());
+        try {
+            User user = getUserByEmail(authentication.getName());
+            Long count = notificationService.getUnreadCount(user.getId());
+            logger.info("Unread notification count for user {}: {}", authentication.getName(), count);
+            return ResponseEntity.ok(count);
+        } catch (Exception e) {
+            logger.error("Failed to get unread count for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0L);
+        }
+    }
+
     // Helper method to convert Notification to DTO
     private NotificationDTO convertToDTO(Notification notification) {
         return NotificationDTO.builder()
@@ -167,5 +185,10 @@ public class NotificationController {
                 .createdAt(notification.getCreatedAt())
                 .data(notification.getData())
                 .build();
+    }
+
+    // Helper method to get user by email
+    private User getUserByEmail(String email) {
+        return notificationService.getUserByEmail(email);
     }
 }

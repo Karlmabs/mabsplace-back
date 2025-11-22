@@ -35,6 +35,7 @@ public class DigitalGoodsOrderService {
     private final TransactionRepository transactionRepository;
     private final PriceCalculationService priceCalculationService;
     private final DigitalGoodsOrderMapper orderMapper;
+    private final NotificationService notificationService;
     private static final Logger logger = LoggerFactory.getLogger(DigitalGoodsOrderService.class);
 
     public DigitalGoodsOrderService(DigitalGoodsOrderRepository orderRepository,
@@ -43,7 +44,8 @@ public class DigitalGoodsOrderService {
                                      WalletService walletService,
                                      TransactionRepository transactionRepository,
                                      PriceCalculationService priceCalculationService,
-                                     DigitalGoodsOrderMapper orderMapper) {
+                                     DigitalGoodsOrderMapper orderMapper,
+                                     NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
@@ -51,6 +53,7 @@ public class DigitalGoodsOrderService {
         this.transactionRepository = transactionRepository;
         this.priceCalculationService = priceCalculationService;
         this.orderMapper = orderMapper;
+        this.notificationService = notificationService;
     }
 
     public PriceCalculationDto calculateOrderPrice(Long productId, BigDecimal amount) {
@@ -122,9 +125,13 @@ public class DigitalGoodsOrderService {
         // Update order status
         savedOrder.setOrderStatus(DigitalGoodsOrder.OrderStatus.PAID);
         savedOrder.setPaidAt(new Date());
-        orderRepository.save(savedOrder);
+        DigitalGoodsOrder finalOrder = orderRepository.save(savedOrder);
 
-        return orderMapper.toDto(savedOrder);
+        // Notify admins of new order
+        notificationService.notifyAdminsOfNewDigitalGoodsOrder(finalOrder);
+        logger.info("Admin notification sent for new order ID: {}", finalOrder.getId());
+
+        return orderMapper.toDto(finalOrder);
     }
 
     public DigitalGoodsOrderDto deliverOrder(Long orderId, String deliveryInfo, String adminNotes, Long adminId) {
@@ -188,6 +195,10 @@ public class DigitalGoodsOrderService {
 
         order.setOrderStatus(newStatus);
         DigitalGoodsOrder updated = orderRepository.save(order);
+
+        // Notify admins of order status change
+        notificationService.notifyAdminsOfOrderStatusChange(updated, currentStatus);
+        logger.info("Admin notification sent for order status change, order ID: {}", updated.getId());
 
         return orderMapper.toDto(updated);
     }

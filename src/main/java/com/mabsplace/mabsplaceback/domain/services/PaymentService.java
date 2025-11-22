@@ -41,10 +41,12 @@ public class PaymentService {
 
     private final SubscriptionPaymentOrchestrator orchestrator;
 
+    private final NotificationService notificationService;
+
     private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
     private final SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator;
 
-    public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, DiscountService discountService, EmailService emailService, SubscriptionPaymentOrchestrator orchestrator, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
+    public PaymentService(PaymentRepository paymentRepository, PaymentMapper paymentMapper, UserRepository userRepository, CurrencyRepository currencyRepository, MyServiceRepository myServiceRepository, SubscriptionPlanRepository subscriptionPlanRepository, WalletService walletService, DiscountService discountService, EmailService emailService, SubscriptionPaymentOrchestrator orchestrator, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator, NotificationService notificationService) {
         this.paymentRepository = paymentRepository;
         this.paymentMapper = paymentMapper;
         this.userRepository = userRepository;
@@ -56,12 +58,18 @@ public class PaymentService {
         this.emailService = emailService;
         this.orchestrator = orchestrator;
         this.subscriptionPaymentOrchestrator = subscriptionPaymentOrchestrator;
+        this.notificationService = notificationService;
     }
 
     public Payment createPayment(PaymentRequestDto paymentRequestDto) throws MessagingException {
         logger.info("Create payment request: {}", paymentRequestDto);
         Payment payment = orchestrator.processPaymentAndCreateSubscription(paymentRequestDto);
         logger.info("Payment created: {}", payment);
+
+        // Notify admins of new payment
+        notificationService.notifyAdminsOfNewPayment(payment);
+        logger.info("Admin notification sent for new payment ID: {}", payment.getId());
+
         return payment;
     }
 
@@ -71,6 +79,9 @@ public class PaymentService {
             logger.error("Payment not found with ID: {}", id);
             return new ResourceNotFoundException("Payment", "id", id);
         });
+
+        // Capture old status before changing
+        PaymentStatus oldStatus = payment.getStatus();
 
         if (status.equals(PaymentStatus.CANCELLED)){
             logger.info("Crediting wallet due to payment cancellation, User ID: {}, Amount: {}", payment.getUser().getId(), payment.getAmount());
@@ -91,6 +102,11 @@ public class PaymentService {
 
         Payment updatedPayment = paymentRepository.save(payment);
         logger.info("Payment status updated to {} for payment ID: {}", status, id);
+
+        // Notify admins of payment status change
+        notificationService.notifyAdminsOfPaymentStatusChange(updatedPayment, oldStatus);
+        logger.info("Admin notification sent for payment status change, payment ID: {}", updatedPayment.getId());
+
         return updatedPayment;
     }
 

@@ -1,9 +1,14 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mabsplace.mabsplaceback.domain.controllers.WebSocketNotificationController;
+import com.mabsplace.mabsplaceback.domain.dtos.notification.NotificationDTO;
+import com.mabsplace.mabsplaceback.domain.entities.DigitalGoodsOrder;
 import com.mabsplace.mabsplaceback.domain.entities.Notification;
+import com.mabsplace.mabsplaceback.domain.entities.Payment;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.NotificationType;
+import com.mabsplace.mabsplaceback.domain.enums.PaymentStatus;
 import com.mabsplace.mabsplaceback.domain.repositories.NotificationRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +45,9 @@ public class NotificationService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private WebSocketNotificationController webSocketNotificationController;
+
     private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
 
     public List<Notification> getUserNotifications(String email) {
@@ -48,6 +56,19 @@ public class NotificationService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         logger.info("User found: {}", user.getEmail());
         return notificationRepository.findByUserOrderByCreatedAtDesc(user);
+    }
+
+    public Long getUnreadCount(Long userId) {
+        logger.info("Getting unread notification count for user ID: {}", userId);
+        Long count = notificationRepository.countUnreadNotifications(userId);
+        logger.info("Unread count for user ID {}: {}", userId, count);
+        return count;
+    }
+
+    public User getUserByEmail(String email) {
+        logger.info("Getting user by email: {}", email);
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
 
     public void markAsRead(Long notificationId, String email) {
@@ -232,5 +253,286 @@ public class NotificationService {
         data.put("promoCode", promoCode);
         sendNotificationToUser(referrer.getId(), "Promo Code", "You have received a promo code", data);
         logger.info("Notification sent successfully to referrer (ID: {})", referrer.getId());
+    }
+
+    // ==================== ADMIN NOTIFICATION METHODS ====================
+
+    /**
+     * Get all users with admin roles or specific permissions
+     * @param permissionCode Optional permission code to filter admins (e.g., "GET_DIGITAL_GOODS_ORDERS")
+     * @return List of admin users
+     */
+    public List<User> getAdminsByPermission(String permissionCode) {
+        logger.info("Getting admins with permission: {}", permissionCode);
+
+        // Get all users with ROLE_ADMIN or users who have the specific permission
+        List<User> allUsers = userRepository.findAll();
+
+        List<User> admins = allUsers.stream()
+                .filter(user -> user.getRoles() != null &&
+                        user.getRoles().stream()
+                                .anyMatch(role ->
+                                        // Check if user has admin role OR the specific permission
+                                        role.getCode().equals("ROLE_ADMIN") ||
+                                        (permissionCode != null && role.getCode().equals(permissionCode))
+                                )
+                )
+                .collect(Collectors.toList());
+
+        logger.info("Found {} admins with permission: {}", admins.size(), permissionCode);
+        return admins;
+    }
+
+    /**
+     * Convert Notification entity to NotificationDTO
+     */
+    private NotificationDTO convertToNotificationDTO(Notification notification) {
+        return NotificationDTO.builder()
+                .id(notification.getId())
+                .title(notification.getTitle())
+                .message(notification.getMessage())
+                .type(notification.getType().name())
+                .read(notification.isRead())
+                .createdAt(notification.getCreatedAt())
+                .data(notification.getData())
+                .build();
+    }
+
+    /**
+     * Notify admins of a new digital goods order
+     * @param order The newly created order
+     */
+    @Async
+    public void notifyAdminsOfNewDigitalGoodsOrder(DigitalGoodsOrder order) {
+        try {
+            logger.info("Notifying admins of new digital goods order ID: {}", order.getId());
+
+            // Get admins with permission to view digital goods orders
+            List<User> admins = getAdminsByPermission("GET_DIGITAL_GOODS_ORDERS");
+
+            if (admins.isEmpty()) {
+                logger.warn("No admins found with GET_DIGITAL_GOODS_ORDERS permission");
+                return;
+            }
+
+            // Create notification data
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "SYSTEM");
+            data.put("orderId", order.getId());
+            data.put("productName", order.getProduct().getName());
+            data.put("amount", order.getAmount().toString());
+            data.put("totalAmount", order.getTotalAmount().toString());
+            data.put("customerName", order.getUser().getName());
+
+            String title = "New Digital Goods Order";
+            String message = String.format("%s ordered %s %s (Total: %s XAF)",
+                    order.getUser().getName(),
+                    order.getAmount(),
+                    order.getProduct().getName(),
+                    order.getTotalAmount());
+
+            // Save notifications to database for each admin
+            List<Notification> notifications = admins.stream()
+                    .map(admin -> createNotification(admin, title, message, data))
+                    .collect(Collectors.toList());
+
+            notificationRepository.saveAll(notifications);
+            logger.info("Saved {} notifications to database for new digital goods order", notifications.size());
+
+            // Send WebSocket notifications to all admins
+            NotificationDTO notificationDTO = NotificationDTO.builder()
+                    .id(notifications.get(0).getId())
+                    .title(title)
+                    .message(message)
+                    .type("SYSTEM")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .data(objectMapper.writeValueAsString(data))
+                    .build();
+
+            webSocketNotificationController.sendNotificationToAdmins(notificationDTO);
+            logger.info("WebSocket notification sent to admins for digital goods order ID: {}", order.getId());
+
+        } catch (Exception e) {
+            logger.error("Failed to notify admins of new digital goods order ID: {}", order.getId(), e);
+        }
+    }
+
+    /**
+     * Notify admins of a new payment/subscription
+     * @param payment The newly created payment
+     */
+    @Async
+    public void notifyAdminsOfNewPayment(Payment payment) {
+        try {
+            logger.info("Notifying admins of new payment ID: {}", payment.getId());
+
+            // Get admins with permission to view payments
+            List<User> admins = getAdminsByPermission("GET_PAYMENTS");
+
+            if (admins.isEmpty()) {
+                logger.warn("No admins found with GET_PAYMENTS permission");
+                return;
+            }
+
+            // Create notification data
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "PAYMENT");
+            data.put("paymentId", payment.getId());
+            data.put("amount", payment.getAmount().toString());
+            data.put("customerName", payment.getUser().getName());
+            if (payment.getService() != null) {
+                data.put("serviceName", payment.getService().getName());
+            }
+            if (payment.getSubscriptionPlan() != null) {
+                data.put("planName", payment.getSubscriptionPlan().getName());
+            }
+
+            String title = "New Payment Received";
+            String message = String.format("%s paid %s %s for %s",
+                    payment.getUser().getName(),
+                    payment.getAmount(),
+                    payment.getCurrency() != null ? payment.getCurrency().getName() : "",
+                    payment.getService() != null ? payment.getService().getName() : "subscription");
+
+            // Save notifications to database for each admin
+            List<Notification> notifications = admins.stream()
+                    .map(admin -> createNotification(admin, title, message, data))
+                    .collect(Collectors.toList());
+
+            notificationRepository.saveAll(notifications);
+            logger.info("Saved {} notifications to database for new payment", notifications.size());
+
+            // Send WebSocket notifications to all admins
+            NotificationDTO notificationDTO = NotificationDTO.builder()
+                    .id(notifications.get(0).getId())
+                    .title(title)
+                    .message(message)
+                    .type("PAYMENT")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .data(objectMapper.writeValueAsString(data))
+                    .build();
+
+            webSocketNotificationController.sendNotificationToAdmins(notificationDTO);
+            logger.info("WebSocket notification sent to admins for payment ID: {}", payment.getId());
+
+        } catch (Exception e) {
+            logger.error("Failed to notify admins of new payment ID: {}", payment.getId(), e);
+        }
+    }
+
+    /**
+     * Notify admins of an order status change
+     * @param order The updated order
+     * @param oldStatus The previous status
+     */
+    @Async
+    public void notifyAdminsOfOrderStatusChange(DigitalGoodsOrder order, DigitalGoodsOrder.OrderStatus oldStatus) {
+        try {
+            logger.info("Notifying admins of order status change for order ID: {}, {} -> {}",
+                    order.getId(), oldStatus, order.getOrderStatus());
+
+            // Get admins with permission to manage digital orders
+            List<User> admins = getAdminsByPermission("MANAGE_DIGITAL_ORDERS");
+
+            if (admins.isEmpty()) {
+                logger.warn("No admins found with MANAGE_DIGITAL_ORDERS permission");
+                return;
+            }
+
+            // Create notification data
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "SYSTEM");
+            data.put("orderId", order.getId());
+            data.put("oldStatus", oldStatus.name());
+            data.put("newStatus", order.getOrderStatus().name());
+            data.put("productName", order.getProduct().getName());
+            data.put("customerName", order.getUser().getName());
+
+            String title = "Order Status Updated";
+            String message = String.format("Order #%d status changed from %s to %s",
+                    order.getId(), oldStatus, order.getOrderStatus());
+
+            // Save notifications to database for each admin
+            List<Notification> notifications = admins.stream()
+                    .map(admin -> createNotification(admin, title, message, data))
+                    .collect(Collectors.toList());
+
+            notificationRepository.saveAll(notifications);
+
+            // Send WebSocket notifications to all admins
+            NotificationDTO notificationDTO = NotificationDTO.builder()
+                    .id(notifications.get(0).getId())
+                    .title(title)
+                    .message(message)
+                    .type("SYSTEM")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .data(objectMapper.writeValueAsString(data))
+                    .build();
+
+            webSocketNotificationController.sendNotificationToAdmins(notificationDTO);
+
+        } catch (Exception e) {
+            logger.error("Failed to notify admins of order status change for order ID: {}", order.getId(), e);
+        }
+    }
+
+    /**
+     * Notify admins of a payment status change
+     * @param payment The updated payment
+     * @param oldStatus The previous status
+     */
+    @Async
+    public void notifyAdminsOfPaymentStatusChange(Payment payment, PaymentStatus oldStatus) {
+        try {
+            logger.info("Notifying admins of payment status change for payment ID: {}, {} -> {}",
+                    payment.getId(), oldStatus, payment.getStatus());
+
+            // Get admins with permission to manage payments
+            List<User> admins = getAdminsByPermission("MANAGE_PAYMENTS");
+
+            if (admins.isEmpty()) {
+                logger.warn("No admins found with MANAGE_PAYMENTS permission");
+                return;
+            }
+
+            // Create notification data
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "PAYMENT");
+            data.put("paymentId", payment.getId());
+            data.put("oldStatus", oldStatus.name());
+            data.put("newStatus", payment.getStatus().name());
+            data.put("customerName", payment.getUser().getName());
+            data.put("amount", payment.getAmount().toString());
+
+            String title = "Payment Status Updated";
+            String message = String.format("Payment #%d status changed from %s to %s",
+                    payment.getId(), oldStatus, payment.getStatus());
+
+            // Save notifications to database for each admin
+            List<Notification> notifications = admins.stream()
+                    .map(admin -> createNotification(admin, title, message, data))
+                    .collect(Collectors.toList());
+
+            notificationRepository.saveAll(notifications);
+
+            // Send WebSocket notifications to all admins
+            NotificationDTO notificationDTO = NotificationDTO.builder()
+                    .id(notifications.get(0).getId())
+                    .title(title)
+                    .message(message)
+                    .type("PAYMENT")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .data(objectMapper.writeValueAsString(data))
+                    .build();
+
+            webSocketNotificationController.sendNotificationToAdmins(notificationDTO);
+
+        } catch (Exception e) {
+            logger.error("Failed to notify admins of payment status change for payment ID: {}", payment.getId(), e);
+        }
     }
 }
