@@ -348,7 +348,13 @@ public class SubscriptionPaymentOrchestrator {
             log.info("Skipping wallet debit for zero-dollar transaction");
         }
 
-        return paymentRepository.save(entity);
+        Payment savedPayment = paymentRepository.save(entity);
+
+        // Notify admins of new payment
+        notificationService.notifyAdminsOfNewPayment(savedPayment);
+        log.info("Admin notification sent for new payment ID: {}", savedPayment.getId());
+
+        return savedPayment;
     }
 
     private void createInitialSubscription(Payment payment) {

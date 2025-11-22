@@ -65,11 +65,6 @@ public class PaymentService {
         logger.info("Create payment request: {}", paymentRequestDto);
         Payment payment = orchestrator.processPaymentAndCreateSubscription(paymentRequestDto);
         logger.info("Payment created: {}", payment);
-
-        // Notify admins of new payment
-        notificationService.notifyAdminsOfNewPayment(payment);
-        logger.info("Admin notification sent for new payment ID: {}", payment.getId());
-
         return payment;
     }
 
