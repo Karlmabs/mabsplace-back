@@ -457,21 +457,20 @@ public class SubscriptionService {
                     );
                 }
 
-                // Mark as notified to avoid sending duplicate emails
-                subscription.setExpirationNotified(true);
-                subscriptionRepository.save(subscription);
-
                 // Create task for admin to follow up with customer
                 try {
                     long diffInMillies = Math.abs(subscription.getEndDate().getTime() - new Date().getTime());
                     int daysRemaining = (int) (diffInMillies / (1000 * 60 * 60 * 24));
                     taskService.createSubscriptionReminderTask(subscription, daysRemaining);
                     logger.info("Created task for subscription ID: {}", subscription.getId());
+
+                    // Mark as notified only after task is created successfully
+                    subscription.setExpirationNotified(true);
+                    subscriptionRepository.save(subscription);
+                    logger.info("Sent expiring notification email for subscription ID: {}", subscription.getId());
                 } catch (Exception taskEx) {
                     logger.error("Failed to create task for subscription ID: {}", subscription.getId(), taskEx);
                 }
-
-                logger.info("Sent expiring notification email for subscription ID: {}", subscription.getId());
             } catch (Exception e) {
                 logger.error("Failed to send expiration notification for subscription ID: {}", subscription.getId(), e);
             }
