@@ -12,10 +12,9 @@ public class CorsConfig implements WebMvcConfigurer {
   @Override
   public void addCorsMappings(CorsRegistry registry) {
     registry.addMapping("/**")
-            .allowedOriginPatterns("*")  // Changed from allowedOrigins to allowedOriginPatterns for WebSocket support
+            .allowedOrigins("*")  
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH")
             .allowedHeaders("*")
-            .allowCredentials(true)  // Required for WebSocket connections
             .maxAge(3600);
   }
 }

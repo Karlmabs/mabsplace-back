@@ -29,7 +29,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // Add SockJS fallback options for browsers that don't support WebSocket
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")  // Allow all origins (can be restricted to specific domains)
-                .setAllowedOrigins("https://admin.mabsplace.com", "http://localhost:3000", "http://localhost:3001")
                 .withSockJS();  // Enable SockJS fallback
     }
 }
