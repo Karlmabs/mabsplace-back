@@ -173,6 +173,56 @@ public class TaskService {
         return taskMapper.toDto(savedTask);
     }
 
+    // Create automated task for failed subscription renewal
+    @Transactional
+    public TaskResponseDto createSubscriptionRenewalFailedTask(Subscription subscription) {
+        logger.info("Creating subscription renewal failed task for subscription ID: {}", subscription.getId());
+
+        String customerName = subscription.getUser().getFirstname() != null
+                ? subscription.getUser().getFirstname()
+                : subscription.getUser().getUsername();
+        String serviceName = subscription.getService().getName();
+
+        Task task = Task.builder()
+                .title(String.format("Subscription Renewal Failed: %s - %s", customerName, serviceName))
+                .description("The renewal for this subscription has failed. Please follow up with the customer.")
+                .type(TaskType.SUBSCRIPTION_RENEWAL_FAILED)
+                .priority(TaskPriority.URGENT)
+                .status(TaskStatus.TODO)
+                .subscription(subscription)
+                .build();
+
+        Task savedTask = taskRepository.save(task);
+        logger.info("Subscription renewal failed task created successfully with ID: {}", savedTask.getId());
+
+        return taskMapper.toDto(savedTask);
+    }
+
+    // Create automated task for post-expiration actions
+    @Transactional
+    public TaskResponseDto createPostExpirationTask(Subscription subscription) {
+        logger.info("Creating post-expiration task for subscription ID: {}", subscription.getId());
+
+        String customerName = subscription.getUser().getFirstname() != null
+                ? subscription.getUser().getFirstname()
+                : subscription.getUser().getUsername();
+        String serviceName = subscription.getService().getName();
+
+        Task task = Task.builder()
+                .title(String.format("Post-Expiration Action: %s - %s", customerName, serviceName))
+                .description("The subscription has expired. Please change the credentials or remove the user from the family plan.")
+                .type(TaskType.POST_EXPIRATION)
+                .priority(TaskPriority.HIGH)
+                .status(TaskStatus.TODO)
+                .subscription(subscription)
+                .build();
+
+        Task savedTask = taskRepository.save(task);
+        logger.info("Post-expiration task created successfully with ID: {}", savedTask.getId());
+
+        return taskMapper.toDto(savedTask);
+    }
+
     // Update task
     @Transactional
     public TaskResponseDto updateTask(Long id, TaskRequestDto taskRequestDto, Long userId) {

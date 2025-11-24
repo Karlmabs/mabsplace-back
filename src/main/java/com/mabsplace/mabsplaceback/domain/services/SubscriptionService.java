@@ -204,6 +204,9 @@ public class SubscriptionService {
                         subscription.getRenewalAttempts()
                 );
             }
+
+            // Create a task for admin to follow up
+            taskService.createSubscriptionRenewalFailedTask(subscription);
         }
     }
 
@@ -505,6 +508,9 @@ public class SubscriptionService {
 
             emailService.sendEmail(emailRequest);
             subscriptionRepository.save(subscription);
+
+            // Create a task for admin to handle post-expiration actions
+            taskService.createPostExpirationTask(subscription);
         }
     }
 

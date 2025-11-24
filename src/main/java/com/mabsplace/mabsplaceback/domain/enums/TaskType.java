@@ -2,6 +2,8 @@ package com.mabsplace.mabsplaceback.domain.enums;
 
 public enum TaskType {
   SUBSCRIPTION_REMINDER,
+  SUBSCRIPTION_RENEWAL_FAILED,
+  POST_EXPIRATION,
   PAYMENT_REMINDER,
   MANUAL
 }
