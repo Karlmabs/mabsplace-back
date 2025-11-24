@@ -84,7 +84,9 @@ public class WebSocketNotificationController {
 
             // Send to admin-specific topic
             // Admin clients should subscribe to: /topic/admin/notifications
+            logger.info("Attempting to send message to /topic/admin/notifications");
             messagingTemplate.convertAndSend("/topic/admin/notifications", notification);
+            logger.info("Successfully sent message to /topic/admin/notifications");
 
             logger.info("WebSocket notification sent to admins successfully");
         } catch (Exception e) {
