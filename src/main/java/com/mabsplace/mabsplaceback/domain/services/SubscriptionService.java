@@ -482,8 +482,16 @@ public class SubscriptionService {
 
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
     public void expireSubscriptions() throws MessagingException {
+        logger.info("Starting daily subscription expiration process for non-auto-renew subscriptions");
         List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNotAndAutoRenewFalse(new Date(), SubscriptionStatus.EXPIRED);
+        logger.info("Found {} subscriptions to expire (autoRenew=false)", subscriptions.size());
+
         for (Subscription subscription : subscriptions) {
+            logger.info("Expiring subscription ID: {} - User: {} - Service: {}",
+                    subscription.getId(),
+                    subscription.getUser().getUsername(),
+                    subscription.getService().getName());
+
             subscription.setStatus(SubscriptionStatus.EXPIRED);
             Profile profile = subscription.getProfile();
             if (profile != null) {
@@ -507,11 +515,34 @@ public class SubscriptionService {
                     .build();
 
             emailService.sendEmail(emailRequest);
+
+            // Send Discord notification for expired subscription
+            discordService.sendSubscriptionExpiredNotification(
+                    subscription.getUser().getUsername(),
+                    subscription.getService().getName(),
+                    subscription.getProfile().getServiceAccount().getLogin(),
+                    subscription.getProfile().getProfileName()
+            );
+            logger.info("Sent Discord notification for expired subscription ID: {}", subscription.getId());
+
+            // Send WhatsApp notification
+            if (subscription.getUser().getPhonenumber() != null && !subscription.getUser().getPhonenumber().isEmpty()) {
+                whatsAppService.sendSubscriptionExpiredNotification(
+                        subscription.getUser().getPhonenumber(),
+                        subscription.getUser().getUsername(),
+                        subscription.getService().getName(),
+                        subscription.getProfile().getProfileName()
+                );
+                logger.info("Sent WhatsApp notification for expired subscription ID: {}", subscription.getId());
+            }
+
             subscriptionRepository.save(subscription);
 
             // Create a task for admin to handle post-expiration actions
             taskService.createPostExpirationTask(subscription);
         }
+
+        logger.info("Completed daily subscription expiration process. Expired {} subscriptions", subscriptions.size());
     }
 
     @Scheduled(cron = "0 0 1 * * ?") // Runs every day at 1:00 AM
