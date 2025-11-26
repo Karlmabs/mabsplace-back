@@ -242,6 +242,51 @@ public class TaskService {
         return taskMapper.toDto(savedTask);
     }
 
+    // Create automated task for inactive customer follow-up
+    @Transactional
+    public TaskResponseDto createInactiveCustomerFollowupTask(User user, int daysInactive) {
+        logger.info("Creating inactive customer follow-up task for user ID: {}", user.getId());
+
+        String customerName = user.getFirstname() != null
+                ? user.getFirstname()
+                : user.getUsername();
+        String phoneNumber = user.getPhonenumber();
+
+        String whatsappMessage = String.format(
+            "Bonjour %s,\n\n" +
+            "Nous espérons que vous allez bien !\n\n" +
+            "Nous avons remarqué que vous n'avez pas eu d'abonnement actif depuis environ %d jours. " +
+            "Nous voulions prendre des nouvelles et savoir si vous souhaitez reprendre un abonnement.\n\n" +
+            "Si vous avez des questions ou si nous pouvons vous aider de quelque manière que ce soit, " +
+            "n'hésitez pas à nous contacter.\n\n" +
+            "Nous serions ravis de vous revoir parmi nos clients !\n\n" +
+            "Cordialement,\n" +
+            "L'équipe MabsPlace",
+            customerName, daysInactive
+        );
+
+        String metadata = String.format(
+            "{\"userId\": %d, \"customerName\": \"%s\", \"phoneNumber\": \"%s\", \"email\": \"%s\", \"daysInactive\": %d}",
+            user.getId(), customerName,
+            phoneNumber != null ? phoneNumber : "N/A",
+            user.getEmail(), daysInactive
+        );
+
+        Task task = Task.builder()
+                .title(String.format("Follow up: Inactive customer %s (%d days)", customerName, daysInactive))
+                .description(whatsappMessage)
+                .type(TaskType.INACTIVE_CUSTOMER_FOLLOWUP)
+                .priority(TaskPriority.NORMAL)
+                .status(TaskStatus.TODO)
+                .metadata(metadata)
+                .build();
+
+        Task savedTask = taskRepository.save(task);
+        logger.info("Inactive customer follow-up task created successfully with ID: {}", savedTask.getId());
+
+        return taskMapper.toDto(savedTask);
+    }
+
     // Update task
     @Transactional
     public TaskResponseDto updateTask(Long id, TaskRequestDto taskRequestDto, Long userId) {

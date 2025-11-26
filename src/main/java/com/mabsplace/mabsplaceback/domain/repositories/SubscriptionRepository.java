@@ -1,8 +1,11 @@
 package com.mabsplace.mabsplaceback.domain.repositories;
 
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Date;
@@ -37,4 +40,14 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     List<Subscription> findByEndDateBetweenAndStatusNotAndAutoRenewFalseAndExpirationNotifiedFalse(Date startDate, Date endDate, SubscriptionStatus subscriptionStatus);
 
     List<Subscription> findByEndDateBetweenAndStatusNotAndExpirationNotifiedFalse(Date startDate, Date endDate, SubscriptionStatus subscriptionStatus);
+
+    @Query("SELECT DISTINCT s.user FROM Subscription s " +
+           "WHERE s.endDate < :cutoffDate " +
+           "AND NOT EXISTS (" +
+           "  SELECT 1 FROM Subscription s2 " +
+           "  WHERE s2.user.id = s.user.id " +
+           "  AND s2.endDate >= :cutoffDate" +
+           ") " +
+           "ORDER BY s.endDate DESC")
+    List<User> findInactiveCustomersSince(@Param("cutoffDate") Date cutoffDate);
 }

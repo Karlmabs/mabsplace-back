@@ -5,8 +5,11 @@ import com.mabsplace.mabsplaceback.domain.entities.MyService;
 import com.mabsplace.mabsplaceback.domain.entities.Profile;
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
 import com.mabsplace.mabsplaceback.domain.entities.SubscriptionPlan;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.enums.ProfileStatus;
 import com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus;
+import com.mabsplace.mabsplaceback.domain.enums.TaskStatus;
+import com.mabsplace.mabsplaceback.domain.enums.TaskType;
 import com.mabsplace.mabsplaceback.domain.mappers.SubscriptionMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.*;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -41,8 +45,9 @@ public class SubscriptionService {
     private final DiscordService discordService;
     private final WhatsAppService whatsAppService;
     private final TaskService taskService;
+    private final TaskRepository taskRepository;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService) {
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, TaskRepository taskRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -57,6 +62,7 @@ public class SubscriptionService {
         this.discordService = discordService;
         this.whatsAppService = whatsAppService;
         this.taskService = taskService;
+        this.taskRepository = taskRepository;
     }
 
     @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
@@ -495,6 +501,44 @@ public class SubscriptionService {
         }
 
         logger.info("Profile security audit completed. {} alerts sent.", alertCount);
+    }
+
+    @Scheduled(cron = "0 0 2 1 * *") // Runs at 2:00 AM on the 1st day of every month
+    public void createInactiveCustomerFollowupTasks() {
+        logger.info("Starting monthly inactive customer follow-up task creation");
+
+        // Calculate cutoff date (90 days ago)
+        Date cutoffDate = Utils.addDays(new Date(), -90);
+
+        // Find inactive customers
+        List<User> inactiveCustomers = subscriptionRepository.findInactiveCustomersSince(cutoffDate);
+        logger.info("Found {} inactive customers (no active subscriptions in 90+ days)", inactiveCustomers.size());
+
+        int tasksCreated = 0;
+        for (User user : inactiveCustomers) {
+            try {
+                // Check if task already exists for this user (prevent duplicates)
+                boolean taskExists = taskRepository.existsByTypeAndMetadataContainingAndStatusIn(
+                    TaskType.INACTIVE_CUSTOMER_FOLLOWUP,
+                    "\"userId\": " + user.getId(),
+                    Arrays.asList(TaskStatus.TODO, TaskStatus.IN_PROGRESS)
+                );
+
+                if (taskExists) {
+                    logger.debug("Task already exists for inactive user ID: {}", user.getId());
+                    continue;
+                }
+
+                // Create task
+                taskService.createInactiveCustomerFollowupTask(user, 90);
+                tasksCreated++;
+
+            } catch (Exception e) {
+                logger.error("Failed to create task for inactive user ID: {}", user.getId(), e);
+            }
+        }
+
+        logger.info("Completed inactive customer follow-up. Created {} tasks", tasksCreated);
     }
 
     // Update Subscription Status

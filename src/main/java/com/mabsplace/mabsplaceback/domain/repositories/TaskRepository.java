@@ -59,4 +59,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     // Check if task exists for a subscription with specific status
     boolean existsBySubscriptionIdAndStatusAndDeletedFalse(Long subscriptionId, TaskStatus status);
+
+    // Check if task exists by type and metadata containing string with specific statuses
+    boolean existsByTypeAndMetadataContainingAndStatusIn(TaskType type, String metadataFragment, List<TaskStatus> statuses);
 }
