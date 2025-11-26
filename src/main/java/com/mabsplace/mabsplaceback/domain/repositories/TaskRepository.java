@@ -61,5 +61,14 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     boolean existsBySubscriptionIdAndStatusAndDeletedFalse(Long subscriptionId, TaskStatus status);
 
     // Check if task exists by type and metadata containing string with specific statuses
-    boolean existsByTypeAndMetadataContainingAndStatusIn(TaskType type, String metadataFragment, List<TaskStatus> statuses);
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Task t WHERE " +
+           "t.type = :type AND " +
+           "t.metadata LIKE CONCAT('%', :metadataFragment, '%') AND " +
+           "t.status IN :statuses AND " +
+           "t.deleted = false")
+    boolean existsByTypeAndMetadataContainingAndStatusIn(
+        @Param("type") TaskType type,
+        @Param("metadataFragment") String metadataFragment,
+        @Param("statuses") List<TaskStatus> statuses
+    );
 }
