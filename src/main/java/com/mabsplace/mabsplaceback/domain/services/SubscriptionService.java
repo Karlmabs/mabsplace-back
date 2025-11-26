@@ -582,7 +582,7 @@ public class SubscriptionService {
         }
 
         // Update subscription with new dates and status
-        Date newStartDate = new Date();
+        Date newStartDate = Utils.addDays(subscription.getEndDate(), 1);
         Date newEndDate = Utils.addPeriod(newStartDate, planToUse.getPeriod());
 
         logger.info("Manual renewal successful - new period: {} to {}", newStartDate, newEndDate);
