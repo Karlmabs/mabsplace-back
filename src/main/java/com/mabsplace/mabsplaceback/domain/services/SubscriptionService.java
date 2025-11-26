@@ -42,9 +42,7 @@ public class SubscriptionService {
     private final WhatsAppService whatsAppService;
     private final TaskService taskService;
 
-    private final SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator;
-
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -59,7 +57,6 @@ public class SubscriptionService {
         this.discordService = discordService;
         this.whatsAppService = whatsAppService;
         this.taskService = taskService;
-        this.subscriptionPaymentOrchestrator = subscriptionPaymentOrchestrator;
     }
 
     @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight

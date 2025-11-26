@@ -1,0 +1,421 @@
+2025-06-17 11:47:20 [main] INFO  com.mabsplace.mabsplaceback.MabsplaceBackApplicationTests - Starting MabsplaceBackApplicationTests using Java 21.0.7 with PID 685 (started by augment-agent in /mnt/persist/workspace)
+2025-06-17 11:47:20 [main] DEBUG com.mabsplace.mabsplaceback.MabsplaceBackApplicationTests - Running with Spring Boot v3.2.0, Spring v6.1.1
+2025-06-17 11:47:20 [main] INFO  com.mabsplace.mabsplaceback.MabsplaceBackApplicationTests - No active profile set, falling back to 1 default profile: "default"
+2025-06-17 11:47:20 [main] DEBUG org.springframework.web.context.support.GenericWebApplicationContext - Refreshing org.springframework.web.context.support.GenericWebApplicationContext@7abe27bf
+2025-06-17 11:47:21 [main] INFO  org.springframework.data.repository.config.RepositoryConfigurationDelegate - Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2025-06-17 11:47:21 [main] INFO  org.springframework.data.repository.config.RepositoryConfigurationDelegate - Finished Spring Data repository scanning in 96 ms. Found 20 JPA repository interfaces.
+2025-06-17 11:47:22 [main] INFO  org.hibernate.jpa.internal.util.LogHelper - HHH000204: Processing PersistenceUnitInfo [name: default]
+2025-06-17 11:47:22 [main] INFO  org.hibernate.Version - HHH000412: Hibernate ORM core version 6.3.1.Final
+2025-06-17 11:47:22 [main] INFO  org.hibernate.cache.internal.RegionFactoryInitiator - HHH000026: Second-level cache disabled
+2025-06-17 11:47:22 [main] INFO  org.springframework.orm.jpa.persistenceunit.SpringPersistenceUnitInfo - No LoadTimeWeaver setup: ignoring JPA class transformer
+2025-06-17 11:47:22 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2025-06-17 11:47:22 [main] INFO  com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:testdb user=SA
+2025-06-17 11:47:22 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2025-06-17 11:47:22 [main] WARN  org.hibernate.orm.deprecation - HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2025-06-17 11:47:23 [main] INFO  org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator - HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists comments cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists currencies cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists discount cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists expense_categories cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists expenses cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists likes cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists messages cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists notifications cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists payments cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists posts cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists profile_roles cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists profiles cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists promo_code cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists roles cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists service_accounts cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists service_discounts cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists services cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists subscription_plans cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists subscriptions cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists transactions cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists user_profiles cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists users cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists users_roles cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists verification_token cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop table if exists wallets cascade 
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - drop sequence if exists verification_token_seq
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create sequence verification_token_seq start with 1 increment by 50
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table comments (id bigint generated by default as identity, post_id bigint, user_id bigint, content varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table currencies (exchange_rate float(53) not null unique, id bigint generated by default as identity, name varchar(255) not null unique, symbol varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table discount (amount float(53) not null, expiration_date timestamp(6), id bigint generated by default as identity, user_id bigint, primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table expense_categories (created_at timestamp(6), id bigint generated by default as identity, updated_at timestamp(6), description varchar(255), name varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table expenses (amount numeric(38,2), is_recurring boolean not null, category_id bigint not null, created_at timestamp(6), created_by bigint not null, currency_id bigint not null, expense_date timestamp(6), id bigint generated by default as identity, next_recurrence_date timestamp(6), updated_at timestamp(6), description varchar(255), payment_method varchar(255) check (payment_method in ('CASH','BANK_TRANSFER','MOBILE_MONEY','CREDIT_CARD')), receipt_url varchar(255), recurrence_period varchar(255) check (recurrence_period in ('DAILY','WEEKLY','MONTHLY','YEARLY')), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table likes (id bigint generated by default as identity, post_id bigint, user_id bigint, primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table messages (id bigint generated by default as identity, message_date timestamp(6), receiver_id bigint, sender_id bigint, content varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table notifications (is_read boolean, created_at timestamp(6), id bigint generated by default as identity, user_id bigint, data JSON, message varchar(255), notification_type varchar(255) check (notification_type in ('TRANSACTION','SUBSCRIPTION','PROMO_CODE','DISCOUNT','PAYMENT','SYSTEM','SERVICE')), title varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table payments (amount numeric(38,2), currency_id bigint, id bigint generated by default as identity, payment_date timestamp(6), promo_code_id bigint, service_id bigint, subscription_plan_id bigint, user_id bigint, status varchar(255) check (status in ('PENDING','PAID','CANCELLED','REFUNDED')), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table posts (id bigint generated by default as identity, post_date timestamp(6), user_id bigint, content varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table profile_roles (id bigint generated by default as identity, profile_id bigint not null, role_id bigint not null, primary key (id, profile_id, role_id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table profiles (account_id bigint, id bigint generated by default as identity, pin varchar(255), profile_name varchar(255), status varchar(255) check (status in ('ACTIVE','INACTIVE')), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table promo_code (discount_amount numeric(38,2) not null, max_usage integer not null, used_count integer not null, expiration_date timestamp(6), id bigint generated by default as identity, user_id bigint, code varchar(255) not null unique, status varchar(255) not null check (status in ('ACTIVE','INACTIVE','EXPIRED')), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table roles (id bigint generated by default as identity, code varchar(255) not null unique, description varchar(255), name varchar(255) not null, primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table service_accounts (id bigint generated by default as identity, payment_date timestamp(6), service_id bigint, account_details varchar(255), login varchar(255), password varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table service_discounts (discount_percentage numeric(38,2) not null, is_global boolean not null, created_at timestamp(6), end_date timestamp(6) not null, id bigint generated by default as identity, service_id bigint, start_date timestamp(6) not null, updated_at timestamp(6), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table services (id bigint generated by default as identity, description varchar(255), image varchar(255), logo varchar(255), name varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table subscription_plans (price numeric(38,2) not null, currency_id bigint, id bigint generated by default as identity, service_id bigint, description varchar(255) not null, name varchar(255) not null, period varchar(255) not null check (period in ('MONTHLY','YEARLY','QUARTERLY','SEMI_ANNUALLY','DAILY')), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table subscriptions (auto_renew boolean not null, is_trial boolean, renewal_attempts integer, end_date timestamp(6), id bigint generated by default as identity, last_renewal_attempt timestamp(6), next_subscription_plan_id bigint, plan_id bigint, profile_id bigint unique, service_id bigint, start_date timestamp(6), user_id bigint, status varchar(255) check (status in ('ACTIVE','INACTIVE','CANCELLED','EXPIRED')), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table transactions (amount numeric(38,2), currency_id bigint, id bigint generated by default as identity, receiver_wallet_id bigint, sender_wallet_id bigint, transaction_date timestamp(6), sender_name varchar(255), sender_phone_number varchar(255), transaction_ref varchar(255), transaction_status varchar(255) check (transaction_status in ('PENDING','COMPLETED','CANCELLED')), transaction_type varchar(255) check (transaction_type in ('TOPUP','TRANSFER','WITHDRAWAL')), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table user_profiles (created_at timestamp(6), id bigint generated by default as identity, updated_at timestamp(6), description varchar(255), name varchar(255) not null unique, primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table users (email_verified boolean not null, id bigint generated by default as identity, profile_id bigint, referrer_id bigint, auth_type varchar(255) check (auth_type in ('DATABASE','FACEBOOK','GOOGLE','APPLE')), contact varchar(255), email varchar(255) not null unique, firstname varchar(255), image varchar(255), lastname varchar(255) not null, name varchar(255), password varchar(255) not null, phonenumber varchar(255) not null unique, provider varchar(255) check (provider in ('local','facebook','google','github')), provider_id varchar(255), push_token varchar(255), referral_code varchar(255) unique, username varchar(255) not null unique, primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table users_roles (roles_id bigint not null, user_id bigint not null, primary key (roles_id, user_id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table verification_token (expiry_date timestamp(6), id bigint not null, user_id bigint not null unique, token varchar(255), primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - create table wallets (balance numeric(38,2), currency_id bigint, id bigint generated by default as identity, user_id bigint unique, primary key (id))
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists comments add constraint FKh4c7lvsc298whoyd4w9ta25cr foreign key (post_id) references posts
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists comments add constraint FK8omq0tc18jd43bu5tjh6jvraq foreign key (user_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists discount add constraint FKf0yuaou3xo6mxbdowl2lfycn7 foreign key (user_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists expenses add constraint FKg7aulw52en8nct0mjq8uut03q foreign key (category_id) references expense_categories
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists expenses add constraint FKko0thccfpwh1bj150j3d4kq7m foreign key (created_by) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists expenses add constraint FKfd6qfwunb4p1qw1w95i8nb9gf foreign key (currency_id) references currencies
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists likes add constraint FKry8tnr4x2vwemv2bb0h5hyl0x foreign key (post_id) references posts
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists likes add constraint FKnvx9seeqqyy71bij291pwiwrg foreign key (user_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists messages add constraint FKt05r0b6n0iis8u7dfna4xdh73 foreign key (receiver_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists messages add constraint FK4ui4nnwntodh6wjvck53dbk9m foreign key (sender_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists notifications add constraint FK9y21adhxn0ayjhfocscqox7bh foreign key (user_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists payments add constraint FKejil51x3bgrwa1ntfatoojvt foreign key (currency_id) references currencies
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists payments add constraint FKi5sisw400oh7mddldq7kkejn2 foreign key (promo_code_id) references promo_code
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists payments add constraint FKopw6nnotm6p3pkyb4iuco4h0y foreign key (service_id) references services
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists payments add constraint FKqktpyvm52unwea52wlls77qes foreign key (subscription_plan_id) references subscription_plans
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists payments add constraint FKj94hgy9v5fw1munb90tar2eje foreign key (user_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists posts add constraint FK5lidm6cqbc7u4xhqpxm898qme foreign key (user_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists profile_roles add constraint FKqq0wj4w9v7gijw6135vj5wyeg foreign key (profile_id) references user_profiles
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists profile_roles add constraint FKcheb5utdlmggqe4gw8s8wkrx foreign key (role_id) references roles
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists profiles add constraint FK4scytur0i07ls9ggsq2dy46ag foreign key (account_id) references service_accounts
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists promo_code add constraint FK9r5vity41inp0mlomvkcb6ato foreign key (user_id) references users
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists service_accounts add constraint FKlug76pe1q2kab4reemwgk1e9y foreign key (service_id) references services
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists service_discounts add constraint FK21msxr859ocxn1ceggx1gsqp3 foreign key (service_id) references services
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists subscription_plans add constraint FK6obhvxvtfqkp2spo48l0h6sed foreign key (currency_id) references currencies
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists subscription_plans add constraint FKf8txee5kisag8mvknrke8xbsb foreign key (service_id) references services
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists subscriptions add constraint FKft3j25lg6owq8u4jw59830nr5 foreign key (next_subscription_plan_id) references subscription_plans
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists subscriptions add constraint FKaghytc6wwd06pyhu6m5pg25oo foreign key (profile_id) references profiles
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists subscriptions add constraint FKn3qm9el6cgrglwc9rmd37d1n1 foreign key (service_id) references services
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists subscriptions add constraint FKg41f5iev0mretaqhvepf0lks0 foreign key (plan_id) references subscription_plans
+2025-06-17 11:47:23 [main] DEBUG org.hibernate.SQL - alter table if exists subscriptions add constraint FKhro52ohfqfbay9774bev0qinr foreign key (user_id) references users
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists transactions add constraint FK812edr8o27pte306gvbmypytx foreign key (currency_id) references currencies
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists transactions add constraint FK5tr9f7tf144wrpoomtqyguilu foreign key (receiver_wallet_id) references wallets
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists transactions add constraint FKe0ppnh35227iut4l5u6bgghyw foreign key (sender_wallet_id) references wallets
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists users add constraint FKhkoxvfxs6cnk8iu3d90kel70r foreign key (referrer_id) references users
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists users add constraint FK9ni9y01cgm4kt2lp4d8smxm45 foreign key (profile_id) references user_profiles
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists users_roles add constraint FKa62j07k5mhgifpp955h37ponj foreign key (roles_id) references roles
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists users_roles add constraint FK2o0jvgh89lemvvo17cbqvdxaa foreign key (user_id) references users
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists verification_token add constraint FK3asw9wnv76uxu3kr1ekq4i1ld foreign key (user_id) references users
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists wallets add constraint FKafp7uh3ihe2o7yu774r69t3ss foreign key (currency_id) references currencies
+2025-06-17 11:47:24 [main] DEBUG org.hibernate.SQL - alter table if exists wallets add constraint FKc1foyisidw7wqqrkamafuwn4e foreign key (user_id) references users
+2025-06-17 11:47:24 [main] INFO  org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean - Initialized JPA EntityManagerFactory for persistence unit 'default'
+2025-06-17 11:47:24 [main] INFO  org.springframework.data.jpa.repository.query.QueryEnhancerFactory - Hibernate is in classpath; If applicable, HQL parser will be used.
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - select up1_0.id,up1_0.created_at,up1_0.description,up1_0.name,up1_0.updated_at from user_profiles up1_0 where up1_0.name=?
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - select r1_0.id,r1_0.code,r1_0.description,r1_0.name from roles r1_0 where r1_0.name=?
+2025-06-17 11:47:25 [main] WARN  org.springframework.web.context.support.GenericWebApplicationContext - Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'userProfileMigrationController' defined in file [/mnt/persist/workspace/target/classes/com/mabsplace/mabsplaceback/domain/controllers/UserProfileMigrationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'userProfileMigrationService': Invocation of init method failed
+2025-06-17 11:47:25 [main] INFO  org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean - Closing JPA EntityManagerFactory for persistence unit 'default'
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists comments cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists currencies cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists discount cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists expense_categories cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists expenses cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists likes cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists messages cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists notifications cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists payments cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists posts cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists profile_roles cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists profiles cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists promo_code cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists roles cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists service_accounts cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists service_discounts cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists services cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists subscription_plans cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists subscriptions cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists transactions cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists user_profiles cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists users cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists users_roles cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists verification_token cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop table if exists wallets cascade 
+2025-06-17 11:47:25 [main] DEBUG org.hibernate.SQL - drop sequence if exists verification_token_seq
+2025-06-17 11:47:25 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2025-06-17 11:47:25 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
+2025-06-17 11:47:25 [main] INFO  org.springframework.boot.autoconfigure.logging.ConditionEvaluationReportLogger - 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2025-06-17 11:47:25 [main] ERROR org.springframework.boot.SpringApplication - Application run failed
+org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'userProfileMigrationController' defined in file [/mnt/persist/workspace/target/classes/com/mabsplace/mabsplaceback/domain/controllers/UserProfileMigrationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'userProfileMigrationService': Invocation of init method failed
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:802)
+	at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:241)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1356)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1193)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:563)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:325)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:323)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:973)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:946)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:616)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:753)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:455)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:323)
+	at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:137)
+	at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
+	at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
+	at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1442)
+	at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:552)
+	at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:137)
+	at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:108)
+	at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
+	at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
+	at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
+	at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:191)
+	at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:130)
+	at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:247)
+	at org.springframework.test.context.junit.jupiter.SpringExtension.postProcessTestInstance(SpringExtension.java:163)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$invokeTestInstancePostProcessors$10(ClassBasedTestDescriptor.java:378)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.executeAndMaskThrowable(ClassBasedTestDescriptor.java:383)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$invokeTestInstancePostProcessors$11(ClassBasedTestDescriptor.java:378)
+	at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:197)
+	at java.base/java.util.stream.ReferencePipeline$2$1.accept(ReferencePipeline.java:179)
+	at java.base/java.util.ArrayList$ArrayListSpliterator.forEachRemaining(ArrayList.java:1708)
+	at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:509)
+	at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
+	at java.base/java.util.stream.StreamSpliterators$WrappingSpliterator.forEachRemaining(StreamSpliterators.java:310)
+	at java.base/java.util.stream.Streams$ConcatSpliterator.forEachRemaining(Streams.java:735)
+	at java.base/java.util.stream.Streams$ConcatSpliterator.forEachRemaining(Streams.java:734)
+	at java.base/java.util.stream.ReferencePipeline$Head.forEach(ReferencePipeline.java:762)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.invokeTestInstancePostProcessors(ClassBasedTestDescriptor.java:377)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$instantiateAndPostProcessTestInstance$6(ClassBasedTestDescriptor.java:290)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.instantiateAndPostProcessTestInstance(ClassBasedTestDescriptor.java:289)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$testInstancesProvider$4(ClassBasedTestDescriptor.java:279)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$testInstancesProvider$5(ClassBasedTestDescriptor.java:278)
+	at org.junit.jupiter.engine.execution.TestInstancesProvider.getTestInstances(TestInstancesProvider.java:31)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$prepare$0(TestMethodTestDescriptor.java:106)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.prepare(TestMethodTestDescriptor.java:105)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.prepare(TestMethodTestDescriptor.java:69)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$prepare$2(NodeTestTask.java:123)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.prepare(NodeTestTask.java:123)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:90)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:198)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:169)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:93)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:141)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:57)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+	at org.apache.maven.surefire.junitplatform.LazyLauncher.execute(LazyLauncher.java:56)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:184)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:148)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:122)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'userProfileMigrationService': Invocation of init method failed
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor.postProcessBeforeInitialization(InitDestroyAnnotationBeanPostProcessor.java:222)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyBeanPostProcessorsBeforeInitialization(AbstractAutowireCapableBeanFactory.java:421)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1767)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:601)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:325)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:323)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1441)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1348)
+	at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:911)
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:789)
+	... 97 common frames omitted
+Caused by: java.lang.RuntimeException: Role not found: ROLE_ADMIN
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.lambda$createProfileIfNotExists$1(UserProfileMigrationService.java:61)
+	at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.lambda$createProfileIfNotExists$2(UserProfileMigrationService.java:61)
+	at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:197)
+	at java.base/java.util.Spliterators$ArraySpliterator.forEachRemaining(Spliterators.java:1024)
+	at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:509)
+	at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
+	at java.base/java.util.stream.ReduceOps$ReduceOp.evaluateSequential(ReduceOps.java:921)
+	at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
+	at java.base/java.util.stream.ReferencePipeline.collect(ReferencePipeline.java:682)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.lambda$createProfileIfNotExists$3(UserProfileMigrationService.java:62)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.createProfileIfNotExists(UserProfileMigrationService.java:54)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.migrateExistingUsers(UserProfileMigrationService.java:31)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor$LifecycleMethod.invoke(InitDestroyAnnotationBeanPostProcessor.java:457)
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor$LifecycleMetadata.invokeInitMethods(InitDestroyAnnotationBeanPostProcessor.java:401)
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor.postProcessBeforeInitialization(InitDestroyAnnotationBeanPostProcessor.java:219)
+	... 110 common frames omitted
+2025-06-17 11:47:25 [main] ERROR org.springframework.test.context.TestContextManager - Caught exception while allowing TestExecutionListener [org.springframework.test.context.web.ServletTestExecutionListener] to prepare test instance [com.mabsplace.mabsplaceback.MabsplaceBackApplicationTests@452888c2]
+java.lang.IllegalStateException: Failed to load ApplicationContext for [WebMergedContextConfiguration@a5e9de1 testClass = com.mabsplace.mabsplaceback.MabsplaceBackApplicationTests, locations = [], classes = [com.mabsplace.mabsplaceback.MabsplaceBackApplication], contextInitializerClasses = [], activeProfiles = [], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@311bf055, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@78452606, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@5167f57d, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@53f3bdbd, org.springframework.boot.testcontainers.service.connection.ServiceConnectionContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@ff29f0b4], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+	at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:180)
+	at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
+	at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:191)
+	at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:130)
+	at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:247)
+	at org.springframework.test.context.junit.jupiter.SpringExtension.postProcessTestInstance(SpringExtension.java:163)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$invokeTestInstancePostProcessors$10(ClassBasedTestDescriptor.java:378)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.executeAndMaskThrowable(ClassBasedTestDescriptor.java:383)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$invokeTestInstancePostProcessors$11(ClassBasedTestDescriptor.java:378)
+	at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:197)
+	at java.base/java.util.stream.ReferencePipeline$2$1.accept(ReferencePipeline.java:179)
+	at java.base/java.util.ArrayList$ArrayListSpliterator.forEachRemaining(ArrayList.java:1708)
+	at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:509)
+	at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
+	at java.base/java.util.stream.StreamSpliterators$WrappingSpliterator.forEachRemaining(StreamSpliterators.java:310)
+	at java.base/java.util.stream.Streams$ConcatSpliterator.forEachRemaining(Streams.java:735)
+	at java.base/java.util.stream.Streams$ConcatSpliterator.forEachRemaining(Streams.java:734)
+	at java.base/java.util.stream.ReferencePipeline$Head.forEach(ReferencePipeline.java:762)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.invokeTestInstancePostProcessors(ClassBasedTestDescriptor.java:377)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$instantiateAndPostProcessTestInstance$6(ClassBasedTestDescriptor.java:290)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.instantiateAndPostProcessTestInstance(ClassBasedTestDescriptor.java:289)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$testInstancesProvider$4(ClassBasedTestDescriptor.java:279)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at org.junit.jupiter.engine.descriptor.ClassBasedTestDescriptor.lambda$testInstancesProvider$5(ClassBasedTestDescriptor.java:278)
+	at org.junit.jupiter.engine.execution.TestInstancesProvider.getTestInstances(TestInstancesProvider.java:31)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.lambda$prepare$0(TestMethodTestDescriptor.java:106)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.prepare(TestMethodTestDescriptor.java:105)
+	at org.junit.jupiter.engine.descriptor.TestMethodTestDescriptor.prepare(TestMethodTestDescriptor.java:69)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$prepare$2(NodeTestTask.java:123)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.prepare(NodeTestTask.java:123)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:90)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1596)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.invokeAll(SameThreadHierarchicalTestExecutorService.java:41)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$6(NodeTestTask.java:155)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$8(NodeTestTask.java:141)
+	at org.junit.platform.engine.support.hierarchical.Node.around(Node.java:137)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.lambda$executeRecursively$9(NodeTestTask.java:139)
+	at org.junit.platform.engine.support.hierarchical.ThrowableCollector.execute(ThrowableCollector.java:73)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.executeRecursively(NodeTestTask.java:138)
+	at org.junit.platform.engine.support.hierarchical.NodeTestTask.execute(NodeTestTask.java:95)
+	at org.junit.platform.engine.support.hierarchical.SameThreadHierarchicalTestExecutorService.submit(SameThreadHierarchicalTestExecutorService.java:35)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestExecutor.execute(HierarchicalTestExecutor.java:57)
+	at org.junit.platform.engine.support.hierarchical.HierarchicalTestEngine.execute(HierarchicalTestEngine.java:54)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:198)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:169)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:93)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:58)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:141)
+	at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:57)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
+	at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
+	at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+	at org.apache.maven.surefire.junitplatform.LazyLauncher.execute(LazyLauncher.java:56)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:184)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:148)
+	at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:122)
+	at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+	at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+	at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+	at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'userProfileMigrationController' defined in file [/mnt/persist/workspace/target/classes/com/mabsplace/mabsplaceback/domain/controllers/UserProfileMigrationController.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'userProfileMigrationService': Invocation of init method failed
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:802)
+	at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:241)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1356)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1193)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:563)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:325)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:323)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:973)
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:946)
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:616)
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:753)
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:455)
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:323)
+	at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:137)
+	at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
+	at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
+	at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1442)
+	at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:552)
+	at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:137)
+	at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:108)
+	at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
+	at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
+	... 73 common frames omitted
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'userProfileMigrationService': Invocation of init method failed
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor.postProcessBeforeInitialization(InitDestroyAnnotationBeanPostProcessor.java:222)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyBeanPostProcessorsBeforeInitialization(AbstractAutowireCapableBeanFactory.java:421)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1767)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:601)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:523)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:325)
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:323)
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:199)
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1441)
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1348)
+	at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:911)
+	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:789)
+	... 97 common frames omitted
+Caused by: java.lang.RuntimeException: Role not found: ROLE_ADMIN
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.lambda$createProfileIfNotExists$1(UserProfileMigrationService.java:61)
+	at java.base/java.util.Optional.orElseThrow(Optional.java:403)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.lambda$createProfileIfNotExists$2(UserProfileMigrationService.java:61)
+	at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:197)
+	at java.base/java.util.Spliterators$ArraySpliterator.forEachRemaining(Spliterators.java:1024)
+	at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:509)
+	at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
+	at java.base/java.util.stream.ReduceOps$ReduceOp.evaluateSequential(ReduceOps.java:921)
+	at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
+	at java.base/java.util.stream.ReferencePipeline.collect(ReferencePipeline.java:682)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.lambda$createProfileIfNotExists$3(UserProfileMigrationService.java:62)
+	at java.base/java.util.Optional.orElseGet(Optional.java:364)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.createProfileIfNotExists(UserProfileMigrationService.java:54)
+	at com.mabsplace.mabsplaceback.domain.services.UserProfileMigrationService.migrateExistingUsers(UserProfileMigrationService.java:31)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:103)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:580)
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor$LifecycleMethod.invoke(InitDestroyAnnotationBeanPostProcessor.java:457)
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor$LifecycleMetadata.invokeInitMethods(InitDestroyAnnotationBeanPostProcessor.java:401)
+	at org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor.postProcessBeforeInitialization(InitDestroyAnnotationBeanPostProcessor.java:219)
+	... 110 common frames omitted
