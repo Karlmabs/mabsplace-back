@@ -1,6 +1,5 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
-import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.MyService;
 import com.mabsplace.mabsplaceback.domain.entities.Profile;
@@ -37,7 +36,6 @@ public class SubscriptionService {
     private final MyServiceService myServiceService;
     private final MyServiceRepository myServiceRepository;
     private final NotificationService notificationService;
-    private final EmailService emailService;
     private final WalletService walletService;
     private final SubscriptionPaymentOrchestrator orchestrator;
     private final DiscordService discordService;
@@ -46,7 +44,7 @@ public class SubscriptionService {
 
     private final SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, EmailService emailService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, SubscriptionPaymentOrchestrator subscriptionPaymentOrchestrator) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -56,7 +54,6 @@ public class SubscriptionService {
         this.myServiceService = myServiceService;
         this.myServiceRepository = myServiceRepository;
         this.notificationService = notificationService;
-        this.emailService = emailService;
         this.walletService = walletService;
         this.orchestrator = orchestrator;
         this.discordService = discordService;
@@ -129,23 +126,6 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
         logger.info("Successfully updated subscription details for ID: {}", subscription.getId());
 
-        EmailRequest emailRequest = EmailRequest.builder()
-                .to("maboukarl2@gmail.com")
-                .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
-                .subject("Subscription Renewed")
-                .headerText("Subscription Renewed")
-                .body(String.format(
-                        "<p>The subscription for %s of %s has been successfully renewed. The new end date is %s.</p>",
-                        subscription.getService().getName(),
-                        subscription.getUser().getUsername(),
-                        newEndDate
-                ))
-                .companyName("MabsPlace")
-                .build();
-
-        emailService.sendEmail(emailRequest);
-        logger.info("Sent renewal confirmation email for subscription ID: {}", subscription.getId());
-
         // Send Discord notification
         discordService.sendSubscriptionRenewedNotification(
                 subscription.getUser().getUsername(),
@@ -172,21 +152,6 @@ public class SubscriptionService {
             cancelSubscription(subscription);
         } else {
             subscriptionRepository.save(subscription);
-
-            EmailRequest emailRequest = EmailRequest.builder()
-                    .to("maboukarl2@gmail.com")
-                    .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
-                    .subject("Subscription Renewal Failed")
-                    .headerText("Subscription Renewal Failed")
-                    .body(String.format(
-                            "<p>There was an issue renewing the subscription for %s of %s. The subscription will be automatically renewed again in the next 24 hours.</p>",
-                            subscription.getService().getName(),
-                            subscription.getUser().getUsername()
-                    ))
-                    .companyName("MabsPlace")
-                    .build();
-
-            emailService.sendEmail(emailRequest);
 
             // Send Discord notification
             discordService.sendSubscriptionRenewalFailedNotification(
@@ -227,25 +192,6 @@ public class SubscriptionService {
         subscription.setAutoRenew(false);
         subscriptionRepository.save(subscription);
         logger.info("Subscription updated successfully with status: {}", SubscriptionStatus.EXPIRED);
-
-        logger.debug("Preparing email notification about expired subscription");
-        EmailRequest emailRequest = EmailRequest.builder()
-                .to("maboukarl2@gmail.com")
-                .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
-                .subject("Subscription Expired")
-                .headerText("Subscription Expired")
-                .body(String.format(
-                        "<p>The subscription of %s has now expired. The Account he was using for %s is %s on the profile %s. You need to change its pin or account password. </p>",
-                        subscription.getUser().getUsername(),
-                        subscription.getService().getName(),
-                        subscription.getProfile().getServiceAccount().getLogin(),
-                        subscription.getProfile().getProfileName()
-                ))
-                .companyName("MabsPlace")
-                .build();
-
-        emailService.sendEmail(emailRequest);
-        logger.info("Expiration notification email sent for subscription ID: {}", subscription.getId());
 
         // Send Discord notification
         discordService.sendSubscriptionExpiredNotification(
@@ -419,24 +365,6 @@ public class SubscriptionService {
             }
 
             try {
-                EmailRequest emailRequest = EmailRequest.builder()
-                        .to("maboukarl2@gmail.com")
-                        .cc(List.of("yvanos510@gmail.com"))
-                        .subject("Subscription Expiring Soon")
-                        .headerText("Subscription Expiring Soon")
-                        .body(String.format(
-                                "<p>The subscription of %s for %s will expire on %s. The Account he is using is %s on the profile %s.</p>",
-                                subscription.getUser().getUsername(),
-                                subscription.getService().getName(),
-                                subscription.getEndDate(),
-                                profile.getServiceAccount().getLogin(),
-                                profile.getProfileName()
-                        ))
-                        .companyName("MabsPlace")
-                        .build();
-
-                emailService.sendEmail(emailRequest);
-
                 // Send Discord notification
                 discordService.sendSubscriptionExpiringNotification(
                         subscription.getUser().getUsername(),
@@ -498,23 +426,6 @@ public class SubscriptionService {
                 profile.setStatus(ProfileStatus.INACTIVE);
                 profileRepository.save(profile);
             }
-
-            EmailRequest emailRequest = EmailRequest.builder()
-                    .to("maboukarl2@gmail.com")
-                    .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
-                    .subject("Subscription Expired")
-                    .headerText("Subscription Expired")
-                    .body(String.format(
-                            "<p>The subscription of %s has now expired. The Account he was using for %s is %s on the profile %s. You need to change its pin or account password. </p>",
-                            subscription.getUser().getUsername(),
-                            subscription.getService().getName(),
-                            subscription.getProfile().getServiceAccount().getLogin(),
-                            subscription.getProfile().getProfileName()
-                    ))
-                    .companyName("MabsPlace")
-                    .build();
-
-            emailService.sendEmail(emailRequest);
 
             // Send Discord notification for expired subscription
             discordService.sendSubscriptionExpiredNotification(
@@ -699,24 +610,6 @@ public class SubscriptionService {
 
         subscription = subscriptionRepository.save(subscription);
         logger.info("Successfully saved renewed subscription ID: {}", subscription.getId());
-
-        // Send email notification
-        EmailRequest emailRequest = EmailRequest.builder()
-                .to("maboukarl2@gmail.com")
-                .cc(List.of("yvanos510@gmail.com", "haroldfokam@gmail.com"))
-                .subject("Subscription Manually Renewed")
-                .headerText("Subscription Manually Renewed")
-                .body(String.format(
-                        "<p>The subscription for %s of %s has been manually renewed. The new end date is %s.</p>",
-                        subscription.getService().getName(),
-                        subscription.getUser().getUsername(),
-                        newEndDate
-                ))
-                .companyName("MabsPlace")
-                .build();
-
-        emailService.sendEmail(emailRequest);
-        logger.info("Sent manual renewal confirmation email for subscription ID: {}", subscription.getId());
 
         // Send Discord notification
         discordService.sendSubscriptionRenewedNotification(

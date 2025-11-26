@@ -315,4 +315,43 @@ public class DiscordService {
             logger.error("Failed to send Discord security audit alert: {}", e.getMessage(), e);
         }
     }
+
+    @Async
+    public void sendPaymentConfirmationNotification(String username, String serviceName, String amount, String currency) {
+        if (paymentRemindersWebhook == null || paymentRemindersWebhook.isEmpty()) {
+            logger.warn("Discord webhook URL not configured for payment reminders");
+            return;
+        }
+
+        try {
+            logger.info("Sending Discord notification for payment confirmation: {} - {}", username, serviceName);
+
+            Map<String, Object> embed = new HashMap<>();
+            embed.put("title", "💰 Payment Confirmed");
+            embed.put("description", String.format(
+                    "**User:** %s\n**Service:** %s\n**Amount:** %s %s\n**Status:** Successfully Processed",
+                    username, serviceName, currency, amount
+            ));
+            embed.put("color", 5763719); // Green color
+            embed.put("timestamp", Instant.now().toString());
+
+            Map<String, Object> footer = new HashMap<>();
+            footer.put("text", "MabsPlace Payment Confirmation");
+            embed.put("footer", footer);
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("embeds", List.of(embed));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(paymentRemindersWebhook, request, String.class);
+
+            logger.info("Discord notification sent successfully for payment confirmation");
+        } catch (Exception e) {
+            logger.error("Failed to send Discord notification for payment confirmation: {}", e.getMessage(), e);
+        }
+    }
 }

@@ -1,6 +1,5 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
-import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
 import com.mabsplace.mabsplaceback.domain.dtos.payment.PaymentRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.promoCode.PromoCodeResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
@@ -26,15 +25,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-import static com.mysql.cj.conf.PropertyKey.logger;
-
 @Service
 @Transactional
 public class SubscriptionPaymentOrchestrator {
     private final WalletService walletService;
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
-    private final EmailService emailService;
     private final NotificationService notificationService;
     private final DiscountService discountService;
     private final UserRepository userRepository;
@@ -48,6 +44,7 @@ public class SubscriptionPaymentOrchestrator {
     private final SubscriptionDiscountService subscriptionDiscountService;
     private final TransactionRepository transactionRepository;
     private final ExpenseService expenseService;
+    private final DiscordService discordService;
 
     private static final Logger log = LoggerFactory.getLogger(SubscriptionPaymentOrchestrator.class);
     private final ExpenseCategoryService expenseCategoryService;
@@ -56,7 +53,6 @@ public class SubscriptionPaymentOrchestrator {
             WalletService walletService,
             SubscriptionRepository subscriptionRepository,
             PaymentRepository paymentRepository,
-            EmailService emailService,
             NotificationService notificationService,
             DiscountService discountService,
             UserRepository userRepository,
@@ -69,11 +65,12 @@ public class SubscriptionPaymentOrchestrator {
             PromoCodeService promoCodeService,
             SubscriptionDiscountService subscriptionDiscountService,
             TransactionRepository transactionRepository,
-            ExpenseService expenseService, ExpenseCategoryService expenseCategoryService) {
+            ExpenseService expenseService,
+            ExpenseCategoryService expenseCategoryService,
+            DiscordService discordService) {
         this.walletService = walletService;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
-        this.emailService = emailService;
         this.notificationService = notificationService;
         this.discountService = discountService;
         this.userRepository = userRepository;
@@ -88,6 +85,7 @@ public class SubscriptionPaymentOrchestrator {
         this.transactionRepository = transactionRepository;
         this.expenseService = expenseService;
         this.expenseCategoryService = expenseCategoryService;
+        this.discordService = discordService;
     }
 
     public Payment processPaymentWithoutSubscription(PaymentRequestDto paymentRequest) {
@@ -183,14 +181,13 @@ public class SubscriptionPaymentOrchestrator {
                 createInitialSubscription(payment);
                 log.info("Subscription created successfully for payment: {}", payment.getId());
 
-                // send email
-                emailService.sendEmail(EmailRequest.builder()
-                        .to("mabsplace2024@gmail.com")
-                        .subject("Payment Confirmation")
-                        .headerText("Payment Confirmation")
-                        .body(" <p>A payment of $" + payment.getAmount() + " from " + user.getUsername() + " for " + payment.getService().getName() + " has been successfully processed.</p>")
-                        .companyName("MabsPlace")
-                        .build());
+                // send Discord notification
+                discordService.sendPaymentConfirmationNotification(
+                        user.getUsername(),
+                        payment.getService().getName(),
+                        payment.getAmount().toString(),
+                        payment.getCurrency().getSymbol()
+                );
 
                 if (user.getReferrer() != null) {
                     User referrer = user.getReferrer();
