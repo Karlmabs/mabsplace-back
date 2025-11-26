@@ -142,12 +142,12 @@ public class TaskService {
         String phoneNumber = subscription.getUser().getPhonenumber();
 
         String whatsappMessage = String.format(
-            "Hello %s,\n\n" +
-            "This is a friendly reminder that your %s subscription will expire in %d day(s).\n\n" +
-            "To continue enjoying uninterrupted service, please renew your subscription at your earliest convenience.\n\n" +
-            "If you have any questions, feel free to reach out!\n\n" +
-            "Best regards,\n" +
-            "MabsPlace Team",
+            "Bonjour %s,\n\n" +
+            "Ceci est un rappel amical que votre abonnement %s expirera dans %d jour(s).\n\n" +
+            "Pour continuer à profiter de nos services sans interruption, veuillez renouveler votre abonnement dès que possible.\n\n" +
+            "Si vous avez des questions, n'hésitez pas à nous contacter.\n\n" +
+            "Cordialement,\n" +
+            "L'équipe MabsPlace",
             customerName, serviceName, daysUntilExpiry
         );
 
@@ -182,13 +182,32 @@ public class TaskService {
                 ? subscription.getUser().getFirstname()
                 : subscription.getUser().getUsername();
         String serviceName = subscription.getService().getName();
+        String phoneNumber = subscription.getUser().getPhonenumber();
+
+        // Create French WhatsApp message template
+        String whatsappMessage = String.format(
+            "Bonjour %s,\n\n" +
+            "Nous vous contactons concernant votre abonnement %s.\n\n" +
+            "Le renouvellement automatique de votre abonnement a échoué. " +
+            "Pour continuer à profiter de nos services sans interruption, veuillez renouveler votre abonnement dès que possible.\n\n" +
+            "Si vous avez des questions ou besoin d'assistance, n'hésitez pas à nous contacter.\n\n" +
+            "Cordialement,\n" +
+            "L'équipe MabsPlace",
+            customerName, serviceName
+        );
+
+        String metadata = String.format(
+            "{\"customerName\": \"%s\", \"serviceName\": \"%s\", \"phoneNumber\": \"%s\"}",
+            customerName, serviceName, phoneNumber != null ? phoneNumber : "N/A"
+        );
 
         Task task = Task.builder()
                 .title(String.format("Subscription Renewal Failed: %s - %s", customerName, serviceName))
-                .description("The renewal for this subscription has failed. Please follow up with the customer.")
+                .description(whatsappMessage)
                 .type(TaskType.SUBSCRIPTION_RENEWAL_FAILED)
                 .priority(TaskPriority.URGENT)
                 .status(TaskStatus.TODO)
+                .metadata(metadata)
                 .subscription(subscription)
                 .build();
 

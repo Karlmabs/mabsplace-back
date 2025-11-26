@@ -405,9 +405,9 @@ public class SubscriptionService {
         Date today = new Date();
         Date sevenDaysFromNow = Utils.addDays(today, 7);
 
-        // Find subscriptions expiring between now and 7 days from now (with autoRenew=false and not yet notified)
+        // Find subscriptions expiring between now and 7 days from now (not yet notified)
         List<Subscription> subscriptions = subscriptionRepository
-                .findByEndDateBetweenAndStatusNotAndAutoRenewFalseAndExpirationNotifiedFalse(
+                .findByEndDateBetweenAndStatusNotAndExpirationNotifiedFalse(
                         today, sevenDaysFromNow, SubscriptionStatus.EXPIRED);
         logger.info("Found {} subscriptions expiring within 7 days that haven't been notified", subscriptions.size());
 
@@ -482,9 +482,9 @@ public class SubscriptionService {
 
     @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
     public void expireSubscriptions() throws MessagingException {
-        logger.info("Starting daily subscription expiration process for non-auto-renew subscriptions");
-        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNotAndAutoRenewFalse(new Date(), SubscriptionStatus.EXPIRED);
-        logger.info("Found {} subscriptions to expire (autoRenew=false)", subscriptions.size());
+        logger.info("Starting daily subscription expiration process");
+        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNot(new Date(), SubscriptionStatus.EXPIRED);
+        logger.info("Found {} subscriptions to expire", subscriptions.size());
 
         for (Subscription subscription : subscriptions) {
             logger.info("Expiring subscription ID: {} - User: {} - Service: {}",
