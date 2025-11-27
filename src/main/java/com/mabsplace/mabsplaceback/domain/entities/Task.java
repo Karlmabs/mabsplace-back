@@ -6,6 +6,8 @@ import com.mabsplace.mabsplaceback.domain.enums.TaskType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -72,6 +74,7 @@ public class Task {
   // Optional: Link to related subscription for subscription-related tasks
   @ManyToOne
   @JoinColumn(name = "subscription_id", referencedColumnName = "id")
+  @OnDelete(action = OnDeleteAction.CASCADE)
   private Subscription subscription;
 
   // Comments on this task
