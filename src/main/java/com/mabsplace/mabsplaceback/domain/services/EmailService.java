@@ -253,7 +253,7 @@ public class EmailService {
         logger.info("Email sent successfully to: {}", request.getTo());
     }
 
-    @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
+    @Scheduled(cron = "0 20 0 * * ?") // Runs every day at 00:20 (staggered to reduce Discord rate limiting)
     public void notifyUpcomingPayments() throws MessagingException {
         logger.info("Scheduled task started: Checking for upcoming payments.");
 

@@ -180,16 +180,18 @@ public class PromoCodeService {
     }
 
     @Scheduled(cron = "0 0 0 * * *") // Run at midnight every day
-    public void deleteInactivePromoCodes() {
-        logger.info("Starting scheduled task to delete inactive promo codes");
+    public void cleanupInactivePromoCodes() {
+        logger.info("Starting scheduled task to cleanup inactive promo codes");
         List<PromoCode> inactiveCodes = promoCodeRepository.findByStatus(PromoCodeStatus.INACTIVE);
         if (!inactiveCodes.isEmpty()) {
-            logger.info("Deleting {} inactive promo codes", inactiveCodes.size());
-            promoCodeRepository.deleteAll(inactiveCodes);
+            logger.info("Found {} inactive promo codes (soft-deleted, retained for audit trail)", inactiveCodes.size());
+            // Inactive promo codes are already filtered out by status in business logic
+            // We retain them in the database for payment history and audit compliance
+            // This prevents foreign key constraint violations since payments may reference these codes
         } else {
             logger.info("No inactive promo codes found");
         }
-        logger.info("Completed scheduled task to delete inactive promo codes");
+        logger.info("Completed scheduled task to cleanup inactive promo codes");
     }
 
     public PromoCodeResponseDto getPromoCode(Long id) {

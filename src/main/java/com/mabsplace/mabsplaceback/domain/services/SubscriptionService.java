@@ -65,7 +65,7 @@ public class SubscriptionService {
         this.taskRepository = taskRepository;
     }
 
-    @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
+    @Scheduled(cron = "0 5 0 * * *") // Runs daily at 00:05 (staggered to reduce Discord rate limiting)
     public void processSubscriptionRenewals() throws MessagingException {
         logger.info("Starting daily subscription renewal process");
         Date today = new Date();
@@ -348,7 +348,7 @@ public class SubscriptionService {
         return subscriptionRepository.save(updated);
     }
 
-    @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
+    @Scheduled(cron = "0 10 0 * * ?") // Runs every day at 00:10 (staggered to reduce Discord rate limiting)
     public void notifyExpiringSubscriptions() throws MessagingException {
         logger.info("Starting notification for expiring subscriptions");
         Date today = new Date();
@@ -411,7 +411,7 @@ public class SubscriptionService {
         }
     }
 
-    @Scheduled(cron = "0 0 0 * * ?") // Runs every day at midnight
+    @Scheduled(cron = "0 15 0 * * ?") // Runs every day at 00:15 (staggered to reduce Discord rate limiting)
     public void expireSubscriptions() throws MessagingException {
         logger.info("Starting daily subscription expiration process");
         List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNot(new Date(), SubscriptionStatus.EXPIRED);
