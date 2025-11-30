@@ -25,18 +25,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     List<Subscription> findByEndDateBeforeAndStatusNotAndAutoRenewFalse(Date date, SubscriptionStatus subscriptionStatus);
 
-    /**
-     * Finds subscriptions that should be expired because either:
-     * 1. autoRenew is false (user opted out), OR
-     * 2. autoRenew is true BUT renewalAttempts >= 4 (exhausted all retries)
-     *
-     * This prevents premature expiration of subscriptions still in the renewal retry window.
-     */
-    @Query("SELECT s FROM Subscription s WHERE s.endDate < :date AND s.status <> :status " +
-           "AND (s.autoRenew = false OR COALESCE(s.renewalAttempts, 0) >= 4)")
-    List<Subscription> findSubscriptionsToExpire(@Param("date") Date date,
-                                                  @Param("status") SubscriptionStatus status);
-
     boolean existsByUserIdAndServiceIdAndIsTrial(Long id, Long id1, boolean b);
 
     // Check if user has ever had a trial for this service (regardless of current status)
