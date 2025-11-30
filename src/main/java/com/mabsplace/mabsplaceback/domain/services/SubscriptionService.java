@@ -414,8 +414,8 @@ public class SubscriptionService {
     @Scheduled(cron = "0 15 0 * * ?") // Runs every day at 00:15 (staggered to reduce Discord rate limiting)
     public void expireSubscriptions() throws MessagingException {
         logger.info("Starting daily subscription expiration process");
-        List<Subscription> subscriptions = subscriptionRepository.findByEndDateBeforeAndStatusNot(new Date(), SubscriptionStatus.EXPIRED);
-        logger.info("Found {} subscriptions to expire", subscriptions.size());
+        List<Subscription> subscriptions = subscriptionRepository.findSubscriptionsToExpire(new Date(), SubscriptionStatus.EXPIRED);
+        logger.info("Found {} subscriptions to expire (autoRenew=false or renewalAttempts>=4)", subscriptions.size());
 
         for (Subscription subscription : subscriptions) {
             logger.info("Expiring subscription ID: {} - User: {} - Service: {}",
