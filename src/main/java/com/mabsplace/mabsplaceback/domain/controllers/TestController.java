@@ -278,4 +278,25 @@ public class TestController {
             return ResponseEntity.status(500).body(errorResponse);
         }
     }
+
+    @PostMapping("/cron/inactive-customer-followup")
+    @Operation(summary = "Manually trigger the inactive customer follow-up task creation cron job")
+    public ResponseEntity<Map<String, Object>> triggerInactiveCustomerFollowupCronJob() {
+        try {
+            subscriptionService.createInactiveCustomerFollowupTasks();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Inactive customer follow-up cron job triggered successfully");
+            response.put("timestamp", new Date());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Error creating inactive customer follow-up tasks: " + e.getMessage());
+            errorResponse.put("timestamp", new Date());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
 }
