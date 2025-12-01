@@ -59,7 +59,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
            "  SELECT 1 FROM Subscription s2 " +
            "  WHERE s2.user.id = s.user.id " +
            "  AND s2.endDate >= :cutoffDate" +
-           ") " +
-           "ORDER BY s.endDate DESC")
+           ")")
     List<User> findInactiveCustomersSince(@Param("cutoffDate") Date cutoffDate);
 }
