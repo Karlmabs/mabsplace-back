@@ -37,10 +37,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
            ")")
     List<User> findUsersWithNoRecentPaidPayments(@Param("cutoffDate") Date cutoffDate);
 
-    // Get most recent PAID payment for a user
-    @Query("SELECT p FROM Payment p " +
-           "WHERE p.user.id = :userId " +
-           "AND p.status = com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID " +
-           "ORDER BY p.paymentDate DESC")
-    Optional<Payment> findMostRecentPaidPaymentByUserId(@Param("userId") Long userId);
+    // Get most recent PAID payment for a user (returns only the first result)
+    Optional<Payment> findFirstByUserIdAndStatusOrderByPaymentDateDesc(
+        Long userId,
+        com.mabsplace.mabsplaceback.domain.enums.PaymentStatus status
+    );
 }

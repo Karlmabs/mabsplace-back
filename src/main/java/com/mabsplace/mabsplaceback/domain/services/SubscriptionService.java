@@ -533,7 +533,10 @@ public class SubscriptionService {
 
                 // Get most recent PAID payment for metadata
                 java.util.Optional<com.mabsplace.mabsplaceback.domain.entities.Payment> lastPaymentOpt =
-                    paymentRepository.findMostRecentPaidPaymentByUserId(user.getId());
+                    paymentRepository.findFirstByUserIdAndStatusOrderByPaymentDateDesc(
+                        user.getId(),
+                        com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID
+                    );
 
                 if (lastPaymentOpt.isPresent()) {
                     com.mabsplace.mabsplaceback.domain.entities.Payment payment = lastPaymentOpt.get();
