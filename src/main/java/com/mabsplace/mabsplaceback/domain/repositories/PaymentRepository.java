@@ -1,12 +1,15 @@
 package com.mabsplace.mabsplaceback.domain.repositories;
 
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
+import com.mabsplace.mabsplaceback.domain.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
@@ -17,4 +20,28 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     // New method to count payments by user ID where subscription plan name is not "Trial"
     @Query("SELECT COUNT(p) FROM Payment p WHERE p.user.id = :userId AND p.subscriptionPlan.name <> :planName")
     int countByUserIdAndSubscriptionPlanNameNot(@Param("userId") Long userId, @Param("planName") String planName);
+
+    // Find users with no PAID payments in the last 90 days (inactive customers)
+    @Query(value = "SELECT DISTINCT u.* FROM users u " +
+           "WHERE u.id IN (" +
+           "  SELECT p.user_id FROM payments p " +
+           "  WHERE p.status = 'PAID' " +
+           "  GROUP BY p.user_id " +
+           "  HAVING MAX(p.payment_date) < :cutoffDate" +
+           ") " +
+           "AND NOT EXISTS (" +
+           "  SELECT 1 FROM payments p2 " +
+           "  WHERE p2.user_id = u.id " +
+           "  AND p2.status = 'PAID' " +
+           "  AND p2.payment_date >= :cutoffDate" +
+           ")",
+           nativeQuery = true)
+    List<User> findUsersWithNoRecentPaidPayments(@Param("cutoffDate") Date cutoffDate);
+
+    // Get most recent PAID payment for a user
+    @Query("SELECT p FROM Payment p " +
+           "WHERE p.user.id = :userId " +
+           "AND p.status = com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID " +
+           "ORDER BY p.paymentDate DESC")
+    Optional<Payment> findMostRecentPaidPaymentByUserId(@Param("userId") Long userId);
 }

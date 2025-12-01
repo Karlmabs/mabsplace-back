@@ -46,8 +46,9 @@ public class SubscriptionService {
     private final WhatsAppService whatsAppService;
     private final TaskService taskService;
     private final TaskRepository taskRepository;
+    private final PaymentRepository paymentRepository;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, TaskRepository taskRepository) {
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, TaskRepository taskRepository, PaymentRepository paymentRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -63,6 +64,7 @@ public class SubscriptionService {
         this.whatsAppService = whatsAppService;
         this.taskService = taskService;
         this.taskRepository = taskRepository;
+        this.paymentRepository = paymentRepository;
     }
 
     @Scheduled(cron = "0 5 0 * * *") // Runs daily at 00:05 (staggered to reduce Discord rate limiting)
@@ -508,11 +510,11 @@ public class SubscriptionService {
         logger.info("Starting monthly inactive customer follow-up task creation");
 
         // Calculate cutoff date (90 days ago)
-        Date cutoffDate = Utils.addDays(new Date(), -30);
+        Date cutoffDate = Utils.addDays(new Date(), -90);
 
-        // Find inactive customers
-        List<User> inactiveCustomers = subscriptionRepository.findInactiveCustomersSince(cutoffDate);
-        logger.info("Found {} inactive customers (no active subscriptions in 90+ days)", inactiveCustomers.size());
+        // Find inactive customers based on payment history (not subscriptions)
+        List<User> inactiveCustomers = paymentRepository.findUsersWithNoRecentPaidPayments(cutoffDate);
+        logger.info("Found {} inactive customers (no PAID payments in 90+ days)", inactiveCustomers.size());
 
         int tasksCreated = 0;
         for (User user : inactiveCustomers) {
@@ -529,8 +531,25 @@ public class SubscriptionService {
                     continue;
                 }
 
-                // Create task
-                taskService.createInactiveCustomerFollowupTask(user, 90);
+                // Get most recent PAID payment for metadata
+                java.util.Optional<com.mabsplace.mabsplaceback.domain.entities.Payment> lastPaymentOpt =
+                    paymentRepository.findMostRecentPaidPaymentByUserId(user.getId());
+
+                if (lastPaymentOpt.isPresent()) {
+                    com.mabsplace.mabsplaceback.domain.entities.Payment payment = lastPaymentOpt.get();
+                    long daysInactive = calculateDaysSince(payment.getPaymentDate());
+
+                    // Create task with payment metadata
+                    taskService.createInactiveCustomerFollowupTask(
+                        user,
+                        (int) daysInactive,
+                        payment.getPaymentDate(),
+                        payment.getAmount()
+                    );
+                } else {
+                    // User has no PAID payments - create with null metadata
+                    taskService.createInactiveCustomerFollowupTask(user, 90, null, null);
+                }
                 tasksCreated++;
 
             } catch (Exception e) {
@@ -539,6 +558,12 @@ public class SubscriptionService {
         }
 
         logger.info("Completed inactive customer follow-up. Created {} tasks", tasksCreated);
+    }
+
+    // Helper method to calculate days since a given date
+    private long calculateDaysSince(Date paymentDate) {
+        long diffInMillies = Math.abs(new Date().getTime() - paymentDate.getTime());
+        return diffInMillies / (1000 * 60 * 60 * 24);
     }
 
     // Update Subscription Status

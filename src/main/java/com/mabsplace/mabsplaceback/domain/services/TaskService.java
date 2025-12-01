@@ -244,7 +244,9 @@ public class TaskService {
 
     // Create automated task for inactive customer follow-up
     @Transactional
-    public TaskResponseDto createInactiveCustomerFollowupTask(User user, int daysInactive) {
+    public TaskResponseDto createInactiveCustomerFollowupTask(User user, int daysInactive,
+                                                              Date lastPaymentDate,
+                                                              java.math.BigDecimal lastPaymentAmount) {
         logger.info("Creating inactive customer follow-up task for user ID: {}", user.getId());
 
         String customerName = user.getFirstname() != null
@@ -265,11 +267,21 @@ public class TaskService {
             customerName, daysInactive
         );
 
+        // Format payment date and amount for metadata
+        String paymentDateStr = lastPaymentDate != null
+                ? new java.text.SimpleDateFormat("yyyy-MM-dd").format(lastPaymentDate)
+                : "N/A";
+        String paymentAmountStr = lastPaymentAmount != null
+                ? String.format("%.2f", lastPaymentAmount)
+                : "0.00";
+
         String metadata = String.format(
-            "{\"userId\": %d, \"customerName\": \"%s\", \"phoneNumber\": \"%s\", \"email\": \"%s\", \"daysInactive\": %d}",
+            "{\"userId\": %d, \"customerName\": \"%s\", \"phoneNumber\": \"%s\", \"email\": \"%s\", " +
+            "\"daysInactive\": %d, \"lastPaymentDate\": \"%s\", \"lastPaymentAmount\": %s}",
             user.getId(), customerName,
             phoneNumber != null ? phoneNumber : "N/A",
-            user.getEmail(), daysInactive
+            user.getEmail(), daysInactive,
+            paymentDateStr, paymentAmountStr
         );
 
         Task task = Task.builder()
