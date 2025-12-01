@@ -508,7 +508,7 @@ public class SubscriptionService {
         logger.info("Starting monthly inactive customer follow-up task creation");
 
         // Calculate cutoff date (90 days ago)
-        Date cutoffDate = Utils.addDays(new Date(), -90);
+        Date cutoffDate = Utils.addDays(new Date(), -30);
 
         // Find inactive customers
         List<User> inactiveCustomers = subscriptionRepository.findInactiveCustomersSince(cutoffDate);
