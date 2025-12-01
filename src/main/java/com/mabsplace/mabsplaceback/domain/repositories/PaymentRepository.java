@@ -22,20 +22,19 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     int countByUserIdAndSubscriptionPlanNameNot(@Param("userId") Long userId, @Param("planName") String planName);
 
     // Find users with no PAID payments in the last 90 days (inactive customers)
-    @Query(value = "SELECT DISTINCT u.* FROM users u " +
+    @Query("SELECT DISTINCT u FROM User u " +
            "WHERE u.id IN (" +
-           "  SELECT p.user_id FROM payments p " +
-           "  WHERE p.status = 'PAID' " +
-           "  GROUP BY p.user_id " +
-           "  HAVING MAX(p.payment_date) < :cutoffDate" +
+           "  SELECT p.user.id FROM Payment p " +
+           "  WHERE p.status = com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID " +
+           "  GROUP BY p.user.id " +
+           "  HAVING MAX(p.paymentDate) < :cutoffDate" +
            ") " +
            "AND NOT EXISTS (" +
-           "  SELECT 1 FROM payments p2 " +
-           "  WHERE p2.user_id = u.id " +
-           "  AND p2.status = 'PAID' " +
-           "  AND p2.payment_date >= :cutoffDate" +
-           ")",
-           nativeQuery = true)
+           "  SELECT 1 FROM Payment p2 " +
+           "  WHERE p2.user.id = u.id " +
+           "  AND p2.status = com.mabsplace.mabsplaceback.domain.enums.PaymentStatus.PAID " +
+           "  AND p2.paymentDate >= :cutoffDate" +
+           ")")
     List<User> findUsersWithNoRecentPaidPayments(@Param("cutoffDate") Date cutoffDate);
 
     // Get most recent PAID payment for a user
