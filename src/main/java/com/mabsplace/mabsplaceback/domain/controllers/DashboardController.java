@@ -3,6 +3,7 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -25,6 +26,7 @@ public class DashboardController {
     private com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository profileRepository;
 
     @GetMapping("/stats")
+    @Cacheable(value = "dashboardStats", key = "'all'")
     public DashboardStats getStats() {
         // Get total customers (count of distinct users who have made payments)
         Integer totalCustomers = jdbcTemplate.queryForObject(
@@ -141,6 +143,7 @@ public class DashboardController {
     }
 
     @GetMapping("/expense-trends")
+    @Cacheable(value = "expenseTrends", key = "'all'")
     public List<ExpenseTrend> getExpenseTrends() {
         return jdbcTemplate.query(
                 """
@@ -233,6 +236,7 @@ public class DashboardController {
     }
 
     @GetMapping("/revenue-trend")
+    @Cacheable(value = "revenueTrend", key = "'all'")
     public List<MonthlyRevenue> getRevenueAndSubscriptionsTrend() {
         String sql = """
                 WITH RECURSIVE Months AS (
@@ -266,6 +270,7 @@ public class DashboardController {
 
 
     @GetMapping("/service-distribution")
+    @Cacheable(value = "serviceDistribution", key = "'all'")
     public List<ServiceDistribution> getServiceDistribution() {
         return jdbcTemplate.query(
                 "SELECT s.name, COUNT(DISTINCT sub.user_id) as value " +
@@ -292,6 +297,7 @@ public class DashboardController {
     }
 
     @GetMapping("/top-services")
+    @Cacheable(value = "topServices", key = "'all'")
     public List<TopService> getTopServices() {
         String sql = """
                     WITH CurrentMonthStats AS (
@@ -423,6 +429,7 @@ public class DashboardController {
     }
 
     @GetMapping("/historical-metrics")
+    @Cacheable(value = "historicalMetrics", key = "'all'")
     public HistoricalMetrics getHistoricalMetrics() {
         // Get yearly data
         List<YearlyMetric> yearlyMetrics = jdbcTemplate.query(
@@ -548,6 +555,7 @@ public class DashboardController {
     }
 
     @GetMapping("/monthly-performance")
+    @Cacheable(value = "monthlyPerformance", key = "'all'")
     public MonthlyPerformance getMonthlyPerformance() {
         // Get current month overview
         MonthlyOverview currentMonth = jdbcTemplate.queryForObject(
@@ -784,6 +792,7 @@ public class DashboardController {
     }
 
     @GetMapping("/subscription-health")
+    @Cacheable(value = "subscriptionHealth", key = "'all'")
     public SubscriptionHealth getSubscriptionHealth() {
         // Calculate renewal metrics
         Long successfulRenewals = subscriptionRepository.countSuccessfulRenewals();

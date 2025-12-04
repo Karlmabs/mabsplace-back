@@ -13,6 +13,18 @@ spring:
           starttls:
             enable: true
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 60000ms
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000  # 5 minutes in milliseconds
+      cache-null-values: false
+
   security:
     oauth2:
       client:
