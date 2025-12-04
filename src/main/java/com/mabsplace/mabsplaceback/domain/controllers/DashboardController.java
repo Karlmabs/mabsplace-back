@@ -861,6 +861,7 @@ public class DashboardController {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class MonthlyPerformance {
     private MonthlyOverview currentMonth;
@@ -869,6 +870,7 @@ class MonthlyPerformance {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class MonthlyOverview {
     private String month;
@@ -880,6 +882,7 @@ class MonthlyOverview {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class MonthlyTrend {
     private String month;
@@ -890,6 +893,7 @@ class MonthlyTrend {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class HistoricalMetrics {
     private List<YearlyMetric> yearlyMetrics;
@@ -898,6 +902,7 @@ class HistoricalMetrics {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class YearlyMetric {
     private Integer year;
@@ -907,6 +912,7 @@ class YearlyMetric {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class ServiceHistoricalMetric {
     private String serviceName;
@@ -916,6 +922,7 @@ class ServiceHistoricalMetric {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class TopPerformingMonth {
     private String month;
@@ -974,6 +981,7 @@ class TopService {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class ExpenseTrend {
     private String month;
@@ -983,6 +991,7 @@ class ExpenseTrend {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class ExpenseByCategory {
     private String category;
@@ -991,6 +1000,7 @@ class ExpenseByCategory {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class ProfitabilityMetrics {
     private Double revenue;
@@ -1000,6 +1010,7 @@ class ProfitabilityMetrics {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class SubscriptionHealth {
     private Double renewalSuccessRate;
@@ -1017,6 +1028,7 @@ class SubscriptionHealth {
 }
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
 class ServiceProfileUtilization {
     private String serviceName;
