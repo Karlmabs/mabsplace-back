@@ -61,4 +61,25 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
            "  AND s2.endDate >= :cutoffDate" +
            ")")
     List<User> findInactiveCustomersSince(@Param("cutoffDate") Date cutoffDate);
+
+    // Renewal tracking queries for dashboard analytics
+    @Query("SELECT COUNT(s) FROM Subscription s WHERE s.renewalAttempts > 0 AND s.renewalAttempts < 4")
+    Long countSuccessfulRenewals();
+
+    @Query("SELECT COUNT(s) FROM Subscription s WHERE s.renewalAttempts >= 4 AND s.status = :status")
+    Long countFailedRenewals(@Param("status") SubscriptionStatus status);
+
+    @Query("SELECT COUNT(s) FROM Subscription s WHERE s.autoRenew = true")
+    Long countSubscriptionsWithAutoRenewEnabled();
+
+    @Query("SELECT COUNT(s) FROM Subscription s WHERE s.autoRenew = false")
+    Long countSubscriptionsWithAutoRenewDisabled();
+
+    // Trial conversion tracking
+    @Query("SELECT COUNT(s) FROM Subscription s WHERE s.isTrial = true")
+    Long countTrialSubscriptions();
+
+    @Query("SELECT COUNT(DISTINCT s.user) FROM Subscription s WHERE s.isTrial = false " +
+           "AND EXISTS (SELECT 1 FROM Subscription s2 WHERE s2.user = s.user AND s2.isTrial = true)")
+    Long countConvertedFromTrial();
 }

@@ -18,6 +18,12 @@ public class DashboardController {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private com.mabsplace.mabsplaceback.domain.repositories.SubscriptionRepository subscriptionRepository;
+
+    @Autowired
+    private com.mabsplace.mabsplaceback.domain.repositories.ProfileRepository profileRepository;
+
     @GetMapping("/stats")
     public DashboardStats getStats() {
         // Get total customers (count of distinct users who have made payments)
@@ -109,6 +115,12 @@ public class DashboardController {
         // Calculate Customer Acquisition Cost (CAC)
         Double customerAcquisitionCost = calculateCustomerAcquisitionCost();
 
+        // Calculate LTV:CAC Ratio
+        Double ltvCacRatio = 0.0;
+        if (customerAcquisitionCost != null && customerAcquisitionCost > 0) {
+            ltvCacRatio = (customerLifetimeValue != null ? customerLifetimeValue : 0) / customerAcquisitionCost;
+        }
+
         return new DashboardStats(
                 totalCustomers,
                 activeSubscribers,
@@ -123,7 +135,8 @@ public class DashboardController {
                 profitMargin,
                 churnRate,
                 customerLifetimeValue,
-                customerAcquisitionCost
+                customerAcquisitionCost,
+                ltvCacRatio
         );
     }
 
@@ -769,6 +782,73 @@ public class DashboardController {
 
         return jdbcTemplate.queryForObject(query, Double.class);
     }
+
+    @GetMapping("/subscription-health")
+    public SubscriptionHealth getSubscriptionHealth() {
+        // Calculate renewal metrics
+        Long successfulRenewals = subscriptionRepository.countSuccessfulRenewals();
+        Long failedRenewals = subscriptionRepository.countFailedRenewals(com.mabsplace.mabsplaceback.domain.enums.SubscriptionStatus.EXPIRED);
+        Long totalRenewalAttempts = (successfulRenewals != null ? successfulRenewals : 0) + (failedRenewals != null ? failedRenewals : 0);
+
+        Double renewalSuccessRate = 0.0;
+        if (totalRenewalAttempts > 0) {
+            renewalSuccessRate = ((successfulRenewals != null ? successfulRenewals : 0) * 100.0) / totalRenewalAttempts;
+        }
+
+        // Calculate auto-renewal adoption
+        Long autoRenewEnabled = subscriptionRepository.countSubscriptionsWithAutoRenewEnabled();
+        Long autoRenewDisabled = subscriptionRepository.countSubscriptionsWithAutoRenewDisabled();
+        Long totalSubscriptions = (autoRenewEnabled != null ? autoRenewEnabled : 0) + (autoRenewDisabled != null ? autoRenewDisabled : 0);
+
+        Double autoRenewalAdoptionRate = 0.0;
+        if (totalSubscriptions > 0) {
+            autoRenewalAdoptionRate = ((autoRenewEnabled != null ? autoRenewEnabled : 0) * 100.0) / totalSubscriptions;
+        }
+
+        // Calculate trial conversion
+        Long totalTrials = subscriptionRepository.countTrialSubscriptions();
+        Long convertedTrials = subscriptionRepository.countConvertedFromTrial();
+
+        Double trialConversionRate = 0.0;
+        if (totalTrials != null && totalTrials > 0) {
+            trialConversionRate = ((convertedTrials != null ? convertedTrials : 0) * 100.0) / totalTrials;
+        }
+
+        // Calculate profile utilization
+        Long totalProfiles = profileRepository.countTotalProfiles();
+        Long activelyUsedProfiles = profileRepository.countActivelyUsedProfiles();
+
+        Double profileUtilizationRate = 0.0;
+        if (totalProfiles != null && totalProfiles > 0) {
+            profileUtilizationRate = ((activelyUsedProfiles != null ? activelyUsedProfiles : 0) * 100.0) / totalProfiles;
+        }
+
+        // Get utilization by service
+        List<Object[]> serviceUtilization = profileRepository.getUtilizationRateByService();
+        List<ServiceProfileUtilization> serviceUtilizationList = serviceUtilization.stream()
+            .map(row -> new ServiceProfileUtilization(
+                (String) row[0],  // serviceName
+                ((Number) row[1]).longValue(),  // totalProfiles
+                ((Number) row[2]).longValue(),  // activeProfiles
+                ((Number) row[3]).longValue()   // usedProfiles
+            ))
+            .toList();
+
+        return new SubscriptionHealth(
+            renewalSuccessRate,
+            totalRenewalAttempts.intValue(),
+            successfulRenewals != null ? successfulRenewals.intValue() : 0,
+            failedRenewals != null ? failedRenewals.intValue() : 0,
+            autoRenewalAdoptionRate,
+            trialConversionRate,
+            totalTrials != null ? totalTrials.intValue() : 0,
+            convertedTrials != null ? convertedTrials.intValue() : 0,
+            profileUtilizationRate,
+            totalProfiles != null ? totalProfiles.intValue() : 0,
+            activelyUsedProfiles != null ? activelyUsedProfiles.intValue() : 0,
+            serviceUtilizationList
+        );
+    }
 }
 
 @Data
@@ -854,6 +934,7 @@ class DashboardStats {
     private Double churnRate;               // Monthly churn rate percentage
     private Double customerLifetimeValue;   // Average CLV in XAF
     private Double customerAcquisitionCost; // Average CAC in XAF
+    private Double ltvCacRatio;             // LTV:CAC ratio (ideal > 3)
 }
 
 @Data
@@ -907,4 +988,30 @@ class ProfitabilityMetrics {
     private Double expenses;
     private Double netProfit;
     private Double profitMargin;
+}
+
+@Data
+@AllArgsConstructor
+class SubscriptionHealth {
+    private Double renewalSuccessRate;
+    private Integer totalRenewalAttempts;
+    private Integer successfulRenewals;
+    private Integer failedRenewals;
+    private Double autoRenewalAdoptionRate;
+    private Double trialConversionRate;
+    private Integer totalTrials;
+    private Integer convertedTrials;
+    private Double profileUtilizationRate;
+    private Integer totalProfiles;
+    private Integer activelyUsedProfiles;
+    private List<ServiceProfileUtilization> serviceUtilization;
+}
+
+@Data
+@AllArgsConstructor
+class ServiceProfileUtilization {
+    private String serviceName;
+    private Long totalProfiles;
+    private Long activeProfiles;
+    private Long usedProfiles;
 }

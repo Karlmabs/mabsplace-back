@@ -36,4 +36,28 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
             "WHERE sa.myService.id = :serviceId AND p.status = :status " +
             "AND p.id NOT IN (SELECT DISTINCT s.profile.id FROM Subscription s WHERE s.profile.id IS NOT NULL)")
     List<Profile> findTrulyAvailableProfilesByServiceId(@Param("serviceId") Long serviceId, @Param("status") ProfileStatus status);
+
+    // Profile utilization queries for dashboard analytics
+    @Query("SELECT COUNT(p) FROM Profile p WHERE p.status = :status")
+    Long countByStatus(@Param("status") ProfileStatus status);
+
+    @Query("SELECT COUNT(p) FROM Profile p")
+    Long countTotalProfiles();
+
+    @Query("SELECT COUNT(DISTINCT p) FROM Profile p " +
+            "JOIN Subscription s ON s.profile.id = p.id " +
+            "WHERE s.status = 'ACTIVE'")
+    Long countActivelyUsedProfiles();
+
+    // Get utilization rate by service
+    @Query("SELECT s.name as serviceName, " +
+            "COUNT(DISTINCT p.id) as totalProfiles, " +
+            "COUNT(DISTINCT CASE WHEN p.status = 'ACTIVE' THEN p.id END) as activeProfiles, " +
+            "COUNT(DISTINCT CASE WHEN sub.status = 'ACTIVE' THEN p.id END) as usedProfiles " +
+            "FROM MyService s " +
+            "JOIN ServiceAccount sa ON sa.myService.id = s.id " +
+            "JOIN Profile p ON p.serviceAccount.id = sa.id " +
+            "LEFT JOIN Subscription sub ON sub.profile.id = p.id AND sub.status = 'ACTIVE' " +
+            "GROUP BY s.id, s.name")
+    List<Object[]> getUtilizationRateByService();
 }
