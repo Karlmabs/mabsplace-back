@@ -7,6 +7,8 @@ import com.mabsplace.mabsplaceback.domain.dtos.notification.UpdatePushTokenReque
 import com.mabsplace.mabsplaceback.domain.entities.Notification;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.services.NotificationService;
+import com.mabsplace.mabsplaceback.domain.services.OneSignalService;
+import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 import java.util.stream.Collectors;
 
@@ -25,6 +29,12 @@ public class NotificationController {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private OneSignalService oneSignalService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationController.class);
 
@@ -171,6 +181,91 @@ public class NotificationController {
         } catch (Exception e) {
             logger.error("Failed to get unread count for user: {}", authentication.getName(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0L);
+        }
+    }
+
+    /**
+     * Register device for OneSignal push notifications
+     */
+    @PostMapping("/device/register")
+    public ResponseEntity<ApiResponse> registerDevice(
+            @RequestBody Map<String, String> request,
+            Authentication authentication
+    ) {
+        logger.info("Registering device for OneSignal push notifications, user: {}", authentication.getName());
+        try {
+            String pushToken = request.get("pushToken");
+            String deviceType = request.get("deviceType");
+
+            if (pushToken == null || pushToken.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(new ApiResponse(false, "Push token is required"));
+            }
+
+            User user = userRepository.findByUsername(authentication.getName())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Update user's push token
+            user.setPushToken(pushToken);
+            userRepository.save(user);
+
+            // Register/update user in OneSignal
+            oneSignalService.createOrUpdateUser(
+                    user.getId(),
+                    user.getEmail(),
+                    user.getPhonenumber(),
+                    pushToken
+            );
+
+            logger.info("Device registered successfully for user: {}", authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Device registered successfully"));
+        } catch (Exception e) {
+            logger.error("Failed to register device for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, "Failed to register device: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Get notification preferences
+     */
+    @GetMapping("/preferences")
+    public ResponseEntity<Map<String, Boolean>> getNotificationPreferences(Authentication authentication) {
+        logger.info("Fetching notification preferences for user: {}", authentication.getName());
+        try {
+            // TODO: Store preferences in database, for now return defaults
+            Map<String, Boolean> preferences = new HashMap<>();
+            preferences.put("email", true);
+            preferences.put("push", true);
+            preferences.put("sms", true);
+            preferences.put("inApp", true);
+
+            return ResponseEntity.ok(preferences);
+        } catch (Exception e) {
+            logger.error("Failed to fetch notification preferences for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new HashMap<>());
+        }
+    }
+
+    /**
+     * Update notification preferences
+     */
+    @PostMapping("/preferences")
+    public ResponseEntity<ApiResponse> updateNotificationPreferences(
+            @RequestBody Map<String, Boolean> preferences,
+            Authentication authentication
+    ) {
+        logger.info("Updating notification preferences for user: {}, preferences: {}", authentication.getName(), preferences);
+        try {
+            // TODO: Save preferences to database
+            // For now, just log them
+            logger.info("Preferences updated: {}", preferences);
+
+            return ResponseEntity.ok(new ApiResponse(true, "Preferences updated successfully"));
+        } catch (Exception e) {
+            logger.error("Failed to update notification preferences for user: {}", authentication.getName(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, "Failed to update preferences: " + e.getMessage()));
         }
     }
 

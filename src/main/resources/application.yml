@@ -95,3 +95,29 @@ whatsapp:
     subscription-expired: subscription_expired
     subscription-expiring-soon: subscription_expiring_soon
 
+# OneSignal Configuration
+onesignal:
+  app:
+    id: ${ONESIGNAL_APP_ID:079f270c-81e2-43f8-8a51-266c69b6fc8a}
+  api:
+    key: ${ONESIGNAL_API_KEY:os_v2_app_a6psodeb4jb7rcsrezwgtnx4riza22cafoiutsfjsfkdzstvkb32msqpicfo44atp3oer54udbtuoaatucqv5vgeqqaekgjwroqnv7a}
+    url: https://onesignal.com/api/v1
+  user:
+    auth:
+      key: ${ONESIGNAL_USER_AUTH_KEY:za22cafoiutsfjsfkdzstvkb3}
+  email:
+    from:
+      default: ${ONESIGNAL_FROM_EMAIL:noreply@mabsplace.app}
+  templates:
+    email:
+      verification-code: verification-code
+      payment-reminder: payment-reminder
+      subscription-renewed: subscription-renewed
+      subscription-expiring: subscription-expiring
+      subscription-expired: subscription-expired
+      renewal-failed: renewal-failed
+
+verification:
+  code:
+    expiration:
+      minutes: 15

@@ -200,6 +200,12 @@
 			<artifactId>liquibase-core</artifactId>
 		</dependency>-->
 
+		<!-- OneSignal Integration - Using WebClient for REST API calls -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+
 
 	</dependencies>
 

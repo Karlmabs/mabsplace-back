@@ -1,6 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
-import com.mabsplace.mabsplaceback.domain.dtos.email.EmailRequest;
+import com.mabsplace.mabsplaceback.domain.dtos.onesignal.OneSignalEmailRequest;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import jakarta.mail.MessagingException;
@@ -19,15 +19,15 @@ public class EmailVerificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailVerificationService.class);
 
-    private final EmailService emailService;
+    private final OneSignalService oneSignalService;
     private final UserRepository userRepository;
     private final Map<String, VerificationEntry> verificationCodes = new ConcurrentHashMap<>();
 
     @Value("${verification.code.expiration.minutes:15}")
     private long expirationMinutes;
 
-    public EmailVerificationService(EmailService emailService, UserRepository userRepository) {
-        this.emailService = emailService;
+    public EmailVerificationService(OneSignalService oneSignalService, UserRepository userRepository) {
+        this.oneSignalService = oneSignalService;
         this.userRepository = userRepository;
     }
 
@@ -43,15 +43,17 @@ public class EmailVerificationService {
         verificationCodes.put(email, new VerificationEntry(code, Instant.now()));
         logger.debug("Verification code stored for email: {}", email);
 
-        EmailRequest emailRequest = EmailRequest.builder()
+        OneSignalEmailRequest emailRequest = OneSignalEmailRequest.builder()
                 .to(email)
                 .subject("MabsPlace Verification Code")
-                .headerText("MabsPlace Verification Code")
-                .body("<h1>Your verification code is: " + code + "</h1>")
-                .companyName("MabsPlace")
+                .templateId("verification-code")
+                .customData(Map.of(
+                        "code", code,
+                        "expiration_minutes", String.valueOf(expirationMinutes)
+                ))
                 .build();
 
-        emailService.sendEmail(emailRequest);
+        oneSignalService.sendEmail(emailRequest);
         logger.info("Verification code sent successfully to email: {}", email);
     }
 
@@ -67,15 +69,17 @@ public class EmailVerificationService {
         verificationCodes.put(email, new VerificationEntry(code, Instant.now()));
         logger.debug("Verification code stored for email: {}", email);
 
-        EmailRequest emailRequest = EmailRequest.builder()
+        OneSignalEmailRequest emailRequest = OneSignalEmailRequest.builder()
                 .to(email)
                 .subject("MabsPlace Verification Code")
-                .headerText("MabsPlace Verification Code")
-                .body("<h1>Your verification code is: " + code + "</h1>")
-                .companyName("MabsPlace")
+                .templateId("verification-code")
+                .customData(Map.of(
+                        "code", code,
+                        "expiration_minutes", String.valueOf(expirationMinutes)
+                ))
                 .build();
 
-        emailService.sendEmail(emailRequest);
+        oneSignalService.sendEmail(emailRequest);
         logger.info("Verification code sent successfully to email: {}", email);
     }
 

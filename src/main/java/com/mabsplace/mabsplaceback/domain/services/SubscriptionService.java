@@ -47,8 +47,9 @@ public class SubscriptionService {
     private final TaskService taskService;
     private final TaskRepository taskRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationOrchestrator notificationOrchestrator;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, TaskRepository taskRepository, PaymentRepository paymentRepository) {
+    public SubscriptionService(SubscriptionRepository subscriptionRepository, SubscriptionMapper mapper, UserRepository userRepository, SubscriptionPlanRepository subscriptionPlanRepository, ProfileRepository profileRepository, ServiceAccountService serviceAccountService, MyServiceService myServiceService, MyServiceRepository myServiceRepository, NotificationService notificationService, WalletService walletService, SubscriptionPaymentOrchestrator orchestrator, DiscordService discordService, WhatsAppService whatsAppService, TaskService taskService, TaskRepository taskRepository, PaymentRepository paymentRepository, NotificationOrchestrator notificationOrchestrator) {
         this.subscriptionRepository = subscriptionRepository;
         this.mapper = mapper;
         this.userRepository = userRepository;
@@ -65,6 +66,7 @@ public class SubscriptionService {
         this.taskService = taskService;
         this.taskRepository = taskRepository;
         this.paymentRepository = paymentRepository;
+        this.notificationOrchestrator = notificationOrchestrator;
     }
 
     @Scheduled(cron = "0 5 0 * * *") // Runs daily at 00:05 (staggered to reduce Discord rate limiting)
@@ -131,22 +133,8 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
         logger.info("Successfully updated subscription details for ID: {}", subscription.getId());
 
-        // Send Discord notification
-        discordService.sendSubscriptionRenewedNotification(
-                subscription.getUser().getUsername(),
-                subscription.getService().getName(),
-                newEndDate.toString()
-        );
-
-        // Send WhatsApp notification
-        if (subscription.getUser().getPhonenumber() != null && !subscription.getUser().getPhonenumber().isEmpty()) {
-            whatsAppService.sendSubscriptionRenewedNotification(
-                    subscription.getUser().getPhonenumber(),
-                    subscription.getUser().getUsername(),
-                    subscription.getService().getName(),
-                    newEndDate.toString()
-            );
-        }
+        // Send multi-channel notifications (email, push, SMS, Discord)
+        notificationOrchestrator.notifySubscriptionRenewed(subscription);
     }
 
     private void handleFailedRenewal(Subscription subscription) throws MessagingException {
@@ -158,22 +146,8 @@ public class SubscriptionService {
         } else {
             subscriptionRepository.save(subscription);
 
-            // Send Discord notification
-            discordService.sendSubscriptionRenewalFailedNotification(
-                    subscription.getUser().getUsername(),
-                    subscription.getService().getName(),
-                    subscription.getRenewalAttempts()
-            );
-
-            // Send WhatsApp notification
-            if (subscription.getUser().getPhonenumber() != null && !subscription.getUser().getPhonenumber().isEmpty()) {
-                whatsAppService.sendSubscriptionRenewalFailedNotification(
-                        subscription.getUser().getPhonenumber(),
-                        subscription.getUser().getUsername(),
-                        subscription.getService().getName(),
-                        subscription.getRenewalAttempts()
-                );
-            }
+            // Send multi-channel notifications (email, push, SMS, Discord)
+            notificationOrchestrator.notifyRenewalFailed(subscription, subscription.getRenewalAttempts());
 
             // Create a task for admin to follow up
             taskService.createSubscriptionRenewalFailedTask(subscription);
@@ -198,23 +172,8 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
         logger.info("Subscription updated successfully with status: {}", SubscriptionStatus.EXPIRED);
 
-        // Send Discord notification
-        discordService.sendSubscriptionExpiredNotification(
-                subscription.getUser().getUsername(),
-                subscription.getService().getName(),
-                subscription.getProfile().getServiceAccount().getLogin(),
-                subscription.getProfile().getProfileName()
-        );
-
-        // Send WhatsApp notification
-        if (subscription.getUser().getPhonenumber() != null && !subscription.getUser().getPhonenumber().isEmpty()) {
-            whatsAppService.sendSubscriptionExpiredNotification(
-                    subscription.getUser().getPhonenumber(),
-                    subscription.getUser().getUsername(),
-                    subscription.getService().getName(),
-                    subscription.getProfile().getProfileName()
-            );
-        }
+        // Send multi-channel notifications (email, push, SMS, Discord)
+        notificationOrchestrator.notifySubscriptionExpired(subscription);
     }
 
     public void updateRenewalPlan(Long subscriptionId, Long newPlanId) {
@@ -370,40 +329,22 @@ public class SubscriptionService {
             }
 
             try {
-                // Send Discord notification
-                discordService.sendSubscriptionExpiringNotification(
-                        subscription.getUser().getUsername(),
-                        subscription.getService().getName(),
-                        subscription.getEndDate().toString(),
-                        profile.getServiceAccount().getLogin(),
-                        profile.getProfileName()
-                );
+                // Calculate days remaining
+                long diffInMillies = Math.abs(subscription.getEndDate().getTime() - new Date().getTime());
+                int daysRemaining = (int) (diffInMillies / (1000 * 60 * 60 * 24));
 
-                // Send WhatsApp notification
-                if (subscription.getUser().getPhonenumber() != null && !subscription.getUser().getPhonenumber().isEmpty()) {
-                    long diffInMillies = Math.abs(subscription.getEndDate().getTime() - new Date().getTime());
-                    int daysRemaining = (int) (diffInMillies / (1000 * 60 * 60 * 24));
-
-                    whatsAppService.sendSubscriptionExpiringNotification(
-                            subscription.getUser().getPhonenumber(),
-                            subscription.getUser().getUsername(),
-                            subscription.getService().getName(),
-                            subscription.getEndDate().toString(),
-                            daysRemaining
-                    );
-                }
+                // Send multi-channel notifications (email, push, SMS, Discord)
+                notificationOrchestrator.notifySubscriptionExpiring(subscription, daysRemaining);
 
                 // Create task for admin to follow up with customer
                 try {
-                    long diffInMillies = Math.abs(subscription.getEndDate().getTime() - new Date().getTime());
-                    int daysRemaining = (int) (diffInMillies / (1000 * 60 * 60 * 24));
                     taskService.createSubscriptionReminderTask(subscription, daysRemaining);
                     logger.info("Created task for subscription ID: {}", subscription.getId());
 
                     // Mark as notified only after task is created successfully
                     subscription.setExpirationNotified(true);
                     subscriptionRepository.save(subscription);
-                    logger.info("Sent expiring notification email for subscription ID: {}", subscription.getId());
+                    logger.info("Sent multi-channel expiring notifications for subscription ID: {}", subscription.getId());
                 } catch (Exception taskEx) {
                     logger.error("Failed to create task for subscription ID: {}", subscription.getId(), taskEx);
                 }
@@ -432,27 +373,11 @@ public class SubscriptionService {
                 profileRepository.save(profile);
             }
 
-            // Send Discord notification for expired subscription
-            discordService.sendSubscriptionExpiredNotification(
-                    subscription.getUser().getUsername(),
-                    subscription.getService().getName(),
-                    subscription.getProfile().getServiceAccount().getLogin(),
-                    subscription.getProfile().getProfileName()
-            );
-            logger.info("Sent Discord notification for expired subscription ID: {}", subscription.getId());
-
-            // Send WhatsApp notification
-            if (subscription.getUser().getPhonenumber() != null && !subscription.getUser().getPhonenumber().isEmpty()) {
-                whatsAppService.sendSubscriptionExpiredNotification(
-                        subscription.getUser().getPhonenumber(),
-                        subscription.getUser().getUsername(),
-                        subscription.getService().getName(),
-                        subscription.getProfile().getProfileName()
-                );
-                logger.info("Sent WhatsApp notification for expired subscription ID: {}", subscription.getId());
-            }
-
             subscriptionRepository.save(subscription);
+
+            // Send multi-channel notifications (email, push, SMS, Discord)
+            notificationOrchestrator.notifySubscriptionExpired(subscription);
+            logger.info("Sent multi-channel notifications for expired subscription ID: {}", subscription.getId());
 
             // Create a task for admin to handle post-expiration actions
             taskService.createPostExpirationTask(subscription);
@@ -680,22 +605,8 @@ public class SubscriptionService {
         subscription = subscriptionRepository.save(subscription);
         logger.info("Successfully saved renewed subscription ID: {}", subscription.getId());
 
-        // Send Discord notification
-        discordService.sendSubscriptionRenewedNotification(
-                subscription.getUser().getUsername(),
-                subscription.getService().getName(),
-                newEndDate.toString()
-        );
-
-        // Send WhatsApp notification
-        if (subscription.getUser().getPhonenumber() != null && !subscription.getUser().getPhonenumber().isEmpty()) {
-            whatsAppService.sendSubscriptionRenewedNotification(
-                    subscription.getUser().getPhonenumber(),
-                    subscription.getUser().getUsername(),
-                    subscription.getService().getName(),
-                    newEndDate.toString()
-            );
-        }
+        // Send multi-channel notifications (email, push, SMS, Discord)
+        notificationOrchestrator.notifySubscriptionRenewed(subscription);
 
         return subscription;
     }

@@ -24,12 +24,14 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final ServiceAccountRepository serviceAccountRepository;
     private final DiscordService discordService;
+    private final NotificationOrchestrator notificationOrchestrator;
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
-    public EmailService(JavaMailSender mailSender, ServiceAccountRepository serviceAccountRepository, DiscordService discordService) {
+    public EmailService(JavaMailSender mailSender, ServiceAccountRepository serviceAccountRepository, DiscordService discordService, NotificationOrchestrator notificationOrchestrator) {
         this.mailSender = mailSender;
         this.serviceAccountRepository = serviceAccountRepository;
         this.discordService = discordService;
+        this.notificationOrchestrator = notificationOrchestrator;
     }
 
     @Async
@@ -269,25 +271,15 @@ public class EmailService {
                 if (diff <= 7 && diff > 3) {
                     logger.info("Sending 7-day payment reminder for service account ID: {}, due in {} days.", serviceAccount.getId(), diff);
 
-                    // Send Discord notification
-                    discordService.sendPaymentReminderNotification(
-                            serviceAccount.getMyService().getName(),
-                            serviceAccount.getLogin(),
-                            serviceAccount.getPaymentDate().toString(),
-                            (int) diff
-                    );
+                    // Send payment reminder notification (Discord admin notification)
+                    notificationOrchestrator.notifyPaymentReminder(serviceAccount, (int) diff);
 
                     logger.info("7-day payment reminder sent for service account ID: {}", serviceAccount.getId());
                 } else if (diff <= 3) {
                     logger.info("Sending 3-day payment reminder for service account ID: {}, due in {} days.", serviceAccount.getId(), diff);
 
-                    // Send Discord notification
-                    discordService.sendPaymentReminderNotification(
-                            serviceAccount.getMyService().getName(),
-                            serviceAccount.getLogin(),
-                            serviceAccount.getPaymentDate().toString(),
-                            (int) diff
-                    );
+                    // Send payment reminder notification (Discord admin notification)
+                    notificationOrchestrator.notifyPaymentReminder(serviceAccount, (int) diff);
 
                     logger.info("3-day payment reminder sent for service account ID: {}", serviceAccount.getId());
                 }
