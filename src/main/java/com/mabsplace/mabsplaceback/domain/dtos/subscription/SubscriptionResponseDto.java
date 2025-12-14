@@ -24,9 +24,9 @@ public class SubscriptionResponseDto implements Serializable {
 
     private String username;
 
-    private long profileId;
+    private Long profileId; // Nullable - allow null when no profile assigned
 
-    private long accountId;
+    private Long accountId; // Nullable - allow null when no account assigned
 
     private String profilePin;
 

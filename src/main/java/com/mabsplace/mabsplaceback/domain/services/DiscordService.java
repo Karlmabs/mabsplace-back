@@ -327,4 +327,35 @@ public class DiscordService {
 
         logger.info("Discord notification sent successfully for payment confirmation");
     }
+
+    /**
+     * Send alert to Discord about subscription created without profile
+     */
+    @Async
+    public void sendMissingProfileAlert(Long subscriptionId, String username, String serviceName, Long userId) {
+        if (profileSecurityAuditWebhook == null || profileSecurityAuditWebhook.isEmpty()) {
+            logger.warn("Missing profile alert webhook not configured - skipping Discord notification");
+            return;
+        }
+
+        logger.info("Sending missing profile alert for subscription ID: {}", subscriptionId);
+
+        Map<String, Object> embed = new HashMap<>();
+        embed.put("title", "🚨 Subscription Created Without Profile");
+        embed.put("description", String.format(
+            "A new subscription was purchased but no profile was available for assignment.\n\n" +
+            "**Subscription ID:** %d\n" +
+            "**User:** %s (ID: %d)\n" +
+            "**Service:** %s\n\n" +
+            "⚠️ **Action Required:** Assign a profile to this subscription using the admin panel.",
+            subscriptionId, username, userId, serviceName
+        ));
+        embed.put("color", 15158332); // Red color
+        embed.put("timestamp", Instant.now().toString());
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("embeds", List.of(embed));
+
+        sendWithRateLimitAndRetry(profileSecurityAuditWebhook, payload);
+    }
 }

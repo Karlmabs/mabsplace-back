@@ -33,7 +33,7 @@ public class Subscription {
   private MyService service;
 
   @OneToOne
-  @JoinColumn(name = "profile_id", referencedColumnName = "id")
+  @JoinColumn(name = "profile_id", referencedColumnName = "id", nullable = true)
   private Profile profile;
 
   private Date startDate;

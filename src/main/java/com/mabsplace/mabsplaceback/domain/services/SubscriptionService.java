@@ -208,17 +208,17 @@ public class SubscriptionService {
                 throw new IllegalStateException("The profile is already active and cannot be used for a new subscription.");
             }
 
+            // check if there is already a subscription with the same profile if that subscription is expired or inactive delete it first
+            List<Subscription> subscriptions = subscriptionRepository.findByProfileId(profile.getId());
+            for (Subscription sub : subscriptions) {
+                if (sub.getStatus() == SubscriptionStatus.EXPIRED || sub.getStatus() == SubscriptionStatus.INACTIVE) {
+                    subscriptionRepository.delete(sub);
+                }
+            }
+
             profile.setStatus(ProfileStatus.ACTIVE);
             profile = profileRepository.save(profile);
             newSubscription.setProfile(profile);
-        }
-
-        // check if there is already a subscription with the same profile if that subscription is expired or inactive delete it first
-        List<Subscription> subscriptions = subscriptionRepository.findByProfileId(newSubscription.getProfile().getId());
-        for (Subscription sub : subscriptions) {
-            if (sub.getStatus() == SubscriptionStatus.EXPIRED || sub.getStatus() == SubscriptionStatus.INACTIVE) {
-                subscriptionRepository.delete(sub);
-            }
         }
 
         notificationService.sendNotificationToUser(newSubscription.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());
@@ -303,6 +303,35 @@ public class SubscriptionService {
             newProfile.setStatus(ProfileStatus.ACTIVE);
             profileRepository.save(newProfile);
             updated.setProfile(newProfile);
+
+            // If subscription was waiting for profile and expired or is about to expire, extend the dates
+            if (target.getProfile() == null) {
+                // Subscription was created without profile - calculate how long it should run
+                Date now = new Date();
+                Date originalEnd = target.getEndDate();
+
+                // Calculate days between now and original end date
+                long daysBetween = (originalEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+                // If already expired or expiring soon (less than 3 days), extend the subscription
+                if (originalEnd.before(now) || daysBetween < 3) {
+                    logger.info("Extending subscription {} dates as profile was just assigned", target.getId());
+
+                    // Calculate full duration that customer paid for
+                    long durationMs = originalEnd.getTime() - target.getStartDate().getTime();
+
+                    // Set new dates: start now, end = now + full duration
+                    updated.setStartDate(now);
+                    updated.setEndDate(new Date(now.getTime() + durationMs));
+                    updated.setStatus(SubscriptionStatus.ACTIVE);
+
+                    logger.info("Subscription {} extended: new start={}, new end={}",
+                        target.getId(), updated.getStartDate(), updated.getEndDate());
+                } else if (target.getStatus() == SubscriptionStatus.INACTIVE) {
+                    // Not expired yet but needs activation
+                    updated.setStatus(SubscriptionStatus.ACTIVE);
+                }
+            }
         }
 
         notificationService.sendNotificationToUser(updated.getUser().getId(), "Subscription updated successfully", "Your subscription has been updated.", new HashMap<>());

@@ -394,14 +394,24 @@ public class SubscriptionPaymentOrchestrator {
             subscriptionDto.setProfileId(profileId);
             log.info("Auto-assigned and reserved profile ID: {} to subscription", profileId);
         } else {
-            log.error("No available profile found for user ID: {} and service ID: {}",
+            log.warn("No available profile found for user ID: {} and service ID: {}. Subscription will be created without profile.",
                     payment.getUser().getId(), payment.getService().getId());
-            throw new IllegalStateException("No available profiles for this service. Please contact support or try again later.");
+            subscriptionDto.setProfileId(0L); // Explicitly set to 0 (will remain null in entity)
         }
 
         // Create subscription
         Subscription subscription = createSubscriptionFromDto(subscriptionDto);
-        subscriptionRepository.save(subscription);
+        Subscription savedSubscription = subscriptionRepository.save(subscription);
+
+        // Send Discord alert if no profile was assigned
+        if (profileId == null) {
+            discordService.sendMissingProfileAlert(
+                savedSubscription.getId(),
+                payment.getUser().getUsername(),
+                payment.getService().getName(),
+                payment.getUser().getId()
+            );
+        }
     }
 
     private void createTrialSubscription(Payment payment) {
@@ -421,13 +431,23 @@ public class SubscriptionPaymentOrchestrator {
             subscriptionDto.setProfileId(profileId);
             log.info("Auto-assigned and reserved profile ID: {} to trial subscription", profileId);
         } else {
-            log.error("No available profile found for user ID: {} and service ID: {}",
+            log.warn("No available profile found for user ID: {} and service ID: {}. Trial subscription will be created without profile.",
                     payment.getUser().getId(), payment.getService().getId());
-            throw new IllegalStateException("No available profiles for this service. Please contact support or try again later.");
+            subscriptionDto.setProfileId(0L); // Explicitly set to 0 (will remain null in entity)
         }
 
         // Create subscription
-        createSubscriptionFromDto(subscriptionDto);
+        Subscription savedSubscription = createSubscriptionFromDto(subscriptionDto);
+
+        // Send Discord alert if no profile was assigned
+        if (profileId == null) {
+            discordService.sendMissingProfileAlert(
+                savedSubscription.getId(),
+                payment.getUser().getUsername(),
+                payment.getService().getName(),
+                payment.getUser().getId()
+            );
+        }
     }
 
     /**
