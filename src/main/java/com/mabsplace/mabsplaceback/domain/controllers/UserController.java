@@ -2,6 +2,7 @@ package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.PasswordChangeDto;
+import com.mabsplace.mabsplaceback.domain.dtos.user.PasswordResetResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserLightweightResponseDto;
@@ -169,6 +170,24 @@ public class UserController {
         } else {
             logger.warn("Password change failed for username: {}, incorrect old password", username);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Old password is incorrect");
+        }
+    }
+
+    /**
+     * Reset a user's password to an auto-generated secure password
+     * Requires UPDATE_USER permission
+     */
+    @PreAuthorize("@securityExpressionUtil.hasAnyRole(authentication, 'UPDATE_USER')")
+    @PostMapping("/{id}/reset-password")
+    public ResponseEntity<PasswordResetResponseDto> resetUserPassword(@PathVariable Long id) {
+        logger.info("Password reset requested for user ID: {}", id);
+        try {
+            PasswordResetResponseDto response = userService.resetUserPassword(id);
+            logger.info("Password reset successfully for user ID: {}", id);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Failed to reset password for user ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

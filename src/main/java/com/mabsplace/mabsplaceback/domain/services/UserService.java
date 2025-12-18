@@ -1,5 +1,6 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.mabsplace.mabsplaceback.domain.dtos.user.PasswordResetResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.user.UserRequestDto;
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
 import com.mabsplace.mabsplaceback.domain.entities.User;
@@ -9,6 +10,7 @@ import com.mabsplace.mabsplaceback.domain.mappers.UserMapper;
 import com.mabsplace.mabsplaceback.domain.repositories.UserProfileRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.UserRepository;
 import com.mabsplace.mabsplaceback.minio.MinioService;
+import com.mabsplace.mabsplaceback.utils.PasswordGenerator;
 import com.mabsplace.mabsplaceback.utils.PromoCodeGenerator;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -34,17 +36,20 @@ public class UserService {
     private final MinioService minioService;
     private final UserProfileRepository userProfileRepository;
     private final PromoCodeGenerator promoCodeGenerator;
+    private final PasswordGenerator passwordGenerator;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, UserMapper mapper, MinioService minioService, 
-                      UserProfileRepository userProfileRepository, PromoCodeGenerator promoCodeGenerator) {
+    public UserService(UserRepository userRepository, UserMapper mapper, MinioService minioService,
+                      UserProfileRepository userProfileRepository, PromoCodeGenerator promoCodeGenerator,
+                      PasswordGenerator passwordGenerator) {
         this.userRepository = userRepository;
         this.mapper = mapper;
         this.minioService = minioService;
         this.userProfileRepository = userProfileRepository;
         this.promoCodeGenerator = promoCodeGenerator;
+        this.passwordGenerator = passwordGenerator;
     }
 
     public User getById(Long id) throws EntityNotFoundException {
@@ -222,7 +227,40 @@ public class UserService {
             return false;
         }
     }
-    
+
+    /**
+     * Resets a user's password to a randomly generated secure password
+     * @param userId The ID of the user whose password should be reset
+     * @return A PasswordResetResponseDto containing the generated password
+     * @throws EntityNotFoundException if the user is not found
+     */
+    @Transactional
+    public PasswordResetResponseDto resetUserPassword(Long userId) throws EntityNotFoundException {
+        logger.info("Resetting password for user ID: {}", userId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> {
+                    logger.error("User not found with ID: {}", userId);
+                    return new EntityNotFoundException("User not found");
+                });
+
+        // Generate secure password
+        String generatedPassword = passwordGenerator.generateSecurePassword();
+
+        // Encode and save
+        user.setPassword(passwordEncoder.encode(generatedPassword));
+        userRepository.save(user);
+
+        logger.info("Password reset successfully for user ID: {}", userId);
+
+        return new PasswordResetResponseDto(
+            generatedPassword,
+            "Password reset successfully",
+            user.getId(),
+            user.getUsername()
+        );
+    }
+
     /**
      * Generates a unique referral code for a user
      * @param user The user to generate a referral code for
