@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.repositories;
 
 import com.mabsplace.mabsplaceback.domain.entities.DigitalGoodsOrder;
+import com.mabsplace.mabsplaceback.domain.entities.DigitalProduct;
 import com.mabsplace.mabsplaceback.domain.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,7 @@ import java.util.Map;
 public interface DigitalGoodsOrderRepository extends JpaRepository<DigitalGoodsOrder, Long> {
     List<DigitalGoodsOrder> findByUser(User user);
     List<DigitalGoodsOrder> findByOrderStatus(DigitalGoodsOrder.OrderStatus orderStatus);
+    List<DigitalGoodsOrder> findByProductAndOrderStatusIn(DigitalProduct product, List<DigitalGoodsOrder.OrderStatus> orderStatuses);
 
     @Query("SELECT SUM(o.profit) FROM DigitalGoodsOrder o WHERE o.orderStatus = 'DELIVERED'")
     BigDecimal calculateTotalProfit();

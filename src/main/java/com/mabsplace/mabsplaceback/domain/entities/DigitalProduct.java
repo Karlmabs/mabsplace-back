@@ -40,6 +40,15 @@ public class DigitalProduct {
     @Column(name = "max_amount")
     private BigDecimal maxAmount; // Montant maximum
 
+    @Column(name = "fixed_price", precision = 19, scale = 2)
+    private BigDecimal fixedPrice; // Prix fixe en XAF (nouveau modèle)
+
+    @Column(name = "profit_margin", precision = 19, scale = 2)
+    private BigDecimal profitMargin; // Marge bénéficiaire de Mabsplace en XAF
+
+    @Column(name = "custom_input_fields", columnDefinition = "TEXT")
+    private String customInputFields; // Champs de saisie personnalisés (JSON)
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

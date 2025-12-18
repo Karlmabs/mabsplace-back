@@ -1,9 +1,11 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
 import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.DigitalProductDto;
+import com.mabsplace.mabsplaceback.domain.entities.DigitalGoodsOrder;
 import com.mabsplace.mabsplaceback.domain.entities.DigitalProduct;
 import com.mabsplace.mabsplaceback.domain.entities.ProductCategory;
 import com.mabsplace.mabsplaceback.domain.mappers.DigitalProductMapper;
+import com.mabsplace.mabsplaceback.domain.repositories.DigitalGoodsOrderRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.DigitalProductRepository;
 import com.mabsplace.mabsplaceback.domain.repositories.ProductCategoryRepository;
 import com.mabsplace.mabsplaceback.exceptions.ResourceNotFoundException;
@@ -12,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -21,14 +24,20 @@ public class DigitalProductService {
     private final DigitalProductRepository digitalProductRepository;
     private final ProductCategoryRepository productCategoryRepository;
     private final DigitalProductMapper digitalProductMapper;
+    private final DigitalGoodsOrderRepository orderRepository;
+    private final NotificationService notificationService;
     private static final Logger logger = LoggerFactory.getLogger(DigitalProductService.class);
 
     public DigitalProductService(DigitalProductRepository digitalProductRepository,
                                   ProductCategoryRepository productCategoryRepository,
-                                  DigitalProductMapper digitalProductMapper) {
+                                  DigitalProductMapper digitalProductMapper,
+                                  DigitalGoodsOrderRepository orderRepository,
+                                  NotificationService notificationService) {
         this.digitalProductRepository = digitalProductRepository;
         this.productCategoryRepository = productCategoryRepository;
         this.digitalProductMapper = digitalProductMapper;
+        this.orderRepository = orderRepository;
+        this.notificationService = notificationService;
     }
 
     public DigitalProductDto createProduct(DigitalProductDto productDto) {
@@ -49,6 +58,24 @@ public class DigitalProductService {
         logger.info("Updating digital product ID: {}", id);
         DigitalProduct product = digitalProductRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("DigitalProduct", "id", id));
+
+        // NOUVEAU: Vérifier si le produit est désactivé avec des commandes en cours
+        if (productDto.getIsActive() != null && !productDto.getIsActive() && product.getIsActive()) {
+            // Admin essaie de désactiver un produit actuellement actif
+            logger.info("Checking for pending orders before deactivating product ID: {}", id);
+
+            List<DigitalGoodsOrder> pendingOrders = orderRepository.findByProductAndOrderStatusIn(
+                    product,
+                    Arrays.asList(DigitalGoodsOrder.OrderStatus.PAID, DigitalGoodsOrder.OrderStatus.PROCESSING)
+            );
+
+            if (!pendingOrders.isEmpty()) {
+                logger.warn("Product ID {} has {} pending orders", id, pendingOrders.size());
+                // Notifier l'admin des commandes en attente
+                notificationService.notifyAdminOfProductDeactivationWithPendingOrders(product, pendingOrders.size());
+                // Permettre quand même la désactivation mais avec avertissement
+            }
+        }
 
         if (productDto.getCategoryId() != null) {
             ProductCategory category = productCategoryRepository.findById(productDto.getCategoryId())

@@ -27,77 +27,39 @@ public class PriceCalculationService {
         this.serviceFeeConfigRepository = serviceFeeConfigRepository;
     }
 
-    public PriceCalculationDto calculatePrice(DigitalProduct product, BigDecimal requestedAmount) {
-        logger.info("Calculating price for product: {} with amount: {}", product.getName(), requestedAmount);
+    public PriceCalculationDto calculatePrice(DigitalProduct product) {
+        logger.info("Calculating price for product: {}", product.getName());
 
-        // 1. Get exchange rate
-        ExchangeRate exchangeRate = exchangeRateRepository
-                .findByFromCurrencyAndToCurrencyAndIsActiveTrue(product.getBaseCurrency(), "XAF")
-                .orElseThrow(() -> {
-                    logger.error("Exchange rate not found for {} to XAF", product.getBaseCurrency());
-                    return new ResourceNotFoundException("ExchangeRate", "fromCurrency-toCurrency",
-                            product.getBaseCurrency() + "-XAF");
-                });
+        // NOUVEAU SYSTÈME: Prix fixe en XAF, pas de conversion nécessaire
+        BigDecimal fixedPrice = product.getFixedPrice();
 
-        logger.info("Found exchange rate: {} {} = 1 XAF", exchangeRate.getRate(), product.getBaseCurrency());
-
-        // 2. Convert price to XAF
-        BigDecimal convertedPrice = requestedAmount
-                .multiply(exchangeRate.getRate())
-                .setScale(2, RoundingMode.HALF_UP);
-
-        logger.info("Converted price: {} XAF", convertedPrice);
-
-        // 3. Calculate service fee based on product category
-        ServiceFeeConfig feeConfig = serviceFeeConfigRepository
-                .findByProductCategoryAndIsActiveTrue(product.getCategory())
-                .orElseThrow(() -> {
-                    logger.error("Service fee config not found for category: {}", product.getCategory().getName());
-                    return new ResourceNotFoundException("ServiceFeeConfig", "productCategory",
-                            product.getCategory().getName());
-                });
-
-        BigDecimal serviceFee;
-        if (feeConfig.getFeeType() == ServiceFeeConfig.FeeType.PERCENTAGE) {
-            serviceFee = convertedPrice
-                    .multiply(feeConfig.getFeeValue())
-                    .setScale(2, RoundingMode.HALF_UP);
-            logger.info("Service fee ({}%): {} XAF", feeConfig.getFeeValue().multiply(BigDecimal.valueOf(100)), serviceFee);
-        } else {
-            serviceFee = feeConfig.getFeeValue();
-            logger.info("Service fee (fixed): {} XAF", serviceFee);
+        if (fixedPrice == null) {
+            logger.error("Fixed price not set for product: {}", product.getName());
+            throw new IllegalStateException("Product does not have a fixed price set");
         }
 
-        // 4. Calculate total
-        BigDecimal totalAmount = convertedPrice.add(serviceFee);
+        logger.info("Fixed price for product: {} XAF", fixedPrice);
 
-        logger.info("Total amount: {} XAF", totalAmount);
-
-        // 5. Build breakdown
+        // Construct breakdown message
         String breakdown = String.format(
-                "Base amount: %s %s\n" +
-                "Exchange rate: 1 %s = %s XAF\n" +
-                "Converted price: %s XAF\n" +
-                "Service fee (%s%%): %s XAF\n" +
+                "Product: %s\n" +
+                "Price: %s XAF\n" +
                 "Total: %s XAF",
-                requestedAmount, product.getBaseCurrency(),
-                product.getBaseCurrency(), exchangeRate.getRate(),
-                convertedPrice,
-                feeConfig.getFeeValue().multiply(BigDecimal.valueOf(100)),
-                serviceFee,
-                totalAmount
+                product.getName(),
+                fixedPrice,
+                fixedPrice
         );
 
+        // Return price calculation (all values in XAF)
         return PriceCalculationDto.builder()
-                .requestedAmount(requestedAmount)
-                .baseCurrency(product.getBaseCurrency())
-                .baseCurrencyPrice(requestedAmount)
-                .exchangeRate(exchangeRate.getRate())
-                .convertedPrice(convertedPrice)
-                .serviceFee(serviceFee)
-                .serviceFeePercentage(feeConfig.getFeeType() == ServiceFeeConfig.FeeType.PERCENTAGE ?
-                        feeConfig.getFeeValue().multiply(BigDecimal.valueOf(100)) : BigDecimal.ZERO)
-                .totalAmount(totalAmount)
+                .requestedAmount(fixedPrice)  // Montant = prix fixe
+                .baseCurrency("XAF")          // Toujours en XAF maintenant
+                .baseCurrencyPrice(fixedPrice)
+                .exchangeRate(BigDecimal.ONE) // Pas de conversion
+                .convertedPrice(fixedPrice)
+                .serviceFee(BigDecimal.ZERO)  // Frais déjà inclus dans fixedPrice
+                .serviceFeePercentage(BigDecimal.ZERO)
+                .totalAmount(fixedPrice)
                 .breakdown(breakdown)
                 .build();
     }

@@ -1,5 +1,8 @@
 package com.mabsplace.mabsplaceback.domain.services;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.CustomInputFieldDto;
 import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.DigitalGoodsOrderDto;
 import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.OrderRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.digitalgoods.PriceCalculationDto;
@@ -21,8 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Service
 @Transactional
@@ -36,6 +38,7 @@ public class DigitalGoodsOrderService {
     private final PriceCalculationService priceCalculationService;
     private final DigitalGoodsOrderMapper orderMapper;
     private final NotificationService notificationService;
+    private final ObjectMapper objectMapper;
     private static final Logger logger = LoggerFactory.getLogger(DigitalGoodsOrderService.class);
 
     public DigitalGoodsOrderService(DigitalGoodsOrderRepository orderRepository,
@@ -45,7 +48,8 @@ public class DigitalGoodsOrderService {
                                      TransactionRepository transactionRepository,
                                      PriceCalculationService priceCalculationService,
                                      DigitalGoodsOrderMapper orderMapper,
-                                     NotificationService notificationService) {
+                                     NotificationService notificationService,
+                                     ObjectMapper objectMapper) {
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
@@ -54,14 +58,15 @@ public class DigitalGoodsOrderService {
         this.priceCalculationService = priceCalculationService;
         this.orderMapper = orderMapper;
         this.notificationService = notificationService;
+        this.objectMapper = objectMapper;
     }
 
-    public PriceCalculationDto calculateOrderPrice(Long productId, BigDecimal amount) {
-        logger.info("Calculating price for product ID: {} with amount: {}", productId, amount);
+    public PriceCalculationDto calculateOrderPrice(Long productId) {
+        logger.info("Calculating price for product ID: {}", productId);
         DigitalProduct product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("DigitalProduct", "id", productId));
 
-        return priceCalculationService.calculatePrice(product, amount);
+        return priceCalculationService.calculatePrice(product);
     }
 
     public DigitalGoodsOrderDto createOrder(OrderRequestDto orderRequest) {
@@ -74,28 +79,47 @@ public class DigitalGoodsOrderService {
         DigitalProduct product = productRepository.findById(orderRequest.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("DigitalProduct", "id", orderRequest.getProductId()));
 
-        // Calculate price
-        PriceCalculationDto priceCalc = priceCalculationService.calculatePrice(product, orderRequest.getAmount());
+        // NOUVEAU: Valider les données saisies par le client
+        validateCustomInputFields(product, orderRequest.getCustomerInputData());
+
+        // Calculate price (utilise le prix fixe)
+        PriceCalculationDto priceCalc = priceCalculationService.calculatePrice(product);
 
         // Check wallet balance (using correct wallet ID)
         if (!walletService.checkBalance(user.getWallet().getId(), priceCalc.getTotalAmount())) {
             throw new IllegalStateException("Insufficient wallet balance. Required: " + priceCalc.getTotalAmount() + " XAF");
         }
 
+        // NOUVEAU: Créer un snapshot du produit
+        String productSnapshot = createProductSnapshot(product, priceCalc);
+
+        // NOUVEAU: Convertir customerInputData en JSON
+        String customerInputDataJson = null;
+        if (orderRequest.getCustomerInputData() != null) {
+            try {
+                customerInputDataJson = objectMapper.writeValueAsString(orderRequest.getCustomerInputData());
+            } catch (Exception e) {
+                logger.error("Error serializing customer input data", e);
+                throw new RuntimeException("Error processing customer input data");
+            }
+        }
+
         // Create order
         DigitalGoodsOrder order = DigitalGoodsOrder.builder()
                 .user(user)
                 .product(product)
-                .amount(orderRequest.getAmount())
-                .baseCurrency(product.getBaseCurrency())
+                .amount(product.getFixedPrice()) // MODIFIÉ: Utilise fixedPrice au lieu de amount
+                .baseCurrency("XAF")             // MODIFIÉ: Toujours XAF maintenant
                 .baseCurrencyPrice(priceCalc.getBaseCurrencyPrice())
                 .exchangeRate(priceCalc.getExchangeRate())
                 .convertedPrice(priceCalc.getConvertedPrice())
                 .serviceFee(priceCalc.getServiceFee())
                 .totalAmount(priceCalc.getTotalAmount())
-                .profit(priceCalc.getServiceFee()) // Profit = service fee for now
+                .profit(product.getProfitMargin() != null ? product.getProfitMargin() : BigDecimal.ZERO) // MODIFIÉ: Utilise profitMargin
                 .orderStatus(DigitalGoodsOrder.OrderStatus.PENDING)
                 .paymentMethod("WALLET")
+                .customerInputData(customerInputDataJson) // NOUVEAU
+                .productSnapshot(productSnapshot)         // NOUVEAU
                 .build();
 
         DigitalGoodsOrder savedOrder = orderRepository.save(order);
@@ -151,6 +175,10 @@ public class DigitalGoodsOrderService {
 
         DigitalGoodsOrder updated = orderRepository.save(order);
         logger.info("Order delivered: {}", orderId);
+
+        // NOUVEAU: Notifier le client de la livraison
+        notificationService.notifyCustomerOfOrderDelivery(updated);
+        logger.info("Customer notification sent for delivered order ID: {}", orderId);
 
         return orderMapper.toDto(updated);
     }
@@ -276,5 +304,92 @@ public class DigitalGoodsOrderService {
 
         orderRepository.delete(order);
         logger.info("Order deleted: {}", orderId);
+    }
+
+    // ==================== HELPER METHODS (NOUVEAU SYSTÈME) ====================
+
+    /**
+     * Valide les données saisies par le client en fonction des champs personnalisés du produit
+     */
+    private void validateCustomInputFields(DigitalProduct product, Map<String, String> customerInput) {
+        if (product.getCustomInputFields() == null || product.getCustomInputFields().isEmpty()) {
+            return; // Pas de validation nécessaire
+        }
+
+        List<CustomInputFieldDto> requiredFields = parseCustomInputFields(product.getCustomInputFields());
+
+        for (CustomInputFieldDto field : requiredFields) {
+            if (field.getIsRequired()) {
+                String value = customerInput != null ? customerInput.get(field.getFieldName()) : null;
+                if (value == null || value.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Required field missing: " + field.getFieldLabel());
+                }
+
+                // Validation basique du type
+                validateFieldType(field, value);
+            }
+        }
+    }
+
+    /**
+     * Parse le JSON des champs personnalisés en liste de DTOs
+     */
+    private List<CustomInputFieldDto> parseCustomInputFields(String customInputFieldsJson) {
+        try {
+            if (customInputFieldsJson == null || customInputFieldsJson.trim().isEmpty() || "null".equals(customInputFieldsJson)) {
+                return Collections.emptyList();
+            }
+            return objectMapper.readValue(customInputFieldsJson, new TypeReference<List<CustomInputFieldDto>>() {});
+        } catch (Exception e) {
+            logger.error("Error parsing custom input fields JSON", e);
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * Valide le type de données du champ
+     */
+    private void validateFieldType(CustomInputFieldDto field, String value) {
+        switch (field.getFieldType()) {
+            case "email":
+                if (!value.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")) {
+                    throw new IllegalArgumentException("Invalid email format for field: " + field.getFieldLabel());
+                }
+                break;
+            case "tel":
+                if (!value.matches("^[+]?[0-9]{8,15}$")) {
+                    throw new IllegalArgumentException("Invalid phone number format for field: " + field.getFieldLabel());
+                }
+                break;
+            case "number":
+                try {
+                    Double.parseDouble(value);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Invalid number format for field: " + field.getFieldLabel());
+                }
+                break;
+            // text et select n'ont pas besoin de validation supplémentaire
+        }
+    }
+
+    /**
+     * Crée un snapshot JSON du produit au moment de la commande
+     */
+    private String createProductSnapshot(DigitalProduct product, PriceCalculationDto priceCalc) {
+        try {
+            Map<String, Object> snapshot = new HashMap<>();
+            snapshot.put("productName", product.getName());
+            snapshot.put("productId", product.getId());
+            snapshot.put("fixedPrice", product.getFixedPrice());
+            snapshot.put("profitMargin", product.getProfitMargin());
+            snapshot.put("baseCurrency", "XAF");
+            snapshot.put("totalAmount", priceCalc.getTotalAmount());
+            snapshot.put("customInputFields", parseCustomInputFields(product.getCustomInputFields()));
+
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (Exception e) {
+            logger.error("Error creating product snapshot", e);
+            return "{}";
+        }
     }
 }

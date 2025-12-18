@@ -27,11 +27,9 @@ public class DigitalGoodsOrderController {
     }
 
     @PostMapping("/calculate-price")
-    public ResponseEntity<PriceCalculationDto> calculatePrice(
-            @RequestParam Long productId,
-            @RequestParam BigDecimal amount) {
-        logger.info("Calculating price for product ID: {} with amount: {}", productId, amount);
-        PriceCalculationDto priceCalc = orderService.calculateOrderPrice(productId, amount);
+    public ResponseEntity<PriceCalculationDto> calculatePrice(@RequestParam Long productId) {
+        logger.info("Calculating price for product ID: {}", productId);
+        PriceCalculationDto priceCalc = orderService.calculateOrderPrice(productId);
         return ResponseEntity.ok(priceCalc);
     }
 

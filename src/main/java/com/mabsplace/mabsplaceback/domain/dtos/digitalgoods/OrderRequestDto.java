@@ -3,7 +3,7 @@ package com.mabsplace.mabsplaceback.domain.dtos.digitalgoods;
 import lombok.*;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
+import java.util.Map;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -13,5 +13,5 @@ import java.math.BigDecimal;
 public class OrderRequestDto implements Serializable {
     private Long userId;
     private Long productId;
-    private BigDecimal amount; // Montant demandé (ex: 10, 25, 50)
+    private Map<String, String> customerInputData; // Données saisies par le client (email, téléphone, etc.)
 }

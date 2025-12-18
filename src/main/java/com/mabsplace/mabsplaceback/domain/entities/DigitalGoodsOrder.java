@@ -75,6 +75,13 @@ public class DigitalGoodsOrder {
     @JoinColumn(name = "delivered_by")
     private User deliveredBy; // Admin qui a livré
 
+    // Nouvelles données pour le nouveau système
+    @Column(name = "customer_input_data", columnDefinition = "TEXT")
+    private String customerInputData; // Données saisies par le client (JSON)
+
+    @Column(name = "product_snapshot", columnDefinition = "TEXT")
+    private String productSnapshot; // État du produit au moment de la commande (JSON)
+
     // Dates
     @Column(name = "created_at")
     private java.util.Date createdAt;

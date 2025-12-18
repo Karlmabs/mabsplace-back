@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mabsplace.mabsplaceback.domain.controllers.WebSocketNotificationController;
 import com.mabsplace.mabsplaceback.domain.dtos.notification.NotificationDTO;
 import com.mabsplace.mabsplaceback.domain.entities.DigitalGoodsOrder;
+import com.mabsplace.mabsplaceback.domain.entities.DigitalProduct;
 import com.mabsplace.mabsplaceback.domain.entities.Notification;
 import com.mabsplace.mabsplaceback.domain.entities.Payment;
 import com.mabsplace.mabsplaceback.domain.entities.Subscription;
@@ -534,6 +535,112 @@ public class NotificationService {
 
         } catch (Exception e) {
             logger.error("Failed to notify admins of payment status change for payment ID: {}", payment.getId(), e);
+        }
+    }
+
+    /**
+     * Notify customer when their digital goods order is delivered
+     */
+    @Async
+    public void notifyCustomerOfOrderDelivery(DigitalGoodsOrder order) {
+        try {
+            logger.info("Notifying customer of order delivery, order ID: {}", order.getId());
+
+            User customer = order.getUser();
+
+            // Create notification data
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "ORDER_DELIVERED");
+            data.put("orderId", order.getId());
+            data.put("productName", order.getProduct().getName());
+            data.put("deliveredAt", order.getDeliveredAt().toString());
+
+            String title = "Order Delivered!";
+            String message = String.format("Your order #%d (%s) has been delivered! View your order to access the delivery information.",
+                    order.getId(), order.getProduct().getName());
+
+            // Save notification to database
+            Notification notification = createNotification(customer, title, message, data);
+            notificationRepository.save(notification);
+
+            // Send WebSocket notification to customer (use same infrastructure as admin notifications)
+            NotificationDTO notificationDTO = NotificationDTO.builder()
+                    .id(notification.getId())
+                    .title(title)
+                    .message(message)
+                    .type("ORDER_DELIVERED")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .data(objectMapper.writeValueAsString(data))
+                    .build();
+
+            webSocketNotificationController.sendNotificationToUser(customer.getId(), notificationDTO);
+
+            // Send push notification if customer has push token
+            if (customer.getPushToken() != null) {
+                sendPushNotification(
+                        Collections.singletonList(customer.getId()),
+                        title,
+                        message,
+                        data
+                );
+            }
+
+            logger.info("Customer notification sent successfully for order ID: {}", order.getId());
+
+        } catch (Exception e) {
+            logger.error("Failed to notify customer of order delivery, order ID: {}", order.getId(), e);
+        }
+    }
+
+    /**
+     * Notify admin when deactivating a product that has pending orders
+     */
+    @Async
+    public void notifyAdminOfProductDeactivationWithPendingOrders(DigitalProduct product, int pendingOrderCount) {
+        try {
+            logger.info("Notifying admins of product deactivation with pending orders, product ID: {}", product.getId());
+
+            List<User> admins = getAdminsByPermission("MANAGE_DIGITAL_PRODUCTS");
+
+            if (admins.isEmpty()) {
+                logger.warn("No admins found with MANAGE_DIGITAL_PRODUCTS permission");
+                return;
+            }
+
+            String title = "Product Deactivation Warning";
+            String message = String.format("Product '%s' (ID: %d) is being deactivated but has %d pending orders (PAID/PROCESSING). Please review and fulfill or refund these orders.",
+                    product.getName(), product.getId(), pendingOrderCount);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("type", "PRODUCT_DEACTIVATION_WARNING");
+            data.put("productId", product.getId());
+            data.put("productName", product.getName());
+            data.put("pendingOrderCount", pendingOrderCount);
+
+            // Save notifications to database for each admin
+            List<Notification> notifications = admins.stream()
+                    .map(admin -> createNotification(admin, title, message, data))
+                    .collect(Collectors.toList());
+
+            notificationRepository.saveAll(notifications);
+
+            NotificationDTO notificationDTO = NotificationDTO.builder()
+                    .id(notifications.get(0).getId())
+                    .title(title)
+                    .message(message)
+                    .type("PRODUCT_DEACTIVATION_WARNING")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .data(objectMapper.writeValueAsString(data))
+                    .build();
+
+            webSocketNotificationController.sendNotificationToAdmins(notificationDTO);
+
+            logger.info("Admin notification sent for product deactivation warning, product ID: {}", product.getId());
+
+        } catch (Exception e) {
+            logger.error("Failed to notify admins of product deactivation, product ID: {}", product.getId(), e);
         }
     }
 
