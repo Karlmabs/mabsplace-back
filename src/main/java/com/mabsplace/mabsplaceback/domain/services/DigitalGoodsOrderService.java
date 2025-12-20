@@ -85,8 +85,8 @@ public class DigitalGoodsOrderService {
         // Calculate price (utilise le prix fixe)
         PriceCalculationDto priceCalc = priceCalculationService.calculatePrice(product);
 
-        // Check wallet balance (using correct wallet ID)
-        if (!walletService.checkBalance(user.getWallet().getId(), priceCalc.getTotalAmount())) {
+        // Check wallet balance (using user ID, not wallet ID)
+        if (!walletService.checkBalance(user.getId(), priceCalc.getTotalAmount())) {
             throw new IllegalStateException("Insufficient wallet balance. Required: " + priceCalc.getTotalAmount() + " XAF");
         }
 
