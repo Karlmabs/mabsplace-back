@@ -157,7 +157,7 @@ This document contains all email templates to be created in the OneSignal dashbo
     <div class="email-wrapper">
         <div class="email-header">
             <div class="logo">
-                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                <img src="https://admin.mabsplace.app/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
             </div>
             <h1 class="header-title">Email Verification</h1>
         </div>
@@ -349,7 +349,7 @@ This document contains all email templates to be created in the OneSignal dashbo
     <div class="email-wrapper">
         <div class="email-header">
             <div class="logo">
-                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                <img src="https://admin.mabsplace.app/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
             </div>
             <h1 class="header-title">Subscription Renewed! 🎉</h1>
         </div>
@@ -381,7 +381,7 @@ This document contains all email templates to be created in the OneSignal dashbo
                 </center>
 
                 <p style="font-size: 14px; color: #757575; margin-top: 20px;">
-                    Need help? Contact our support team anytime at <a href="mailto:support@mabsplace.com" style="color: #1a73e8;">support@mabsplace.com</a>
+                    Need help? Contact our support team anytime at <a href="mailto:support@mabsplace.app" style="color: #1a73e8;">support@mabsplace.app</a>
                 </p>
             </div>
         </div>
@@ -570,7 +570,7 @@ This document contains all email templates to be created in the OneSignal dashbo
     <div class="email-wrapper">
         <div class="email-header">
             <div class="logo">
-                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                <img src="https://admin.mabsplace.app/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
             </div>
             <h1 class="header-title">Subscription Expiring Soon ⏰</h1>
         </div>
@@ -793,7 +793,7 @@ This document contains all email templates to be created in the OneSignal dashbo
     <div class="email-wrapper">
         <div class="email-header">
             <div class="logo">
-                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                <img src="https://admin.mabsplace.app/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
             </div>
             <h1 class="header-title">Subscription Expired</h1>
         </div>
@@ -833,7 +833,7 @@ This document contains all email templates to be created in the OneSignal dashbo
                 </center>
 
                 <p style="font-size: 14px; color: #757575; margin-top: 20px;">
-                    Need help renewing? Our support team is here to assist you at <a href="mailto:support@mabsplace.com" style="color: #1a73e8;">support@mabsplace.com</a>
+                    Need help renewing? Our support team is here to assist you at <a href="mailto:support@mabsplace.app" style="color: #1a73e8;">support@mabsplace.app</a>
                 </p>
             </div>
         </div>
@@ -1029,7 +1029,7 @@ This document contains all email templates to be created in the OneSignal dashbo
     <div class="email-wrapper">
         <div class="email-header">
             <div class="logo">
-                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                <img src="https://admin.mabsplace.app/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
             </div>
             <h1 class="header-title">Renewal Failed ⚠️</h1>
         </div>
@@ -1077,7 +1077,7 @@ This document contains all email templates to be created in the OneSignal dashbo
                 </center>
 
                 <p style="font-size: 14px; color: #757575; margin-top: 20px;">
-                    Need immediate assistance? Contact our support team at <a href="mailto:support@mabsplace.com" style="color: #1a73e8;">support@mabsplace.com</a>
+                    Need immediate assistance? Contact our support team at <a href="mailto:support@mabsplace.app" style="color: #1a73e8;">support@mabsplace.app</a>
                 </p>
             </div>
         </div>
@@ -1226,7 +1226,7 @@ This document contains all email templates to be created in the OneSignal dashbo
     <div class="email-wrapper">
         <div class="email-header">
             <div class="logo">
-                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                <img src="https://admin.mabsplace.app/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
             </div>
             <h1 class="header-title">Payment Reminder 💳</h1>
         </div>

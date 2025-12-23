@@ -64,7 +64,7 @@ data:
         jwtExpirationMs: 86400000
         privateKey: QYVLTmSoDoOsAIi4NZkah6QZXi9PUJkXi0pMc6QeLyRd0rnokyB5p1XhZs8talt8
       openapi:
-        prod-url: https://back.mabsplace.com
+        prod-url: https://back.mabsplace.app
         dev-url: http://localhost:8080
 
     app:

@@ -21,14 +21,14 @@ spring:
 
 mabsplace:
   openapi:
-    url: https://back.mabsplace.com
+    url: https://back.mabsplace.app
 
 app:
   cors:
-    allowedOrigins: https://mabsplace.com,https://www.mabsplace.com
+    allowedOrigins: https://mabsplace.app,https://www.mabsplace.app
   oauth2:
     authorizedRedirectUris:
-      - https://mabsplace.com/oauth2/redirect
+      - https://mabsplace.app/oauth2/redirect
       - myandroidapp://oauth2/redirect
       - myiosapp://oauth2/redirect
 

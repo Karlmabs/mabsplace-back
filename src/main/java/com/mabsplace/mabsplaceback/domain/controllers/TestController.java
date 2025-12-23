@@ -48,7 +48,7 @@ public class TestController {
     public ResponseEntity<String> testDiscordUrgentReminder() {
         discordService.sendPaymentReminderNotification(
                 "Spotify Family",
-                "team@mabsplace.com",
+                "team@mabsplace.app",
                 "2025-10-09",
                 3
         );

@@ -38,9 +38,9 @@ public class OpenAPIConfig {
     prodServer.setDescription("Server URL in Production environment");
 
     Contact contact = new Contact();
-    contact.setEmail("karlmabs@mabsplace.com");
+    contact.setEmail("karlmabs@mabsplace.app");
     contact.setName("Karlmabs");
-    contact.setUrl("https://www.mabsplace.com");
+    contact.setUrl("https://www.mabsplace.app");
 
     License mitLicense = new License().name("MIT License").url("https://choosealicense.com/licenses/mit/");
 
@@ -48,7 +48,7 @@ public class OpenAPIConfig {
             .title("MabsPlace API")
             .version("1.0")
             .contact(contact)
-            .description("This API exposes endpoints of MabsPlace.").termsOfService("https://www.mabsplace.com/terms")
+            .description("This API exposes endpoints of MabsPlace.").termsOfService("https://www.mabsplace.app/terms")
             .license(mitLicense);
 
     io.swagger.v3.oas.models.security.SecurityScheme securityScheme = new io.swagger.v3.oas.models.security.SecurityScheme()

@@ -39,7 +39,7 @@ public class EmailService {
         logger.info("Preparing to send email to: {}, subject: {}", request.getTo(), request.getSubject());
 
         MimeMessage message = mailSender.createMimeMessage();
-        String defaultFromEmail = "noreply@mabsplace.com";
+        String defaultFromEmail = "noreply@mabsplace.app";
         message.setFrom(new InternetAddress(request.getFromEmail() != null ? request.getFromEmail() : defaultFromEmail));
         message.setRecipient(MimeMessage.RecipientType.TO, new InternetAddress(request.getTo()));
 
@@ -211,7 +211,7 @@ public class EmailService {
                         <div class="email-header">
                             <div class="logo">
                                 <!-- You can add your logo here -->
-                                <img src="https://admin.mabsplace.com/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
+                                <img src="https://admin.mabsplace.app/_next/static/media/mabsplace_light.55f402f2.png" alt="MabsPlace">
                             </div>
                             <h1 class="header-title">%s</h1>
                         </div>
@@ -231,8 +231,8 @@ public class EmailService {
                             </div>
                             
                             <div class="footer-links">
-                                <a href="https://mabsplace.com/privacy">Privacy Policy</a>
-                                <a href="https://mabsplace.com/terms">Terms of Service</a>
+                                <a href="https://mabsplace.app/privacy">Privacy Policy</a>
+                                <a href="https://mabsplace.app/terms">Terms of Service</a>
                             </div>
                             
                             <div class="copyright">

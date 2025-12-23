@@ -135,7 +135,7 @@ railway logs
 
 ### Test Dashboard Performance
 
-1. Visit your dashboard: `https://mabsplace.com/dashboard`
+1. Visit your dashboard: `https://mabsplace.app/dashboard`
 2. First load: Should execute all queries (check logs)
 3. Refresh within 5 minutes: Should use cached data (much faster!)
 4. Check Redis cache:

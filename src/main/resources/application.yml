@@ -65,7 +65,7 @@ mabsplace:
     privateKey: QYVLTmSoDoOsAIi4NZkah6QZXi9PUJkXi0pMc6QeLyRd0rnokyB5p1XhZs8talt8
   openapi:
     dev-url: http://localhost:8080
-    prod-url: https://back.mabsplace.com
+    prod-url: https://back.mabsplace.app
   google:
     clientId: 497027706625-6l43ei9kjs5dc5hrskn94uqq2qcc5roo.apps.googleusercontent.com
     clientSecret: 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
