@@ -639,4 +639,85 @@ public class SubscriptionService {
 
         return subscription;
     }
+
+    /**
+     * Renews an active subscription with payment by extending its end date.
+     * Unlike manual renewal which is for expired subscriptions, this method:
+     * - Works with ACTIVE subscriptions
+     * - Extends the current end date by adding the new plan period
+     * - Preserves remaining time on the current subscription
+     * - Allows plan upgrades/downgrades
+     *
+     * @param subscriptionId The ID of the active subscription to renew
+     * @param newPlanId Optional ID of new plan (null = use current plan)
+     * @param promoCode Optional promo code for discount
+     * @return The renewed subscription
+     * @throws MessagingException if notification sending fails
+     */
+    @Transactional
+    public Subscription renewActiveSubscriptionWithPayment(Long subscriptionId, Long newPlanId, String promoCode) throws MessagingException {
+        logger.info("Paid renewal requested for active subscription ID: {}", subscriptionId);
+
+        // 1. Fetch and validate subscription
+        Subscription subscription = subscriptionRepository.findById(subscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subscription", "id", subscriptionId));
+
+        if (subscription.getStatus() != SubscriptionStatus.ACTIVE) {
+            logger.warn("Attempted to renew non-active subscription ID: {} with status: {}",
+                    subscriptionId, subscription.getStatus());
+            throw new IllegalStateException("Only active subscriptions can be renewed with this method");
+        }
+
+        if (subscription.getEndDate().before(new Date())) {
+            logger.warn("Attempted to renew expired subscription ID: {}", subscriptionId);
+            throw new IllegalStateException("Subscription has already expired");
+        }
+
+        // 2. Determine which plan to use
+        SubscriptionPlan planToUse;
+        if (newPlanId != null) {
+            planToUse = subscriptionPlanRepository.findById(newPlanId)
+                    .orElseThrow(() -> new ResourceNotFoundException("SubscriptionPlan", "id", newPlanId));
+            logger.info("Using new plan ID: {} for renewal (plan change)", newPlanId);
+        } else {
+            planToUse = subscription.getSubscriptionPlan();
+            logger.info("Using current plan ID: {} for renewal", planToUse.getId());
+        }
+
+        // 3. Prevent trial-to-trial renewals
+        if (subscription.getIsTrial() && planToUse.getName().contains("Trial")) {
+            logger.warn("Attempted to renew trial subscription to another trial for subscription ID: {}", subscriptionId);
+            throw new IllegalStateException("Trial subscriptions cannot be renewed to another trial plan");
+        }
+
+        // 4. Process payment (deduct from wallet)
+        boolean paymentSuccess = orchestrator.processSubscriptionRenewal(subscription, planToUse);
+
+        if (!paymentSuccess) {
+            logger.error("Renewal payment failed for subscription ID: {}", subscriptionId);
+            throw new RuntimeException("Insufficient funds. Please top up your wallet and try again.");
+        }
+
+        // 5. Calculate new end date by extending from current end date
+        Date currentEndDate = subscription.getEndDate();
+        Date newEndDate = Utils.addPeriod(currentEndDate, planToUse.getPeriod());
+
+        logger.info("Extending subscription ID: {} from {} to {}",
+                subscription.getId(), currentEndDate, newEndDate);
+
+        // 6. Update subscription with new end date and plan
+        subscription.setEndDate(newEndDate);
+        subscription.setSubscriptionPlan(planToUse);
+        subscription.setNextSubscriptionPlan(null); // Clear any pending plan change
+        subscription.setExpirationNotified(false); // Reset notification flag
+        subscription.setIsTrial(false); // No longer trial after renewal
+
+        subscription = subscriptionRepository.save(subscription);
+        logger.info("Successfully saved renewed subscription ID: {}", subscription.getId());
+
+        // 7. Send multi-channel notifications (email, push, SMS, Discord)
+        notificationOrchestrator.notifySubscriptionRenewed(subscription);
+
+        return subscription;
+    }
 }

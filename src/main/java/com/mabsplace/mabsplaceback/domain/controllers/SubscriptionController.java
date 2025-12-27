@@ -1,6 +1,7 @@
 package com.mabsplace.mabsplaceback.domain.controllers;
 
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRequestDto;
+import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionRenewalRequestDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionResponseDto;
 import com.mabsplace.mabsplaceback.domain.dtos.subscription.SubscriptionLightweightResponseDto;
 import com.mabsplace.mabsplaceback.domain.entities.Profile;
@@ -140,6 +141,35 @@ public class SubscriptionController {
     } catch (Exception e) {
       logger.error("Unexpected error renewing subscription ID: {}", id, e);
       return new ResponseEntity<>("An unexpected error occurred while renewing the subscription", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @PostMapping("/{id}/renew-with-payment")
+  public ResponseEntity<?> renewActiveSubscriptionWithPayment(
+          @PathVariable Long id,
+          @RequestBody SubscriptionRenewalRequestDto renewalRequest) {
+    logger.info("Paid renewal requested for active subscription ID: {}", id);
+    try {
+      Subscription renewed = subscriptionService.renewActiveSubscriptionWithPayment(
+              id,
+              renewalRequest.getNewPlanId(),
+              renewalRequest.getPromoCode()
+      );
+      logger.info("Successfully renewed active subscription ID: {}", id);
+      return ResponseEntity.ok(mapper.toDto(renewed));
+    } catch (IllegalStateException e) {
+      logger.error("Renewal failed - invalid state for subscription ID: {} - {}", id, e.getMessage());
+      return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (ResourceNotFoundException e) {
+      logger.error("Resource not found for renewal - subscription ID: {} - {}", id, e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    } catch (RuntimeException e) {
+      logger.error("Runtime error during paid renewal for subscription ID: {} - {}", id, e.getMessage());
+      return ResponseEntity.badRequest().body(e.getMessage());
+    } catch (Exception e) {
+      logger.error("Unexpected error during paid renewal for subscription ID: {}", id, e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body("Renewal failed: " + e.getMessage());
     }
   }
 
