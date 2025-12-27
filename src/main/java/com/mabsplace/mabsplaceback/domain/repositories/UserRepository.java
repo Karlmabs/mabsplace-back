@@ -7,6 +7,7 @@ import com.mabsplace.mabsplaceback.domain.enums.AuthenticationType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,6 +18,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
   Optional<User> findByUsername(String username);
 
   Boolean existsByUsername(String username);
+
+  @Query("SELECT u FROM User u WHERE LOWER(TRIM(u.username)) = LOWER(TRIM(:username))")
+  Optional<User> findByUsernameIgnoreCase(@Param("username") String username);
+
+  @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE LOWER(TRIM(u.username)) = LOWER(TRIM(:username))")
+  Boolean existsByUsernameIgnoreCase(@Param("username") String username);
 
   Boolean existsByEmail(String email);
   

@@ -127,19 +127,29 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) throws MessagingException {
 
-//    Optional<User> userOptional = userRepository.findByPhoneNumber(loginRequest.getPhoneNumber());
-        userRepository.findByUsername(loginRequest.getUsername()).orElseThrow(() -> new RuntimeException("User doesn't exist !!!!"));
+        // Try normalized username first
+        Optional<User> userOptional = userRepository.findByUsername(loginRequest.getUsername());
 
+        // Fallback to case-insensitive search for legacy users
+        if (userOptional.isEmpty()) {
+            userOptional = userRepository.findByUsernameIgnoreCase(loginRequest.getUsername());
+        }
+
+        if (userOptional.isEmpty()) {
+            throw new RuntimeException("User doesn't exist !!!!");
+        }
+
+        User user = userOptional.get();
+
+        // Authenticate with actual username from database
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
+                        user.getUsername(),
                         loginRequest.getPassword()
                 )
         );
 
-        Optional<User> loggedIn = userRepository.findByUsername(loginRequest.getUsername());
-
-        /*if (loggedIn.isPresent() && !loggedIn.get().getEmailVerified()) {
+        /*if (user.getEmailVerified() != null && !user.getEmailVerified()) {
             throw new RuntimeException("User not verified");
         }*/
 
@@ -147,7 +157,7 @@ public class AuthController {
 
         String token = tokenProvider.createToken(authentication);
 
-        return ResponseEntity.ok().body(new AuthResponse(token, userMapper.toDto(loggedIn.get())));
+        return ResponseEntity.ok().body(new AuthResponse(token, userMapper.toDto(user)));
     }
 
     @PostMapping("/verify")
@@ -166,15 +176,24 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) throws BadRequestException {
 
+        // Normalize username (trim + lowercase)
+        String normalizedUsername = signUpRequest.getUsername().trim().toLowerCase();
+        signUpRequest.setUsername(normalizedUsername);
+
+        // Additional validation - ensure no spaces in username
+        if (normalizedUsername.contains(" ")) {
+            throw new BadRequestException("Username cannot contain spaces.");
+        }
+
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             throw new BadRequestException("Email address already in use.");
         }
-        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+        if (userRepository.existsByUsername(normalizedUsername)) {
             throw new BadRequestException("Username already in use.");
         }
 
         User user = User.builder()
-                .username(signUpRequest.getUsername())
+                .username(normalizedUsername)
                 .email(signUpRequest.getEmail())
                 .password(encoder.encode(signUpRequest.getPassword()))
                 .phonenumber(signUpRequest.getPhonenumber())
@@ -387,7 +406,7 @@ public class AuthController {
                             .emailVerified(true)
                             .password(encoder.encode("password"))
                             .phonenumber(phoneNumber)
-                            .username(payload.getEmail())
+                            .username(payload.getEmail().trim().toLowerCase())
                             .firstname((String) payload.get("given_name"))
                             .lastname((String) payload.get("family_name"))
                             .authType(AuthenticationType.GOOGLE)
@@ -453,7 +472,7 @@ public class AuthController {
                         .emailVerified(true)
                         .password(encoder.encode("password"))
                         .phonenumber(String.valueOf((int) (Math.random() * 1000000000)))
-                        .username(email)
+                        .username(email.trim().toLowerCase())
                         .firstname((String) claims.getClaim("first_name"))
                         .lastname((String) claims.getClaim("last_name"))
                         .authType(AuthenticationType.APPLE)

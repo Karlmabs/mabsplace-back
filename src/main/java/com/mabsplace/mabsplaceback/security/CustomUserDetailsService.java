@@ -11,6 +11,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -20,13 +22,22 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional
-    public UserDetails loadUserByUsername(String email)
+    public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(email)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found with username : " + email)
-        );
+        // Normalize input
+        String normalizedUsername = username.trim().toLowerCase();
 
+        // Try exact match first
+        Optional<User> userOptional = userRepository.findByUsername(normalizedUsername);
+
+        // Fallback to case-insensitive search for legacy users
+        if (userOptional.isEmpty()) {
+            userOptional = userRepository.findByUsernameIgnoreCase(normalizedUsername);
+        }
+
+        User user = userOptional.orElseThrow(() ->
+                new UsernameNotFoundException("User not found with username : " + username)
+        );
 
         return UserPrincipal.create(user);
     }
